@@ -8,11 +8,13 @@ if [[ ! -x node_modules/.bin/next ]]; then
 fi
 
 # The standalone admin server uses process.env; Next.js loads .env.local itself.
+configured_database_url="${DATABASE_URL:-}"
 if [[ -f .env.local ]]; then
   set -a
   . ./.env.local
   set +a
 fi
+if [[ -n "$configured_database_url" ]]; then export DATABASE_URL="$configured_database_url"; fi
 
 preview_is_ready() {
   curl --silent --fail --connect-timeout 1 --max-time 2 http://127.0.0.1:3000/ >/dev/null

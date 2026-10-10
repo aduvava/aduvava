@@ -65,6 +65,11 @@ async function main() {
     create: { email: adminEmail, name: "Admin", role: "ADMIN", passwordHash: passwordAdmin }
   });
 
+  if (process.env.EDUVA_SEED_DEMO_DATA !== "true") {
+    console.log(`Admin account ready: ${admin.email}. Demo users and sample content were skipped.`);
+    return;
+  }
+
   const demo = await prisma.user.upsert({
     where: { email: demoEmail },
     update: { passwordHash: passwordDemo },
@@ -854,5 +859,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-
-

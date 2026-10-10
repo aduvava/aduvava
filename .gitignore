@@ -1,15 +1,10 @@
 node_modules/
 .next/
-.next-stale-*/
 out/
 dist/
 coverage/
 .env
 .env.*
 !.env.example
-.postgres-data/
-.postgresql/
-.npm-cache/
-*.log
-.DS_Store
 .codespaces-preview-credentials
+*.log

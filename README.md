@@ -2,10 +2,26 @@
 
 Eduva is a full-stack Next.js 15 application using PostgreSQL and Prisma. It includes the student site, NextAuth login, a role-protected admin area, and an optional standalone admin server.
 
+## Supabase Postgres setup
+
+The app already uses Prisma with PostgreSQL for accounts, exams, attempts, and admin data. Use a separate Supabase project for Eduva so its schema and records stay separate from other apps. In Supabase, open **Connect**, copy the **Session pooler** connection URI (port `5432`), and put it in `DATABASE_URL` in `.env`. Do not put a database password or any privileged key in a `NEXT_PUBLIC_` variable. In Codespaces, add the URI as the `DATABASE_URL` Codespaces secret; setup applies the Prisma schema and skips demo seeding by default.
+
+Copy `.env.example` to `.env`, then set `NEXTAUTH_SECRET` and `NEXTAUTH_URL`. To create the schema, run:
+
+```bash
+npm ci
+npm run db:generate
+npm run db:push
+```
+
+The seed step is optional. `npm run db:seed` provisions only the admin account from `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD`. To also insert sample students, exams, and documents, explicitly set `EDUVA_SEED_DEMO_DATA=true`. Use a unique admin password of at least 16 characters.
+
+Google login is optional. To enable it, configure the OAuth client ID and secret in `.env`, set the JavaScript origin to the site URL, and add `<NEXTAUTH_URL>/api/auth/callback/google` as an authorized redirect URI.
+
 ## Local setup
 
-1. Install Node.js 20 or newer and PostgreSQL.
-2. Copy `.env.example` to `.env`. Set `DATABASE_URL`, `NEXTAUTH_SECRET`, and the administrator seed email and password. Use a unique password with at least 16 characters.
+1. Install Node.js 20 or newer.
+2. Configure `.env` as described above.
 3. Install dependencies and generate the Prisma client:
 
    ```bash
@@ -13,16 +29,13 @@ Eduva is a full-stack Next.js 15 application using PostgreSQL and Prisma. It inc
    npm run db:generate
    ```
 
-4. Create/update the database schema and seed initial catalog data:
+4. Create/update the database schema:
 
    ```bash
    npm run db:push
-   npm run db:seed
    ```
 
 5. Start the student web app with `npm run dev`. It runs at `http://localhost:3000`. To start the separate admin server, use `npm run admin:start` on port 4000.
-
-Google login is optional. To enable it, configure the OAuth client ID and secret in `.env`, set the JavaScript origin to the site URL, and add `<NEXTAUTH_URL>/api/auth/callback/google` as an authorized redirect URI.
 
 ## Docker deployment
 
@@ -37,15 +50,15 @@ Google login is optional. To enable it, configure the OAuth client ID and secret
 
 The web app is on port 3000. The standalone admin service binds to host localhost port 4000; keep remote access behind a trusted HTTPS reverse proxy. PostgreSQL and uploaded files use persistent Docker volumes.
 
-The seed requires `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD`. Optional demo/teacher passwords are random when omitted; no default administrator password is shipped.
+The seed requires `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD`. Demo users and sample content are added only when `EDUVA_SEED_DEMO_DATA=true`; no default administrator password is shipped.
 
 ## Temporary GitHub preview (Codespaces)
 
-This is a private, temporary test environment. It starts the Next.js app with a separate PostgreSQL database; it is not the production deployment.
+This is a private test environment. By default it starts the Next.js app with a separate temporary PostgreSQL database and demo data. To test against the dedicated Eduva Supabase project, configure the `DATABASE_URL` Codespaces secret first; setup applies the app schema but does not seed any users or sample content by default. To create the first admin, set `EDUVA_SEED_DATABASE=true`, `SEED_ADMIN_EMAIL`, and `SEED_ADMIN_PASSWORD` as Codespaces secrets. Add `EDUVA_SEED_DEMO_DATA=true` only if you also want sample records.
 
 1. Open the repository on GitHub, choose **Code → Codespaces → Create codespace on main**.
 2. Wait for setup to finish. The student site opens on port **3000**; the standalone admin site opens on port **4000** from the **Ports** panel. The integrated admin panel is also available at `/admin` on port 3000.
-3. To see the test logins, run `cat .codespaces-preview-credentials` in the terminal. The passwords are generated separately for this Codespace and are not committed.
+3. For the temporary local database, run `cat .codespaces-preview-credentials` to see generated test logins. With Supabase, that file only notes the selected database; use the admin email and password configured in Codespaces secrets if you ran the admin seed.
 4. Stop the Codespace from GitHub when you finish testing. Its database belongs only to that temporary Codespace; deleting the Codespace deletes its test data.
 
 The forwarded port is private by default, so only you can view it while signed in to GitHub. Codespaces use metered compute and storage; personal GitHub Free accounts currently include 120 core-hours and 15 GB-month of storage, and paid usage can apply if you go beyond included limits and have billing enabled. See [GitHub Codespaces billing](https://docs.github.com/en/billing/concepts/product-billing/github-codespaces).
