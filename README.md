@@ -44,7 +44,7 @@ The seed requires `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD`. Optional demo/te
 This is a private, temporary test environment. It starts the Next.js app with a separate PostgreSQL database; it is not the production deployment.
 
 1. Open the repository on GitHub, choose **Code → Codespaces → Create codespace on main**.
-2. Wait for setup to finish. The preview opens automatically, or open port **3000** from the **Ports** panel.
+2. Wait for setup to finish. The student site opens on port **3000**; the standalone admin site opens on port **4000** from the **Ports** panel. The integrated admin panel is also available at `/admin` on port 3000.
 3. To see the test logins, run `cat .codespaces-preview-credentials` in the terminal. The passwords are generated separately for this Codespace and are not committed.
 4. Stop the Codespace from GitHub when you finish testing. Its database belongs only to that temporary Codespace; deleting the Codespace deletes its test data.
 
