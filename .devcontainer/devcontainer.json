@@ -5,12 +5,17 @@
   "workspaceFolder": "/workspaces/aduvava",
   "shutdownAction": "stopCompose",
   "forwardPorts": [
-    3000
+    3000,
+    4000
   ],
   "portsAttributes": {
     "3000": {
       "label": "Eduva test preview",
       "onAutoForward": "openPreview"
+    },
+    "4000": {
+      "label": "Eduva admin preview",
+      "onAutoForward": "notify"
     }
   },
   "postCreateCommand": "bash .devcontainer/setup-preview.sh",
