@@ -51,12 +51,12 @@ export function LoginForm() {
 
   return (
     <form action={submit} className="grid gap-4">
-      <input name="email" type="email" required placeholder="Email" className="rounded-2xl border border-ink/10 bg-white px-4 py-3 outline-none focus:border-moss" />
-      <input name="password" type="password" required placeholder="Mật khẩu" className="rounded-2xl border border-ink/10 bg-white px-4 py-3 outline-none focus:border-moss" />
-      <button className="rounded-full bg-ink px-5 py-3 font-bold text-white" type="submit">
+      <input name="email" type="email" required placeholder="Email" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100" />
+      <input name="password" type="password" required placeholder="Mật khẩu" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100" />
+      <button className="rounded-full bg-slate-900 px-5 py-3 font-bold text-white shadow-sm transition hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2" type="submit">
         Đăng nhập
       </button>
-      {message ? <p className="text-sm font-semibold text-ink/65">{message}</p> : null}
+      {message ? <p role="status" className="text-sm font-semibold text-slate-700">{message}</p> : null}
     </form>
   );
 }
