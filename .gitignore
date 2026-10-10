@@ -12,3 +12,4 @@ coverage/
 .npm-cache/
 *.log
 .DS_Store
+.codespaces-preview-credentials
