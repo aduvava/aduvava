@@ -576,7 +576,9 @@ function loginPage(error = "") {
     <h1>Ava Admin</h1>
     <p>Đăng nhập để quản trị web Ava trên server riêng.</p>
     ${error ? `<div class="error">${escapeHtml(error)}</div>` : ""}
-    <p class="demo">Demo: <strong>admin@example.com</strong> / <strong>Admin@123</strong></p>
+    ${process.env.CODESPACE_NAME && process.env.NODE_ENV !== "production" && process.env.SEED_ADMIN_EMAIL && process.env.SEED_ADMIN_PASSWORD
+      ? `<p class="demo">Tài khoản admin Codespaces: <strong>${escapeHtml(process.env.SEED_ADMIN_EMAIL)}</strong> / <strong>${escapeHtml(process.env.SEED_ADMIN_PASSWORD)}</strong></p>`
+      : `<p class="demo">Đăng nhập bằng tài khoản admin đã được cấu hình cho môi trường này.</p>`}
     <label>Email admin<input name="email" type="email" required autofocus /></label>
     <label>Mật khẩu<input name="password" type="password" required /></label>
     <button type="submit">Đăng nhập admin</button>
