@@ -15,8 +15,7 @@ function getLoginCopy(role: string | undefined) {
     return {
       label: "Dành cho quản trị viên",
       title: "Đăng nhập Admin",
-      demo: "admin@example.com",
-      password: "Admin@123",
+      accountRole: "admin" as const,
       registerRole: "student",
       switchHref: "/login?role=teacher",
       switchLabel: "Chuyển sang đăng nhập Giáo viên",
@@ -28,8 +27,7 @@ function getLoginCopy(role: string | undefined) {
     return {
       label: "Dành cho giáo viên",
       title: "Đăng nhập Giáo viên",
-      demo: "teacher@example.com",
-      password: "Teacher@123",
+      accountRole: "teacher" as const,
       registerRole: "teacher",
       switchHref: "/login?role=student",
       switchLabel: "Chuyển sang đăng nhập Học sinh",
@@ -40,8 +38,7 @@ function getLoginCopy(role: string | undefined) {
   return {
     label: "Dành cho học sinh",
     title: "Đăng nhập Học sinh",
-    demo: "demo@example.com",
-    password: "Demo@123",
+    accountRole: "student" as const,
     registerRole: "student",
     switchHref: "/login?role=teacher",
     switchLabel: "Chuyển sang đăng nhập Giáo viên",
@@ -49,10 +46,28 @@ function getLoginCopy(role: string | undefined) {
   };
 }
 
+function getPreviewCredentials(role: "student" | "teacher" | "admin") {
+  if (process.env.NODE_ENV === "production" || !process.env.CODESPACE_NAME) return null;
+
+  const email = role === "teacher"
+    ? process.env.SEED_TEACHER_EMAIL
+    : role === "admin"
+      ? process.env.SEED_ADMIN_EMAIL
+      : process.env.SEED_DEMO_EMAIL;
+  const password = role === "teacher"
+    ? process.env.SEED_TEACHER_PASSWORD
+    : role === "admin"
+      ? process.env.SEED_ADMIN_PASSWORD
+      : process.env.SEED_DEMO_PASSWORD;
+
+  return email && password ? { email, password } : null;
+}
+
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ role?: string; callbackUrl?: string }> }) {
   const params = await searchParams;
   const user = await getCurrentUser();
   const copy = getLoginCopy(params.role);
+  const previewCredentials = getPreviewCredentials(copy.accountRole);
 
   if (user && !params.role) {
     if (user.role === "STUDENT") redirect("/onboarding");
@@ -65,9 +80,13 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <Card className="w-full max-w-md">
         <span className="inline-flex rounded-full bg-orange-100 px-3 py-1.5 text-xs font-black uppercase text-orange-600">{copy.label}</span>
         <h1 className="mt-4 font-display text-4xl font-black text-ink">{copy.title}</h1>
-        <p className="mt-3 text-sm text-ink/65">
-          Demo: `{copy.demo}` / `{copy.password}`.
-        </p>
+        {previewCredentials ? (
+          <p className="mt-3 rounded-2xl bg-orange-50 px-4 py-3 text-sm text-slate-700">
+            Tài khoản thử nghiệm của Codespace này: <code className="font-bold">{previewCredentials.email}</code> / <code className="font-bold">{previewCredentials.password}</code>
+          </p>
+        ) : (
+          <p className="mt-3 text-sm text-slate-600">Đăng nhập bằng email và mật khẩu của tài khoản bạn đã đăng ký.</p>
+        )}
         <div className="mt-6">
           <Suspense fallback={<p>Đang tải form...</p>}>
             <LoginForm />
