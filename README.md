@@ -49,3 +49,11 @@ This is a private, temporary test environment. It starts the Next.js app with a 
 4. Stop the Codespace from GitHub when you finish testing. Its database belongs only to that temporary Codespace; deleting the Codespace deletes its test data.
 
 The forwarded port is private by default, so only you can view it while signed in to GitHub. Codespaces use metered compute and storage; personal GitHub Free accounts currently include 120 core-hours and 15 GB-month of storage, and paid usage can apply if you go beyond included limits and have billing enabled. See [GitHub Codespaces billing](https://docs.github.com/en/billing/concepts/product-billing/github-codespaces).
+
+If setup previously stopped with `npm error Invalid Version` or the app reports `next: not found`, update the existing Codespace and rerun setup before starting the preview:
+
+```bash
+git pull --ff-only origin main && bash .devcontainer/setup-preview.sh && bash .devcontainer/start-preview.sh
+```
+
+The repaired lockfile includes complete optional dependency metadata for Linux and other platforms. Setup installs development and optional dependencies explicitly. Startup retries setup when Next.js is missing and reports a server exit immediately.

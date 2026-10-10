@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cd /workspaces/aduvava
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 if [[ ! -f .env.local ]]; then
   if [[ -n "${CODESPACE_NAME:-}" ]]; then
@@ -48,7 +48,7 @@ set -a
 . ./.env.local
 set +a
 
-npm ci
+npm ci --include=dev --include=optional --no-audit --no-fund
 npm run db:generate
 npm run db:push
 npm run db:seed

@@ -1,20 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
 import { getNationalExamRule, getNationalQuestionCount } from "@/lib/national-exam-rules";
 import { scoreQuestion } from "@/lib/scoring";
 
 describe("national exam rules", () => {
   it("locks Math to 90 minutes and 12/4/6 questions", () => {
     const rule = getNationalExamRule("toan");
-    expect(rule?.durationMinutes).toBe(90);
-    expect(rule?.parts.map((part) => part.count)).toEqual([12, 4, 6]);
-    expect(rule && getNationalQuestionCount(rule)).toBe(22);
+    assert.equal(rule?.durationMinutes, 90);
+    assert.deepEqual(rule?.parts.map((part) => part.count), [12, 4, 6]);
+    assert.equal(rule && getNationalQuestionCount(rule), 22);
   });
 
   it("uses the 18/4/6 science structure", () => {
     const rule = getNationalExamRule("vat-ly");
-    expect(rule?.durationMinutes).toBe(50);
-    expect(rule?.parts.map((part) => part.count)).toEqual([18, 4, 6]);
-    expect(rule && getNationalQuestionCount(rule)).toBe(28);
+    assert.equal(rule?.durationMinutes, 50);
+    assert.deepEqual(rule?.parts.map((part) => part.count), [18, 4, 6]);
+    assert.equal(rule && getNationalQuestionCount(rule), 28);
   });
 
   it("scores four-statement true/false questions with the national partial scale", () => {
@@ -30,9 +31,9 @@ describe("national exam rules", () => {
       ],
     };
 
-    expect(scoreQuestion(question, { a: true }).score).toBe(0.1);
-    expect(scoreQuestion(question, { a: true, b: false }).score).toBe(0.25);
-    expect(scoreQuestion(question, { a: true, b: false, c: true }).score).toBe(0.5);
-    expect(scoreQuestion(question, { a: true, b: false, c: true, d: false }).score).toBe(1);
+    assert.equal(scoreQuestion(question, { a: true }).score, 0.1);
+    assert.equal(scoreQuestion(question, { a: true, b: false }).score, 0.25);
+    assert.equal(scoreQuestion(question, { a: true, b: false, c: true }).score, 0.5);
+    assert.equal(scoreQuestion(question, { a: true, b: false, c: true, d: false }).score, 1);
   });
 });
