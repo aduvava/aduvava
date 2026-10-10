@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 660">
+  <defs><linearGradient id="wall" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fef3c7"/><stop offset="1" stop-color="#d97706"/></linearGradient></defs>
+  <rect width="900" height="660" fill="url(#wall)"/>
+  <rect x="80" y="75" width="740" height="420" rx="24" fill="#713f12"/>
+  <g fill="#fff7ed">
+    <rect x="115" y="110" width="190" height="150" rx="8"/><rect x="355" y="110" width="190" height="150" rx="8"/><rect x="595" y="110" width="190" height="150" rx="8"/>
+    <rect x="115" y="300" width="190" height="150" rx="8"/><rect x="355" y="300" width="190" height="150" rx="8"/><rect x="595" y="300" width="190" height="150" rx="8"/>
+  </g>
+  <g stroke-width="22">
+    <path d="M145 130v110M180 130v110M215 130v110M250 130v110" stroke="#f97316"/>
+    <path d="M385 130v110M420 130v110M455 130v110M490 130v110" stroke="#22c55e"/>
+    <path d="M625 130v110M660 130v110M695 130v110M730 130v110" stroke="#3b82f6"/>
+    <path d="M145 320v110M180 320v110M215 320v110M250 320v110" stroke="#a855f7"/>
+    <path d="M385 320v110M420 320v110M455 320v110M490 320v110" stroke="#ef4444"/>
+    <path d="M625 320v110M660 320v110M695 320v110M730 320v110" stroke="#14b8a6"/>
+  </g>
+  <path d="M200 660l90-155h320l90 155z" fill="#fff7ed"/>
+  <path d="M350 535h200v100H350z" fill="#fed7aa"/>
+</svg>

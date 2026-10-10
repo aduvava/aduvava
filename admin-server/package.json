@@ -1,0 +1,9 @@
+{
+  "name": "ava-admin-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Standalone Ava admin server that runs separately from the student web app.",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

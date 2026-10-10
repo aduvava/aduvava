@@ -1,0 +1,21 @@
+{
+  "banner": {
+    "enabled": true,
+    "type": "exam",
+    "title": "Lịch thi thử mới",
+    "message": "Theo dõi lịch thi thử và thư mục tài liệu chung trong tuần này.",
+    "href": "/exams",
+    "updatedAt": "2026-06-28T06:18:23.046Z"
+  },
+  "history": [
+    {
+      "enabled": true,
+      "type": "exam",
+      "title": "Lịch thi thử mới",
+      "message": "Theo dõi lịch thi thử và thư mục tài liệu chung trong tuần này.",
+      "href": "/exams",
+      "updatedAt": "2026-06-28T06:18:23.046Z",
+      "createdAt": "2026-06-28T06:18:23.046Z"
+    }
+  ]
+}
