@@ -16,6 +16,9 @@ import {
   Users,
 } from "lucide-react";
 import { MascotAvatar } from "@/components/mascot-avatar";
+import { prisma } from "@/lib/db";
+
+export const dynamic = "force-dynamic";
 
 const coreFeatures = [
   {
@@ -64,14 +67,19 @@ const learningSteps = [
   ["04", "Tiến bộ", "Nhận đề gợi ý, tích EXP và leo bảng xếp hạng."],
 ];
 
-const platformStats = [
-  { icon: GraduationCap, value: "100K+", label: "Học viên tin tưởng", tone: "bg-orange-50 text-orange-500" },
-  { icon: BookOpen, value: "1K+", label: "Đề thi thử", tone: "bg-slate-950 text-white" },
-  { icon: Target, value: "24/7", label: "AI hỗ trợ học tập", tone: "bg-blue-50 text-blue-500" },
-  { icon: Bot, value: "AI", label: "Gợi ý thông minh", tone: "bg-emerald-50 text-emerald-500" },
-];
-
-export default function HomePage() {
+export default async function HomePage() {
+  const [studentCount, examCount, subjectCount, submittedAttemptCount] = await Promise.all([
+    prisma.user.count({ where: { role: "STUDENT" } }),
+    prisma.exam.count({ where: { isPublished: true } }),
+    prisma.subject.count(),
+    prisma.attempt.count({ where: { status: "SUBMITTED" } }),
+  ]);
+  const platformStats = [
+    { icon: GraduationCap, value: studentCount.toLocaleString("vi-VN"), label: "Học viên", tone: "bg-orange-50 text-orange-500" },
+    { icon: BookOpen, value: examCount.toLocaleString("vi-VN"), label: "Đề đã xuất bản", tone: "bg-slate-950 text-white" },
+    { icon: Target, value: subjectCount.toLocaleString("vi-VN"), label: "Môn học", tone: "bg-blue-50 text-blue-500" },
+    { icon: Bot, value: submittedAttemptCount.toLocaleString("vi-VN"), label: "Bài đã nộp", tone: "bg-emerald-50 text-emerald-500" },
+  ];
   return (
     <main className="hide-site-header overflow-hidden bg-[#fffaf0] text-slate-950">
       <section id="gioi-thieu" className="relative">
@@ -104,9 +112,9 @@ export default function HomePage() {
 
             <div className="mt-8 grid max-w-2xl grid-cols-3 gap-3">
               {[
-                ["100+", "đề luyện"],
-                ["12", "môn học"],
-                ["24/7", "autosave"],
+                [examCount.toLocaleString("vi-VN"), "đề luyện"],
+                [subjectCount.toLocaleString("vi-VN"), "môn học"],
+                [studentCount.toLocaleString("vi-VN"), "học viên"],
               ].map(([value, label]) => (
                 <div key={label} className="rounded-2xl border border-orange-100 bg-white/80 px-4 py-4 shadow-sm">
                   <p className="text-2xl font-black text-orange-500">{value}</p>

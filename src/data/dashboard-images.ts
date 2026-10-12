@@ -22,5 +22,9 @@ export const dashboardImages: Record<string, { src: string; alt: string }> = {
 };
 
 export function getDashboardImage(imageKey?: string | null) {
-  return dashboardImages[imageKey ?? "coffee"] ?? dashboardImages.coffee;
+  if (!imageKey) return null;
+  if (imageKey.startsWith("/") || imageKey.startsWith("https://")) {
+    return { src: imageKey, alt: "Ảnh bảng điều khiển" };
+  }
+  return dashboardImages[imageKey] ?? null;
 }

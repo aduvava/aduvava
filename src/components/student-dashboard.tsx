@@ -29,7 +29,6 @@ import {
   X,
 } from "lucide-react";
 import { clsx } from "clsx";
-import { getSubjectSlug } from "@/data/subject-learning-catalog";
 import { getDashboardImage } from "@/data/dashboard-images";
 import { MascotAvatar } from "@/components/mascot-avatar";
 
@@ -47,83 +46,45 @@ type DashboardRankingItem = {
   score: number;
 };
 
+type DashboardSubject = {
+  slug: string;
+  name: string;
+};
+
 type DashboardProps = {
   firstName: string;
   greeting: string;
-  quote: string;
-  currentDay: number;
-  dashboardImageKey: string;
-  dashboardImageName: string;
-  dashboardImageSrc?: string | null;
-  dashboardImageAlt?: string | null;
+  dashboardImageKey: string | null;
+  dashboardImageName: string | null;
+  learningStreak: number;
+  weekActivity: boolean[];
   continueLearning: { title: string; href: string };
+  subjects: DashboardSubject[];
   exams: ExamItem[];
   rankingScope: string;
   rankings: DashboardRankingItem[];
 };
 
-const secondarySubjects = [
-  "Toán",
-  "Ngữ Văn",
-  "Tiếng Anh",
-  "Lịch Sử",
-  "Địa Lý",
-  "KHTN (Sinh Học)",
-  "KHTN (Vật Lý)",
-  "KHTN (Hóa Học)",
-  "Công Nghệ",
-];
-
 const studyGroups = [
   {
     id: "secondary",
     label: "Trung học cơ sở",
-    classes: ["Lớp 6", "Lớp 7", "Lớp 8", "Lớp 9"].map((label) => ({ label, subjects: secondarySubjects })),
+    classes: ["Lớp 6", "Lớp 7", "Lớp 8", "Lớp 9"],
   },
   {
     id: "high-school",
     label: "Trung học phổ thông",
-    classes: ["Lớp 10", "Lớp 11", "Lớp 12"].map((label) => ({
-      label,
-      subjects: [
-        "Toán",
-        "Ngữ Văn",
-        "Tiếng Anh",
-        "Lịch Sử",
-        "Địa Lý",
-        "Sinh Học",
-        "Vật Lý",
-        "Hóa Học",
-        "KT&PL",
-        "Công nghệ Nông nghiệp",
-        "Công nghệ Công nghiệp",
-      ],
-    })),
+    classes: ["Lớp 10", "Lớp 11", "Lớp 12"],
   },
   {
     id: "grade-10",
     label: "Ôn thi vào 10",
-    classes: [{ label: "Môn thi", subjects: ["Toán", "Ngữ Văn", "Tiếng Anh"] }],
+    classes: ["Môn thi"],
   },
   {
     id: "national-exam",
     label: "Ôn thi THPTQG",
-    classes: [{
-      label: "Môn thi",
-      subjects: [
-        "Toán",
-        "Ngữ Văn",
-        "Tiếng Anh",
-        "Lịch Sử",
-        "Địa Lý",
-        "Sinh Học",
-        "Vật Lý",
-        "Hóa Học",
-        "KT&PL",
-        "Công nghệ Nông nghiệp",
-        "Công nghệ Công nghiệp",
-      ],
-    }],
+    classes: ["Môn thi"],
   },
 ];
 
@@ -137,11 +98,7 @@ type CommunityMessage = {
   replyTo?: Pick<CommunityMessage, "name" | "text">;
 };
 
-const initialMessages: CommunityMessage[] = [
-  { id: 1, name: "Minh Anh", initials: "MA", text: "M?i ngư?i có m?o nh? nhanh các m?c l?ch s? không?", time: "09:24", color: "bg-blue-100 text-blue-600" },
-  { id: 2, name: "Tu?n Ki?t", initials: "TK", text: "M?nh hay v? timeline r?i làm flashcard, d? nh? hơn nhi?u đó.", time: "09:28", color: "bg-emerald-100 text-emerald-600" },
-  { id: 3, name: "Hà My", initials: "HM", text: "T?i nay cùng vào l?p ch?a đ? Toán nhé!", time: "09:31", color: "bg-violet-100 text-violet-600" },
-];
+const initialMessages: CommunityMessage[] = [];
 
 const rankingColors = [
   "bg-amber-100 text-amber-700",
@@ -246,27 +203,30 @@ function getItemVisual(item: string): SubjectVisual {
   return { icon: GraduationCap, imageSrc: undefined, className: "from-orange-100 to-amber-50 text-orange-600" };
 }
 
-function DashboardImageCard({ imageKey, imageName, imageSrc, imageAlt }: { imageKey: string; imageName: string; imageSrc?: string | null; imageAlt?: string | null }) {
+function DashboardImageCard({ imageKey, imageName }: { imageKey: string | null; imageName: string | null }) {
   const image = getDashboardImage(imageKey);
-  const src = imageSrc || image.src;
-  const alt = imageAlt || image.alt;
   return (
     <section className="group relative h-[175px] w-full max-w-[270px] overflow-hidden rounded-[1.5rem] border border-orange-100 bg-white p-1 shadow-[0_4px_10px_rgba(81,52,24,0.06)]">
       <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-2/3 rounded-md bg-white px-2 py-1 text-[9px] font-extrabold text-slate-600 shadow-[0_4px_10px_rgba(15,23,42,0.08)]">
         Cố gắng lên!
         <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-white" />
       </div>
-      <img src={src} alt={alt} className="h-full w-full rounded-[1.25rem] bg-orange-50 object-cover" />
+      {image ? (
+        <img src={image.src} alt={image.alt} className="h-full w-full rounded-[1.25rem] bg-orange-50 object-cover" />
+      ) : (
+        <div className="grid h-full place-items-center rounded-[1.25rem] bg-orange-50 px-6 text-center text-xs font-bold text-slate-500">
+          Chưa chọn ảnh bảng điều khiển
+        </div>
+      )}
       <div className="absolute inset-x-1.5 bottom-1.5 flex items-center justify-between gap-1.5 rounded bg-slate-950/70 px-2 py-1 text-white opacity-0 backdrop-blur-sm transition group-hover:opacity-100">
-        <span className="truncate text-[10px] font-bold">{imageName}</span>
+        <span className="truncate text-[10px] font-bold">{imageName ?? "Chưa có ảnh"}</span>
         <Link href="/dich-vu" className="shrink-0 text-xs font-extrabold text-orange-300 hover:text-white">Đổi ảnh</Link>
       </div>
     </section>
   );
 }
 
-function StreakCard({ currentDay }: { currentDay: number }) {
-  const [checkedIn, setCheckedIn] = useState(false);
+function StreakCard({ learningStreak, weekActivity }: { learningStreak: number; weekActivity: boolean[] }) {
   const days = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
   return (
@@ -279,12 +239,12 @@ function StreakCard({ currentDay }: { currentDay: number }) {
           <p className="text-xs font-extrabold tracking-[0.18em] text-orange-50">CHUỖI NGÀY HỌC</p>
         </div>
         <p className="mt-1.5 flex items-end gap-1.5 text-2xl font-black tracking-tight">
-          {checkedIn ? "2" : "1"} <span className="mb-0.5 text-lg">ngày</span>
+          {learningStreak} <span className="mb-0.5 text-lg">ngày</span>
         </p>
         <div className="mt-2.5 grid grid-cols-7 gap-1">
           {days.map((day, index) => {
-            const complete = index < currentDay - 1 || (index === currentDay - 1 && checkedIn);
-            const today = index === currentDay - 1;
+            const complete = weekActivity[index] === true;
+            const today = index === (new Date().getDay() || 7) - 1;
             return (
               <div key={day} className="text-center">
                 <div className={clsx(
@@ -300,14 +260,9 @@ function StreakCard({ currentDay }: { currentDay: number }) {
             );
           })}
         </div>
-        <button
-          type="button"
-          onClick={() => setCheckedIn(true)}
-          disabled={checkedIn}
-          className="mx-auto mt-2.5 block rounded-full bg-white/20 px-3.5 py-1.5 text-[9px] font-extrabold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-white hover:text-orange-600 disabled:cursor-default disabled:bg-white/25 disabled:text-white disabled:hover:translate-y-0"
-        >
-          {checkedIn ? "Đã điểm danh hôm nay" : "Nhấn để điểm danh!"}
-        </button>
+        <p className="mx-auto mt-2.5 block text-center text-[9px] font-extrabold text-orange-50">
+          Tính từ các bài thi đã nộp
+        </p>
       </div>
     </section>
   );
@@ -399,38 +354,33 @@ function ExamCenter({ exams }: { exams: ExamItem[] }) {
 export function StudentDashboard({
   firstName,
   greeting,
-  quote,
-  currentDay,
   dashboardImageKey,
   dashboardImageName,
-  dashboardImageSrc,
-  dashboardImageAlt,
+  learningStreak,
+  weekActivity,
   continueLearning,
+  subjects,
   exams,
   rankingScope = "THPTQG · Tất cả môn",
   rankings = [],
 }: DashboardProps) {
   const [activeGroup, setActiveGroup] = useState(studyGroups[0].id);
   const currentGroup = useMemo(() => studyGroups.find((group) => group.id === activeGroup) ?? studyGroups[0], [activeGroup]);
-  const [activeClass, setActiveClass] = useState(studyGroups[0].classes[0].label);
-  const currentClass = useMemo(
-    () => currentGroup.classes.find((item) => item.label === activeClass) ?? currentGroup.classes[0],
-    [activeClass, currentGroup],
-  );
-  const [activeSubject, setActiveSubject] = useState(studyGroups[0].classes[0].subjects[0]);
+  const [activeClass, setActiveClass] = useState(studyGroups[0].classes[0]);
+  const [activeSubject, setActiveSubject] = useState(subjects[0]?.slug ?? "");
   const [communityMessages, setCommunityMessages] = useState<CommunityMessage[]>(initialMessages);
   const [communityDraft, setCommunityDraft] = useState("");
   const [replyTarget, setReplyTarget] = useState<CommunityMessage | null>(null);
 
   function selectGroup(group: (typeof studyGroups)[number]) {
     setActiveGroup(group.id);
-    setActiveClass(group.classes[0].label);
-    setActiveSubject(group.classes[0].subjects[0]);
+    setActiveClass(group.classes[0]);
+    setActiveSubject(subjects[0]?.slug ?? "");
   }
 
-  function selectClass(classItem: (typeof studyGroups)[number]["classes"][number]) {
-    setActiveClass(classItem.label);
-    setActiveSubject(classItem.subjects[0]);
+  function selectClass(className: string) {
+    setActiveClass(className);
+    setActiveSubject(subjects[0]?.slug ?? "");
   }
 
   function sendCommunityMessage() {
@@ -458,20 +408,20 @@ export function StudentDashboard({
     <div className="student-dashboard min-h-screen bg-orange-50/40 pb-20">
       <div className="mx-auto max-w-[1480px] px-4 py-7 sm:px-6 lg:px-8">
         <div className="grid items-stretch justify-center gap-4 md:grid-cols-[270px_minmax(320px,460px)_minmax(320px,460px)]">
-          <DashboardImageCard imageKey={dashboardImageKey} imageName={dashboardImageName} imageSrc={dashboardImageSrc} imageAlt={dashboardImageAlt} />
+          <DashboardImageCard imageKey={dashboardImageKey} imageName={dashboardImageName} />
           <section className="relative flex h-[175px] overflow-hidden rounded-[1.5rem] border border-orange-100/80 bg-white p-4 shadow-[0_10px_22px_rgba(81,52,24,0.05)]">
             <div className="absolute -right-14 -top-16 h-40 w-40 rounded-full bg-orange-100/60 blur-2xl" />
             <div className="relative flex flex-1 flex-col justify-center">
               <h1 className="text-lg font-black leading-tight tracking-tight text-slate-950 sm:text-xl">
                 {greeting}<br /><span className="text-orange-500">{firstName}!</span>
               </h1>
-              <p className="mt-3 max-w-xl text-xs italic leading-5 text-slate-500 sm:text-sm">“{quote}”</p>
+              <p className="mt-3 max-w-xl text-xs leading-5 text-slate-500 sm:text-sm">Dữ liệu tiến độ được cập nhật từ bài làm của bạn.</p>
               <Link href={continueLearning.href} className="mt-3 inline-flex w-fit items-center gap-2 rounded-xl bg-orange-500 px-3.5 py-2 text-[11px] font-extrabold text-white shadow-lg shadow-orange-200 transition hover:-translate-y-0.5 hover:bg-orange-600">
                 Học tiếp bài {continueLearning.title}<ChevronRight className="h-4 w-4" />
               </Link>
             </div>
           </section>
-          <StreakCard currentDay={currentDay} />
+          <StreakCard learningStreak={learningStreak} weekActivity={weekActivity} />
         </div>
 
         <section className="-mx-4 mt-6 bg-[#fffdf0] px-4 py-6 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
@@ -493,33 +443,33 @@ export function StudentDashboard({
             })}
           </div>
           <div className="mx-auto mt-4 flex max-w-3xl flex-wrap justify-center gap-2">
-            {currentGroup.classes.map((classItem) => (
+            {currentGroup.classes.map((className) => (
               <button
-                key={classItem.label}
+                key={className}
                 type="button"
-                onClick={() => selectClass(classItem)}
+                onClick={() => selectClass(className)}
                 className={clsx(
                   "min-w-[74px] rounded-full border px-4 py-2 text-xs font-extrabold transition-all duration-200",
-                  activeClass === classItem.label
+                  activeClass === className
                     ? "border-blue-500 bg-blue-500 text-white shadow-md shadow-blue-200"
                     : "border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600",
                 )}
               >
-                {classItem.label}
+                {className}
               </button>
             ))}
           </div>
           <div className="mx-auto mt-5 grid max-w-[690px] grid-cols-2 justify-items-center gap-3 sm:grid-cols-3">
-            {currentClass.subjects.map((subject) => {
-              const visual = getItemVisual(subject);
+            {subjects.map((subject) => {
+              const visual = getItemVisual(subject.name);
               const ItemIcon = visual.icon;
-              const active = activeSubject === subject;
+              const active = activeSubject === subject.slug;
 
               return (
                 <Link
-                  key={subject}
-                  href={`/subjects/${getSubjectSlug(subject) ?? "toan"}?level=${encodeURIComponent(activeGroup)}&grade=${encodeURIComponent(activeClass)}`}
-                  onClick={() => setActiveSubject(subject)}
+                  key={subject.slug}
+                  href={`/subjects/${subject.slug}?level=${encodeURIComponent(activeGroup)}&grade=${encodeURIComponent(activeClass)}`}
+                  onClick={() => setActiveSubject(subject.slug)}
                   className={clsx(
                     "group flex min-h-[124px] w-full max-w-[165px] flex-col items-center justify-center rounded-[1.35rem] border bg-white px-3 py-3.5 text-center shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md",
                     active
@@ -534,18 +484,23 @@ export function StudentDashboard({
                     )}
                   >
                     {visual.imageSrc ? (
-                      <img src={visual.imageSrc} alt={`Ảnh môn ${subject}`} className="h-full w-full object-cover" />
+                      <img src={visual.imageSrc} alt={`Ảnh môn ${subject.name}`} className="h-full w-full object-cover" />
                     ) : (
                       <ItemIcon className="h-6 w-6" strokeWidth={1.8} />
                     )}
                   </span>
                   <span className={clsx("mt-3 text-xs font-extrabold", active ? "text-blue-600" : "text-slate-900")}>
-                    {subject}
+                    {subject.name}
                   </span>
                 </Link>
               );
             })}
           </div>
+          {!subjects.length ? (
+            <p className="mx-auto mt-5 max-w-xl rounded-2xl border border-dashed border-orange-200 bg-white px-5 py-8 text-center text-sm font-semibold text-slate-500">
+              Chưa có môn học trong database. Admin có thể thêm môn học để hiển thị tại đây.
+            </p>
+          ) : null}
             </div>
             <ExamCenter exams={exams} />
           </div>
@@ -641,4 +596,3 @@ export function StudentDashboard({
     </div>
   );
 }
-

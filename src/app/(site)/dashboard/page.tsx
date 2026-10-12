@@ -2,13 +2,12 @@ import { redirect } from "next/navigation";
 import { StudentDashboard } from "@/components/student-dashboard";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { getDashboardContent } from "@/lib/dashboard-content";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?callbackUrl=/dashboard");
 
-  const [inProgressAttempt, attempts, account] = await Promise.all([
+  const [inProgressAttempt, attempts, account, subjects] = await Promise.all([
     prisma.attempt.findFirst({
       where: { userId: user.id, status: "IN_PROGRESS" },
       include: { exam: true },
@@ -23,6 +22,10 @@ export default async function DashboardPage() {
     prisma.user.findUnique({
       where: { id: user.id },
       select: { equippedDashboardImageId: true },
+    }),
+    prisma.subject.findMany({
+      select: { slug: true, name: true },
+      orderBy: { name: "asc" },
     }),
   ]);
 
@@ -117,39 +120,53 @@ export default async function DashboardPage() {
     }
   }
 
-  const demoRankings = [
-    { name: "Nguyễn Minh Anh", score: 99, durationSeconds: 795 },
-    { name: "Trần Gia Huy", score: 96, durationSeconds: 842 },
-    { name: "Lê Khánh Linh", score: 94, durationSeconds: 925 },
-    { name: "Phạm Anh Tú", score: 91, durationSeconds: 1120 },
-    { name: "Vũ Hoàng Nam", score: 89, durationSeconds: 1280 },
-  ];
-  const dashboardRankings = [...bestByUser.values(), ...demoRankings]
+  const dashboardRankings = [...bestByUser.values()]
     .sort((first, second) => second.score - first.score || first.durationSeconds - second.durationSeconds)
     .slice(0, 5)
     .map((item, index) => ({ rank: index + 1, name: item.name, score: item.score }));
   const rankingScope = attempts.length ? "Cá nhân hóa" : "THPTQG · Tất cả môn";
 
   const now = new Date();
-  const dashboardContent = getDashboardContent(now);
   const hour = now.getHours();
   const greeting = hour < 11 ? "Chào buổi sáng" : hour < 18 ? "Chào buổi chiều" : "Chào buổi tối";
   const firstName = user.name?.trim().split(/\s+/).at(-1) ?? "bạn";
   const continueLearning = inProgressAttempt
     ? { title: inProgressAttempt.exam.title, href: `/attempts/${inProgressAttempt.id}` }
     : { title: "Luyện đề THPTQG", href: "/thi-thptqg" };
+  const submittedDates = new Set(
+    attempts
+      .map((attempt) => attempt.submittedAt)
+      .filter((date): date is Date => Boolean(date))
+      .map((date) => date.toISOString().slice(0, 10)),
+  );
+  let learningStreak = 0;
+  const cursor = new Date(now);
+  cursor.setUTCHours(0, 0, 0, 0);
+  if (!submittedDates.has(cursor.toISOString().slice(0, 10))) cursor.setUTCDate(cursor.getUTCDate() - 1);
+  while (submittedDates.has(cursor.toISOString().slice(0, 10))) {
+    learningStreak += 1;
+    cursor.setUTCDate(cursor.getUTCDate() - 1);
+  }
+  const monday = new Date(now);
+  const day = monday.getUTCDay() || 7;
+  monday.setUTCDate(monday.getUTCDate() - day + 1);
+  monday.setUTCHours(0, 0, 0, 0);
+  const weekActivity = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(monday);
+    date.setUTCDate(monday.getUTCDate() + index);
+    return submittedDates.has(date.toISOString().slice(0, 10));
+  });
 
   return (
     <StudentDashboard
       firstName={firstName}
       greeting={greeting}
-      quote={dashboardContent.quote}
-      currentDay={now.getDay() || 7}
-      dashboardImageKey={equippedDashboardImage?.imageKey ?? "coffee"}
-      dashboardImageName={equippedDashboardImage?.name ?? dashboardContent.image?.title ?? "Ảnh mặc định"}
-      dashboardImageSrc={equippedDashboardImage ? null : dashboardContent.image?.src}
-      dashboardImageAlt={equippedDashboardImage ? null : dashboardContent.image?.alt}
+      dashboardImageKey={equippedDashboardImage?.imageKey ?? null}
+      dashboardImageName={equippedDashboardImage?.name ?? null}
+      learningStreak={learningStreak}
+      weekActivity={weekActivity}
       continueLearning={continueLearning}
+      subjects={subjects}
       exams={recommendedExams.map((exam) => ({
         id: exam.id,
         title: exam.title,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, CreditCard, Crown, Landmark, QrCode, Smartphone, X } from "lucide-react";
+import { Check, Crown, Landmark, X } from "lucide-react";
 import { clsx } from "clsx";
 
 type Plan = {
@@ -19,15 +19,6 @@ type VipPricingProps = {
   activeSubscription: { planName: string; endsAt: string } | null;
 };
 
-const paymentMethods = [
-  { id: "QR", label: "Quét mã QR", description: "Hiển thị mã QR mô phỏng để chuyển nhanh.", Icon: QrCode },
-  { id: "BANK", label: "Chuyển khoản ngân hàng", description: "Dùng mã thanh toán làm nội dung chuyển khoản.", Icon: Landmark },
-  { id: "CARD", label: "Thẻ ATM/Visa", description: "Thanh toán bằng thẻ nội địa hoặc quốc tế.", Icon: CreditCard },
-  { id: "EWALLET", label: "Ví điện tử", description: "Mô phỏng ví điện tử trong môi trường demo.", Icon: Smartphone },
-] as const;
-
-type PaymentMethod = (typeof paymentMethods)[number]["id"];
-
 function formatVnd(value: number) {
   return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(value);
 }
@@ -42,7 +33,6 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("QR");
 
   async function checkout() {
     setLoading(true);
@@ -50,7 +40,7 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
     const response = await fetch("/api/payments/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ planId: plan.id, paymentMethod }),
+      body: JSON.stringify({ planId: plan.id }),
     });
 
     if (response.status === 401) {
@@ -112,37 +102,12 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
               </button>
             </div>
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              {paymentMethods.map(({ id, label, description, Icon }) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setPaymentMethod(id)}
-                  className={clsx("rounded-2xl border p-4 text-left transition", paymentMethod === id ? "border-orange-500 bg-orange-50 ring-2 ring-orange-100" : "border-slate-200 hover:border-orange-200")}
-                >
-                  <span className="flex items-center gap-3">
-                    <span className={clsx("grid h-11 w-11 place-items-center rounded-2xl", paymentMethod === id ? "bg-orange-500 text-white" : "bg-slate-100 text-slate-500")}>
-                      <Icon className="h-5 w-5" />
-                    </span>
-                    <span>
-                      <span className="block font-black text-slate-900">{label}</span>
-                      <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">{description}</span>
-                    </span>
-                  </span>
-                </button>
-              ))}
+            <div className="mt-6 flex items-center gap-4 rounded-2xl border border-orange-200 bg-orange-50 p-4">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-orange-500 text-white"><Landmark className="h-5 w-5" /></span>
+              <p className="text-sm font-semibold leading-6 text-slate-600">
+                Hệ thống sẽ tạo mã giao dịch thật ở trạng thái chờ. Dùng mã này làm nội dung chuyển khoản để Admin đối soát và kích hoạt gói.
+              </p>
             </div>
-
-            {paymentMethod === "QR" ? (
-              <div className="mt-5 flex items-center gap-4 rounded-2xl bg-slate-50 p-4">
-                <div className="grid h-24 w-24 shrink-0 place-items-center rounded-2xl border border-slate-200 bg-white">
-                  <QrCode className="h-14 w-14 text-slate-900" />
-                </div>
-                <p className="text-sm font-semibold leading-6 text-slate-600">
-                  Đây là mã QR mô phỏng. Khi tích hợp cổng thanh toán thật, hệ thống sẽ sinh QR riêng cho từng đơn VIP.
-                </p>
-              </div>
-            ) : null}
 
             <button type="button" onClick={checkout} disabled={loading} className="mt-6 w-full rounded-2xl bg-orange-500 px-6 py-4 text-base font-black text-white transition hover:bg-orange-600 disabled:bg-slate-300">
               {loading ? "Đang xác nhận..." : "Xác nhận thanh toán"}
@@ -164,9 +129,9 @@ export function VipPricing({ plans, activeSubscription }: VipPricingProps) {
           <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-100">Nạp VIP Ava</p>
           <div className="mt-4 grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
             <div>
-              <h1 className="max-w-4xl text-3xl font-black leading-tight sm:text-5xl">Mở khóa trọn bộ đề thi và AI học tập</h1>
+              <h1 className="max-w-4xl text-3xl font-black leading-tight sm:text-5xl">Mở khóa trọn bộ đề thi và nội dung nâng cao</h1>
               <p className="mt-4 max-w-3xl text-sm font-semibold leading-7 text-orange-50">
-                Chọn gói VIP để luyện đề từ lớp 6-12, ôn thi vào 10, THPTQG, xem lý thuyết bám sát sách giáo khoa và dùng AI Ava chấm bài Ngữ văn.
+                Chọn gói VIP để luyện đề từ lớp 6-12, ôn thi vào 10, THPTQG và xem lý thuyết nâng cao do Admin xuất bản.
               </p>
             </div>
             {activeSubscription ? (

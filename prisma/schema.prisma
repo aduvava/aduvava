@@ -130,42 +130,42 @@ enum ExamShareMode {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  passwordHash  String?
-  role          Role      @default(STUDENT)
-  coins         Int       @default(0)
-  exp           Int       @default(0)
+  id                       String    @id @default(cuid())
+  name                     String?
+  email                    String    @unique
+  emailVerified            DateTime?
+  image                    String?
+  passwordHash             String?
+  role                     Role      @default(STUDENT)
+  coins                    Int       @default(0)
+  exp                      Int       @default(0)
   equippedDashboardImageId String?
-  equippedAvatarFrameId String?
-  equippedNameColorId String?
-  equippedTitleId String?
-  equippedSubmitEffectId String?
-  equippedAvatarItemId String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  equippedAvatarFrameId    String?
+  equippedNameColorId      String?
+  equippedTitleId          String?
+  equippedSubmitEffectId   String?
+  equippedAvatarItemId     String?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 
-  accounts      Account[]
-  sessions      Session[]
-  profile       StudentProfile?
-  attempts      Attempt[]
-  subscriptions Subscription[]
-  payments      Payment[]
-  aiFeedbacks   AiFeedback[]
-  documents     Document[]
-  documentRatings DocumentRating[]
-  documentReports DocumentReport[]
-  documentDownloads DocumentDownload[]
-  coinTransactions CoinTransaction[]
+  accounts           Account[]
+  sessions           Session[]
+  profile            StudentProfile?
+  attempts           Attempt[]
+  subscriptions      Subscription[]
+  payments           Payment[]
+  aiFeedbacks        AiFeedback[]
+  documents          Document[]
+  documentRatings    DocumentRating[]
+  documentReports    DocumentReport[]
+  documentDownloads  DocumentDownload[]
+  coinTransactions   CoinTransaction[]
   walletTransactions WalletTransaction[]
-  storePurchases StorePurchase[]
-  coinTopups CoinTopup[]
-  notifications Notification[]
-  ownedExams Exam[] @relation("OwnedExams")
-  examAccessGrants ExamAccessGrant[]
+  storePurchases     StorePurchase[]
+  coinTopups         CoinTopup[]
+  notifications      Notification[]
+  ownedExams         Exam[]              @relation("OwnedExams")
+  examAccessGrants   ExamAccessGrant[]
 }
 
 model Account {
@@ -288,32 +288,32 @@ model Topic {
 }
 
 model Exam {
-  id              String      @id @default(cuid())
-  code            String      @unique
-  slug            String      @unique
-  title           String
-  description     String
-  family          ExamFamily
-  type            ExamType    @default(MOCK)
-  accessLevel     AccessLevel @default(FREE)
-  year            Int
-  durationMinutes Int
-  educationLevel  EducationLevel?
-  examStructure   Json?
-  targetScore     Float?
-  subjectId       String
-  ownerId         String?
-  shareToken      String?       @unique
-  shareMode       ExamShareMode @default(PUBLIC)
+  id                String          @id @default(cuid())
+  code              String          @unique
+  slug              String          @unique
+  title             String
+  description       String
+  family            ExamFamily
+  type              ExamType        @default(MOCK)
+  accessLevel       AccessLevel     @default(FREE)
+  year              Int
+  durationMinutes   Int
+  educationLevel    EducationLevel?
+  examStructure     Json?
+  targetScore       Float?
+  subjectId         String
+  ownerId           String?
+  shareToken        String?         @unique
+  shareMode         ExamShareMode   @default(PUBLIC)
   sharePasswordHash String?
-  isPublished     Boolean     @default(true)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  isPublished       Boolean         @default(true)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
-  subject   Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  owner     User?      @relation("OwnedExams", fields: [ownerId], references: [id], onDelete: SetNull)
-  questions Question[]
-  attempts  Attempt[]
+  subject      Subject           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  owner        User?             @relation("OwnedExams", fields: [ownerId], references: [id], onDelete: SetNull)
+  questions    Question[]
+  attempts     Attempt[]
   accessGrants ExamAccessGrant[]
 
   @@index([family, year, accessLevel])
@@ -329,7 +329,7 @@ model ExamAccessGrant {
   email     String?
   createdAt DateTime @default(now())
 
-  exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+  exam Exam  @relation(fields: [examId], references: [id], onDelete: Cascade)
   user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([examId, userId])
@@ -351,9 +351,9 @@ model Question {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
-  exam          Exam            @relation(fields: [examId], references: [id], onDelete: Cascade)
-  topic         Topic?          @relation(fields: [topicId], references: [id], onDelete: SetNull)
-  answerOptions AnswerOption[]
+  exam           Exam            @relation(fields: [examId], references: [id], onDelete: Cascade)
+  topic          Topic?          @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  answerOptions  AnswerOption[]
   attemptAnswers AttemptAnswer[]
 
   @@index([examId, position])
@@ -383,8 +383,8 @@ model Attempt {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  exam          Exam           @relation(fields: [examId], references: [id], onDelete: Cascade)
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exam          Exam            @relation(fields: [examId], references: [id], onDelete: Cascade)
   answers       AttemptAnswer[]
   resultSummary ResultSummary?
 
@@ -408,12 +408,12 @@ model AttemptAnswer {
 }
 
 model ResultSummary {
-  id         String   @id @default(cuid())
-  attemptId  String   @unique
-  weakTopics Json
+  id          String   @id @default(cuid())
+  attemptId   String   @unique
+  weakTopics  Json
   topicScores Json
-  feedback   String?  @db.Text
-  createdAt  DateTime @default(now())
+  feedback    String?  @db.Text
+  createdAt   DateTime @default(now())
 
   attempt Attempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
 }
@@ -446,16 +446,16 @@ model BlogPost {
 }
 
 model Plan {
-  id            String       @id @default(cuid())
-  slug          String       @unique
-  name          String
-  description   String
-  price         Int
-  interval      PlanInterval
-  features      Json
-  isActive      Boolean      @default(true)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id          String       @id @default(cuid())
+  slug        String       @unique
+  name        String
+  description String
+  price       Int
+  interval    PlanInterval
+  features    Json
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   subscriptions Subscription[]
   payments      Payment[]
@@ -483,7 +483,7 @@ model Payment {
   planId      String
   amount      Int
   status      PaymentStatus @default(PENDING)
-  provider    String        @default("mock")
+  provider    String        @default("manual-bank-transfer")
   reference   String        @unique
   checkoutUrl String?
   metadata    Json?
@@ -538,9 +538,9 @@ model Document {
   createdAt               DateTime       @default(now())
   updatedAt               DateTime       @updatedAt
 
-  uploader User             @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
-  ratings  DocumentRating[]
-  reports  DocumentReport[]
+  uploader       User               @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  ratings        DocumentRating[]
+  reports        DocumentReport[]
   downloadEvents DocumentDownload[]
 
   @@index([status, level, grade, subject, type])
@@ -575,8 +575,8 @@ model DocumentReport {
   document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([documentId, status])
   @@unique([documentId, userId])
+  @@index([documentId, status])
 }
 
 model DocumentDownload {
@@ -607,17 +607,17 @@ model CoinTransaction {
 }
 
 model CoinPackage {
-  id          String   @id @default(cuid())
-  slug        String   @unique
-  name        String
-  coinAmount  Int
-  bonusCoins  Int      @default(0)
-  priceVnd    Int
-  badge       String?
-  isActive    Boolean  @default(true)
-  sortOrder   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  slug       String   @unique
+  name       String
+  coinAmount Int
+  bonusCoins Int      @default(0)
+  priceVnd   Int
+  badge      String?
+  isActive   Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   topups CoinTopup[]
 
@@ -625,17 +625,17 @@ model CoinPackage {
 }
 
 model CoinTopup {
-  id          String          @id @default(cuid())
-  userId      String
-  packageId   String
-  amountVnd   Int
-  coins       Int
-  status      CoinTopupStatus @default(PENDING)
-  provider    String          @default("mock")
-  reference   String          @unique
-  paidAt      DateTime?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  id        String          @id @default(cuid())
+  userId    String
+  packageId String
+  amountVnd Int
+  coins     Int
+  status    CoinTopupStatus @default(PENDING)
+  provider  String          @default("manual-bank-transfer")
+  reference String          @unique
+  paidAt    DateTime?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
 
   user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   package CoinPackage @relation(fields: [packageId], references: [id], onDelete: Restrict)
@@ -669,13 +669,13 @@ model StoreItem {
 }
 
 model StorePurchase {
-  id         String         @id @default(cuid())
-  userId     String
-  itemId     String
-  price      Int
-  currency   WalletCurrency
-  quantity   Int            @default(1)
-  createdAt  DateTime       @default(now())
+  id        String         @id @default(cuid())
+  userId    String
+  itemId    String
+  price     Int
+  currency  WalletCurrency
+  quantity  Int            @default(1)
+  createdAt DateTime       @default(now())
 
   user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   item StoreItem @relation(fields: [itemId], references: [id], onDelete: Restrict)

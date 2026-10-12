@@ -8,7 +8,7 @@ export function PricingCheckoutButton({ planId }: { planId: string }) {
   const router = useRouter();
 
   async function checkout() {
-    setMessage("Đang tạo yêu cầu thanh toán mock...");
+    setMessage("Đang tạo yêu cầu chuyển khoản...");
     const response = await fetch("/api/payments/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -21,7 +21,7 @@ export function PricingCheckoutButton({ planId }: { planId: string }) {
     }
 
     const data = await response.json();
-    setMessage(response.ok ? `Mã chuyển khoản mock: ${data.manualTransferCode}. Admin cần kích hoạt subscription thủ công.` : data.error ?? "Không tạo được thanh toán.");
+    setMessage(response.ok ? `Mã chuyển khoản: ${data.manualTransferCode}. Admin sẽ kích hoạt gói sau khi xác nhận giao dịch.` : data.error ?? "Không tạo được thanh toán.");
   }
 
   return (

@@ -258,16 +258,6 @@ async function parseSpreadsheetFile(file: File): Promise<DraftQuestion[]> {
   });
 }
 
-function mockExtractFromFile(file: File) {
-  const base = file.name.replace(/\.[^.]+$/, "");
-  return [
-    {
-      ...newQuestion(`Câu hỏi được tạo nháp từ tệp "${base}". Hãy kiểm tra và nhập lại nội dung chính xác nếu cần.`),
-      options: ["Phương án A", "Phương án B", "Phương án C", "Phương án D"],
-    },
-  ];
-}
-
 export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[]; role?: UserRole }) {
   const router = useRouter();
   const isTeacherMode = role === "TEACHER" || role === "ADMIN";
@@ -367,15 +357,13 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
       const dataUrl = await fileToDataUrl(file);
       setQuestions([{
         ...newQuestion(`Quan sát hình và trả lời câu hỏi.\n![${file.name}](${dataUrl})`),
-        options: ["Phương án A", "Phương án B", "Phương án C", "Phương án D"],
       }]);
       setMessage("Đã chèn ảnh thành câu hỏi nháp. Hãy nhập nội dung và đáp án.");
       return;
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setQuestions(mockExtractFromFile(file));
-    setMessage("Đã tạo bản nháp từ tệp. Với PDF, bạn có thể copy nội dung sang TXT/Excel để tách chính xác hơn.");
+    setQuestions([]);
+    setMessage("Định dạng này chưa được hỗ trợ. Hãy dùng TXT, Excel, CSV, TSV hoặc ảnh.");
   }
 
   async function handleQuestionImage(file?: File) {

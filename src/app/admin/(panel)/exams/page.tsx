@@ -8,17 +8,17 @@ export default function AdminExamsPage() {
         <AdminResourceManager
           resource="exams"
           defaultPayload={{
-            code: "PHY-2026-FREE-01",
-            slug: "vat-ly-mini-test-2026",
-            title: "Vật lý Mini Test 2026",
-            description: "Đề demo",
+            code: "",
+            slug: "",
+            title: "",
+            description: "",
             family: "THPTQG",
             type: "MOCK",
             accessLevel: "FREE",
-            year: 2026,
+            year: new Date().getFullYear(),
             durationMinutes: 45,
             targetScore: 8,
-            subjectId: "copy-subject-id",
+            subjectId: "",
             isPublished: true,
           }}
         />

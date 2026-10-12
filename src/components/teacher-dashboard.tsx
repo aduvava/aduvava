@@ -39,6 +39,12 @@ type TeacherDashboardProps = {
     submittedCount: number;
     documentCount: number;
   };
+  report: {
+    averageScore: number;
+    completionRate: number;
+    activeStudents: number;
+    weeklySubmissions: number[];
+  };
   exams: {
     id: string;
     title: string;
@@ -64,16 +70,6 @@ type Reminder = {
   status: "DUE" | "UPCOMING" | "DONE";
 };
 
-const reportBars = [
-  ["T2", 58],
-  ["T3", 76],
-  ["T4", 64],
-  ["T5", 88],
-  ["T6", 72],
-  ["T7", 94],
-  ["CN", 81],
-] as const;
-
 const teacherClassStorageKey = "ava-teacher-created-classrooms";
 const teacherClassCovers = [
   "from-slate-800 via-orange-700 to-amber-300",
@@ -95,16 +91,12 @@ function EmptyMessage({ text }: { text: string }) {
   return <p className="rounded-2xl bg-slate-50 px-5 py-8 text-center text-sm font-semibold text-slate-500">{text}</p>;
 }
 
-export function TeacherDashboard({ initialTab, teacherName, stats, exams, documents }: TeacherDashboardProps) {
+export function TeacherDashboard({ initialTab, teacherName, stats, report, exams, documents }: TeacherDashboardProps) {
   const tab = initialTab;
   const [toast, setToast] = useState("");
   const [createClassOpen, setCreateClassOpen] = useState(false);
-  const [createdClassrooms, setCreatedClassrooms] = useState<Classroom[]>(readCreatedClassrooms);
-  const [reminders, setReminders] = useState<Reminder[]>([
-    { id: 1, title: "Duyệt học sinh mới", classroom: "Toán Thầy Hùng - K26", due: "Hôm nay, 20:00", status: "DUE" },
-    { id: 2, title: "Chấm bài tự luận", classroom: "Luyện đề Anh Văn 12", due: "Ngày mai, 09:00", status: "UPCOMING" },
-    { id: 3, title: "Đăng tài liệu tuần 4", classroom: "Văn học và Cuộc sống", due: "Thứ 6, 18:30", status: "UPCOMING" },
-  ]);
+  const [createdClassrooms, setCreatedClassrooms] = useState<Classroom[]>([]);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
 
   function notify(message: string) {
     setToast(message);
@@ -187,10 +179,15 @@ export function TeacherDashboard({ initialTab, teacherName, stats, exams, docume
   ];
 
   const reportCards: { label: string; value: string; Icon: LucideIcon }[] = [
-    { label: "Điểm trung bình", value: "8.2", Icon: TrendingUp },
-    { label: "Tỷ lệ hoàn thành", value: "86%", Icon: CheckCircle2 },
-    { label: "Học sinh hoạt động", value: String(Math.max(stats.studentCount, 45)), Icon: GraduationCap },
+    { label: "Điểm trung bình", value: report.averageScore.toFixed(1), Icon: TrendingUp },
+    { label: "Tỷ lệ hoàn thành", value: `${report.completionRate}%`, Icon: CheckCircle2 },
+    { label: "Học sinh hoạt động", value: String(report.activeStudents), Icon: GraduationCap },
   ];
+  const maxWeeklySubmissions = Math.max(...report.weeklySubmissions, 1);
+  const reportBars = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((day, index) => ({
+    day,
+    value: report.weeklySubmissions[index] ?? 0,
+  }));
   const managedClassrooms = [...createdClassrooms, ...defaultClassrooms];
 
   return (
@@ -212,9 +209,6 @@ export function TeacherDashboard({ initialTab, teacherName, stats, exams, docume
                 className="relative grid h-12 w-12 place-items-center rounded-2xl border border-orange-100 bg-white text-slate-500 shadow-sm"
               >
                 <Bell className="h-5 w-5" />
-              </button>
-              <button type="button" onClick={() => setCreateClassOpen(true)} className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-5 py-3 text-sm font-extrabold text-white shadow-md shadow-orange-200">
-                <Plus className="h-5 w-5" /> Tạo lớp mới
               </button>
             </div>
           </header>
@@ -259,6 +253,7 @@ export function TeacherDashboard({ initialTab, teacherName, stats, exams, docume
                       </p>
                     </Link>
                   ))}
+                  {!defaultClassrooms.length ? <EmptyMessage text="Chưa có lớp học trong database." /> : null}
                 </div>
               </div>
               <aside className="rounded-[2rem] border border-orange-100 bg-white p-6 shadow-sm">
@@ -317,6 +312,7 @@ export function TeacherDashboard({ initialTab, teacherName, stats, exams, docume
                       ) : null}
                     </div>
                   ))}
+                  {!reminders.length ? <EmptyMessage text="Chưa có lịch nhắc nào." /> : null}
                 </div>
               </aside>
             </section>
@@ -330,9 +326,6 @@ export function TeacherDashboard({ initialTab, teacherName, stats, exams, docume
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-500">Lớp học</p>
                 <h2 className="mt-1 text-3xl font-black text-slate-950">Quản lí lớp</h2>
               </div>
-              <button type="button" onClick={() => setCreateClassOpen(true)} className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-5 py-3 text-sm font-extrabold text-white">
-                <Plus className="h-4 w-4" /> Tạo lớp
-              </button>
             </div>
             <div className="mt-6 grid gap-5 md:grid-cols-2">
               {managedClassrooms.map((classroom) => (
@@ -355,6 +348,7 @@ export function TeacherDashboard({ initialTab, teacherName, stats, exams, docume
                   </div>
                 </article>
               ))}
+              {!managedClassrooms.length ? <EmptyMessage text="Chưa có lớp học trong database." /> : null}
             </div>
           </section>
         ) : null}
@@ -410,10 +404,10 @@ export function TeacherDashboard({ initialTab, teacherName, stats, exams, docume
             <div className="mt-6 rounded-[2rem] border border-orange-100 bg-white p-7 shadow-sm">
               <h3 className="text-lg font-black text-slate-950">Hoạt động trong tuần</h3>
               <div className="mt-8 flex h-64 items-end justify-around gap-3 border-b border-slate-100">
-                {reportBars.map(([day, value]) => (
+                {reportBars.map(({ day, value }) => (
                   <div key={day} className="flex h-full flex-1 flex-col items-center justify-end">
-                    <span className="mb-2 text-xs font-black text-orange-600">{value}%</span>
-                    <div className="w-full max-w-16 rounded-t-xl bg-gradient-to-t from-orange-500 to-amber-300" style={{ height: `${value}%` }} />
+                    <span className="mb-2 text-xs font-black text-orange-600">{value}</span>
+                    <div className="w-full max-w-16 rounded-t-xl bg-gradient-to-t from-orange-500 to-amber-300" style={{ height: `${Math.max(value ? 8 : 0, (value / maxWeeklySubmissions) * 100)}%` }} />
                     <span className="mt-3 text-xs font-bold text-slate-400">{day}</span>
                   </div>
                 ))}
@@ -543,5 +537,3 @@ export function TeacherDashboard({ initialTab, teacherName, stats, exams, docume
     </div>
   );
 }
-
-

@@ -49,7 +49,8 @@ async function createResource(resource: string, body: Record<string, unknown>) {
     case "blogs":
       return prisma.blogPost.create({ data: body as never });
     case "users": {
-      const password = typeof body.password === "string" ? body.password : "Demo@123";
+      const password = typeof body.password === "string" ? body.password.trim() : "";
+      if (password.length < 8) throw new HttpError(400, "Mật khẩu phải có ít nhất 8 ký tự");
       return prisma.user.create({
         data: {
           email: String(body.email),

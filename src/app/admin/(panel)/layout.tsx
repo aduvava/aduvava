@@ -13,6 +13,8 @@ import {
   Users,
 } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 const adminNav = [
   { href: "/admin", label: "Tổng quan", Icon: LayoutDashboard },
   { href: "/admin/documents", label: "Tài liệu", Icon: FileClock },

@@ -1,14 +1,13 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { fallbackBlogs } from "@/lib/public-data";
 import { Badge } from "@/components/ui";
 
 async function getPost(slug: string) {
   try {
     return await prisma.blogPost.findFirst({ where: { slug, status: "PUBLISHED" } });
-  } catch {
-    const fallback = fallbackBlogs.find((blog) => blog.slug === slug);
-    return fallback ? { ...fallback, content: fallback.excerpt } : null;
+  } catch (error) {
+    console.error("Unable to load blog post from database", error);
+    return null;
   }
 }
 

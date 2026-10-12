@@ -16,7 +16,7 @@ export default async function TheoryPage() {
         <Card>
           <Badge>PRO</Badge>
           <h1 className="mt-5 font-display text-4xl font-black text-ink">Thư viện lý thuyết cần VIP</h1>
-          <p className="mt-3 text-ink/70">V1 dùng admin manual activation sau khi tạo payment mock.</p>
+          <p className="mt-3 text-ink/70">Bạn cần gói thành viên đang hoạt động để xem nội dung nâng cao.</p>
           <Link href="/vip" className="mt-6 inline-flex rounded-full bg-clay px-5 py-3 font-bold text-white">Nạp vip</Link>
         </Card>
       </div>

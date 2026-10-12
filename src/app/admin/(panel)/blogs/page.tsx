@@ -8,12 +8,12 @@ export default function AdminBlogsPage() {
         <AdminResourceManager
           resource="blogs"
           defaultPayload={{
-            slug: "cach-chua-loi-sau-moi-de",
-            title: "Cách chữa lỗi sau mỗi đề",
-            excerpt: "Biến câu sai thành checklist học tập.",
-            content: "Nội dung bài viết...",
-            status: "PUBLISHED",
-            publishedAt: "2026-06-13T00:00:00.000Z",
+            slug: "",
+            title: "",
+            excerpt: "",
+            content: "",
+            status: "DRAFT",
+            publishedAt: null,
           }}
         />
       </div>

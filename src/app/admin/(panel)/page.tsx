@@ -116,7 +116,7 @@ const resourceLinks: {
   {
     href: "/admin/payments",
     title: "Thanh toán",
-    description: "Kiểm tra giao dịch mock và trạng thái chi trả.",
+    description: "Kiểm tra yêu cầu chuyển khoản và trạng thái chi trả.",
     Icon: CreditCard,
     tone: "bg-slate-100 text-slate-700",
   },

@@ -80,77 +80,6 @@ const educationLevels: { id: EducationLevelId; label: string; grades: string[] }
   { id: "national-exam", label: "Ôn thi THPTQG", grades: ["Môn thi"] },
 ];
 
-const commonSubjects = [
-  "Toán",
-  "Ngữ Văn",
-  "Tiếng Anh",
-  "Vật Lý",
-  "Hóa Học",
-  "Sinh Học",
-  "Lịch Sử",
-  "Địa Lý",
-];
-
-const featuredDemoStudents = [
-  ["Đỗ Thị H", 99, 795],
-  ["Master Tiếng Anh", 98, 842],
-  ["Bùi Văn G 21", 97, 925],
-  ["Học bá Sinh Học 28", 96, 1636],
-  ["Đặng Thị F 35", 95, 1895],
-  ["Kẻ hủy diệt Hóa Học", 94, 2154],
-  ["Nguyễn Minh Anh", 93, 2268],
-  ["Trần Gia Huy", 92, 2380],
-  ["Lê Khánh Linh", 91, 2492],
-  ["Phạm Anh Tú", 90, 2620],
-  ["Vũ Hoàng Nam", 89, 2734],
-  ["Hà My", 88, 2850],
-  ["Tuấn Kiệt", 87, 2965],
-  ["Hoàng Minh Quân", 86, 3102],
-  ["Đặng Thị F", 85, 3245],
-] as const;
-
-const demoFirstNames = ["Minh", "Anh", "Gia", "Huy", "Khánh", "Linh", "Hoàng", "Nam", "Thu", "Hà", "Tuấn", "Kiệt"];
-const demoLastNames = ["Nguyễn", "Trần", "Lê", "Phạm", "Vũ", "Đặng", "Bùi", "Đỗ", "Hồ", "Dương"];
-
-function createDemoStudents(
-  educationLevel: EducationLevelId,
-  grade: string,
-  subjectKey: string,
-  periodBoost: number,
-): RankedStudent[] {
-  const availableLevels = educationLevels.filter((item) => item.id !== "all");
-
-  return Array.from({ length: 100 }, (_, index) => {
-    const featured = featuredDemoStudents[index];
-    const levelOption =
-      educationLevel === "all"
-        ? availableLevels[index % availableLevels.length]
-        : educationLevels.find((item) => item.id === educationLevel) ?? availableLevels[0];
-    const studentGrade =
-      grade !== "all"
-        ? grade
-        : levelOption.grades[index % Math.max(levelOption.grades.length, 1)] ?? "Môn thi";
-    const subjectPenalty = subjectKey === "all" ? 0 : stableOffset(`${subjectKey}-${index}`) % 4;
-    const baseScore = featured?.[1] ?? Math.max(50, 94 - Math.floor((index - featuredDemoStudents.length) / 3));
-    const score = Math.min(100, baseScore + periodBoost - subjectPenalty);
-    const name =
-      featured?.[0] ??
-      `${demoLastNames[index % demoLastNames.length]} ${demoFirstNames[index % demoFirstNames.length]} ${String(index + 1).padStart(2, "0")}`;
-
-    return {
-      id: `demo-${levelOption.id}-${studentGrade}-${index + 1}`,
-      name,
-      image: null,
-      score,
-      durationSeconds: (featured?.[2] ?? 1700 + index * 31) + subjectPenalty * 19,
-      accuracy: Math.max(35, score - (index % 4) * 6),
-      attemptCount: 3 + (index % 8),
-      educationLevel: levelOption.id as Exclude<EducationLevelId, "all">,
-      grade: studentGrade,
-    };
-  });
-}
-
 const avatarColors = [
   "from-sky-400 to-blue-600",
   "from-violet-400 to-purple-600",
@@ -348,7 +277,7 @@ export function Leaderboard({ currentUser, subjects, attempts }: LeaderboardProp
   const [selectedSubject, setSelectedSubject] = useState("all");
 
   const subjectOptions = useMemo(
-    () => Array.from(new Set([...commonSubjects, ...subjects])).filter(Boolean),
+    () => Array.from(new Set(subjects)).filter(Boolean),
     [subjects],
   );
   const gradeOptions = useMemo(
@@ -396,32 +325,7 @@ export function Leaderboard({ currentUser, subjects, attempts }: LeaderboardProp
       });
     }
 
-    const periodBoost = timeRange === "all" ? 2 : timeRange === "month" ? 1 : 0;
-    const subjectKey = selectedSubject === "all" ? "all" : selectedSubject;
-    const demoRanking = createDemoStudents(selectedLevel, selectedGrade, subjectKey, periodBoost);
-
-    const combined = [...demoRanking, ...realStudents.values()];
-    const currentUserMatches =
-      (selectedLevel === "all" || currentUser.educationLevel === selectedLevel) &&
-      (selectedGrade === "all" || currentUser.grade === selectedGrade);
-    if (!realStudents.has(currentUser.id) && currentUserMatches) {
-      const subjectPenalty = selectedSubject === "all" ? 0 : stableOffset(`${subjectKey}-${currentUser.id}`) % 3;
-      combined.push({
-        id: currentUser.id,
-        name: currentUser.name,
-        image: currentUser.image,
-        cosmetics: currentUser.cosmetics,
-        score: 84 + periodBoost - subjectPenalty,
-        durationSeconds: 25 * 60,
-        accuracy: 58,
-        attemptCount: 2,
-        educationLevel: currentUser.educationLevel,
-        grade: currentUser.grade,
-        isCurrentUser: true,
-      });
-    }
-
-    return combined
+    return [...realStudents.values()]
       .sort((first, second) => second.score - first.score || first.durationSeconds - second.durationSeconds)
       .slice(0, 100);
   }, [attempts, currentUser, selectedGrade, selectedLevel, selectedSubject, timeRange]);
@@ -570,7 +474,7 @@ export function Leaderboard({ currentUser, subjects, attempts }: LeaderboardProp
                   {targetStudent ? "Mục tiêu vượt qua" : "Bạn đang dẫn đầu"}
                 </h2>
                 <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-orange-500">
-                  Top {Math.min(currentIndex + 1, 100)}/100
+                  Hạng {currentIndex + 1}/{ranking.length}
                 </span>
               </div>
               {targetStudent ? (
@@ -594,15 +498,23 @@ export function Leaderboard({ currentUser, subjects, attempts }: LeaderboardProp
           </section>
         ) : null}
 
-        <section className="mx-auto mt-14 grid max-w-2xl grid-cols-3 items-end gap-3 sm:gap-7">
-          <PodiumPlace student={podium[0]} rank={2} />
-          <PodiumPlace student={podium[1]} rank={1} />
-          <PodiumPlace student={podium[2]} rank={3} />
-        </section>
+        {ranking.length ? (
+          <section className="mx-auto mt-14 grid max-w-2xl grid-cols-3 items-end gap-3 sm:gap-7">
+            <PodiumPlace student={podium[0]} rank={2} />
+            <PodiumPlace student={podium[1]} rank={1} />
+            <PodiumPlace student={podium[2]} rank={3} />
+          </section>
+        ) : (
+          <section className="mt-8 rounded-[1.75rem] border-2 border-dashed border-orange-200 bg-white/70 px-6 py-14 text-center">
+            <Trophy className="mx-auto h-10 w-10 text-orange-300" />
+            <h2 className="mt-4 text-xl font-black text-slate-800">Chưa có dữ liệu xếp hạng</h2>
+            <p className="mt-2 text-sm text-slate-500">Bảng xếp hạng sẽ cập nhật từ các bài thi đã nộp.</p>
+          </section>
+        )}
 
         <section className="mt-8 overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
-            <h2 className="text-xl font-black text-slate-900">Top 100 học sinh</h2>
+            <h2 className="text-xl font-black text-slate-900">Xếp hạng học sinh</h2>
             <span className="rounded-full bg-orange-50 px-4 py-2 text-xs font-extrabold text-orange-600">
               {ranking.length}/100
             </span>

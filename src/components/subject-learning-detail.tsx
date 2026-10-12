@@ -8,7 +8,6 @@ import {
   BookOpen,
   Calculator,
   CalendarDays,
-  ChevronDown,
   Clock3,
   Cog,
   Dna,
@@ -30,7 +29,11 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import { MascotAvatar } from "@/components/mascot-avatar";
-import type { LearningUnit } from "@/data/subject-learning-catalog";
+
+type LearningUnit = {
+  title: string;
+  lessons: string[];
+};
 
 type SubjectItem = {
   slug: string;
@@ -99,14 +102,6 @@ const learningModes: Array<{ id: LearningMode; label: string; icon: typeof BookO
   { id: "topics", label: "Theo Chuyên đề", icon: BookOpen },
   { id: "exams", label: "Theo Kì thi", icon: CalendarDays },
   { id: "theory", label: "Lý thuyết", icon: FileText },
-];
-
-const examPeriods = [
-  { label: "Giữa kì I" },
-  { label: "Cuối kì I" },
-  { label: "Giữa kì 2" },
-  { label: "Cuối kì 2" },
-  { label: "Kiểm tra 15 phút" },
 ];
 
 function SubjectIcon({ icon, className }: { icon: string; className?: string }) {
@@ -196,7 +191,7 @@ export function SubjectLearningDetail({
                 <div className="pt-7">
                   <h3 className="min-h-14 text-lg font-black leading-7 text-slate-800">{exam.title}</h3>
                   <div className="mt-5 flex flex-wrap gap-4 text-xs font-extrabold uppercase text-slate-400">
-                    <span className="inline-flex items-center gap-1.5"><Eye className="h-4 w-4" />{Math.max(1200, exam.attemptCount * 94).toLocaleString("vi-VN")}</span>
+                    <span className="inline-flex items-center gap-1.5"><Eye className="h-4 w-4" />{exam.attemptCount.toLocaleString("vi-VN")} lượt thi</span>
                     <span className="inline-flex items-center gap-1.5"><FileText className="h-4 w-4" />{exam.questionCount} câu</span>
                     <span className="inline-flex items-center gap-1.5"><Clock3 className="h-4 w-4" />{exam.durationMinutes} phút</span>
                   </div>
@@ -210,6 +205,11 @@ export function SubjectLearningDetail({
               </article>
             ))}
           </div>
+          {!hotExams.length ? (
+            <div className="mt-5 rounded-[2rem] border-2 border-dashed border-orange-200 bg-white/70 px-6 py-12 text-center text-sm font-semibold text-slate-500">
+              Chưa có đề thi được xuất bản cho môn học này.
+            </div>
+          ) : null}
         </section>
 
         <section className="mt-8">
@@ -235,7 +235,7 @@ export function SubjectLearningDetail({
                     </h3>
                     <div className="mt-4 space-y-4">
                       {unit.lessons.map((lesson, lessonIndex) => {
-                        const exam = hotExams[(unitIndex + lessonIndex) % hotExams.length];
+                        const exam = hotExams.length ? hotExams[(unitIndex + lessonIndex) % hotExams.length] : null;
                         return (
                           <article key={lesson} className="rounded-[1.6rem] border border-slate-200/80 bg-white px-5 py-5 shadow-sm sm:px-7">
                             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -243,22 +243,20 @@ export function SubjectLearningDetail({
                                 <span className="text-lg font-black text-slate-400">{lessonIndex + 1}.</span>
                                 <div>
                                   <h4 className="font-bold leading-7 text-slate-700">{lesson}</h4>
-                                  <div className="mt-2 flex flex-wrap gap-4 text-xs font-extrabold uppercase text-slate-400">
-                                    <span className="inline-flex items-center gap-1.5">
-                                      <FileText className="h-4 w-4" /> {exam.questionCount} câu
-                                    </span>
-                                    <span className="inline-flex items-center gap-1.5">
-                                      <Clock3 className="h-4 w-4" /> {exam.durationMinutes} phút
-                                    </span>
-                                    <span className="inline-flex items-center gap-1.5">
-                                      <Eye className="h-4 w-4" /> {exam.attemptCount.toLocaleString("vi-VN")} lượt thi
-                                    </span>
-                                  </div>
+                                  {exam ? (
+                                    <div className="mt-2 flex flex-wrap gap-4 text-xs font-extrabold uppercase text-slate-400">
+                                      <span className="inline-flex items-center gap-1.5"><FileText className="h-4 w-4" /> {exam.questionCount} câu</span>
+                                      <span className="inline-flex items-center gap-1.5"><Clock3 className="h-4 w-4" /> {exam.durationMinutes} phút</span>
+                                      <span className="inline-flex items-center gap-1.5"><Eye className="h-4 w-4" /> {exam.attemptCount.toLocaleString("vi-VN")} lượt thi</span>
+                                    </div>
+                                  ) : null}
                                 </div>
                               </div>
-                              <Link href={exam.href} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-orange-50 px-5 py-3 text-sm font-black text-orange-600 transition hover:bg-orange-500 hover:text-white">
-                                <FileText className="h-4 w-4" /> Làm bài ngay
-                              </Link>
+                              {exam ? (
+                                <Link href={exam.href} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-orange-50 px-5 py-3 text-sm font-black text-orange-600 transition hover:bg-orange-500 hover:text-white">
+                                  <FileText className="h-4 w-4" /> Làm bài ngay
+                                </Link>
+                              ) : null}
                             </div>
                           </article>
                         );
@@ -267,6 +265,11 @@ export function SubjectLearningDetail({
                   </section>
                 ))}
               </div>
+              {!subject.units.length ? (
+                <div className="mt-6 rounded-[2rem] border-2 border-dashed border-orange-200 bg-white/70 px-6 py-12 text-center text-sm font-semibold text-slate-500">
+                  Chưa có chuyên đề trong database.
+                </div>
+              ) : null}
             </>
           ) : null}
 
@@ -277,56 +280,22 @@ export function SubjectLearningDetail({
                 <h2 className="mt-1 text-2xl font-black uppercase sm:text-3xl">Đề kiểm tra môn {subject.name}</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-500">Chọn đúng loại kì thi để luyện cấu trúc và thời gian làm bài tương ứng.</p>
               </div>
-              <div className="mt-6 space-y-5">
-                {examPeriods.map((period, periodIndex) => (
-                  <details key={period.label} open={periodIndex === 0} className="group overflow-hidden rounded-[1.75rem] border border-orange-100 bg-white shadow-sm">
-                    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 transition hover:bg-orange-50/50 sm:p-6">
-                      <div className="flex min-w-0 items-center gap-4">
-                        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-orange-50 text-orange-500">
-                          <CalendarDays className="h-6 w-6" />
-                        </span>
-                        <div className="min-w-0">
-                          <h3 className="text-xl font-black text-slate-800">{period.label}</h3>
-                          <p className="mt-1 text-sm font-semibold text-slate-400">
-                            {hotExams.length} đề luyện · Mở để chọn đề
-                          </p>
-                        </div>
-                      </div>
-                      <ChevronDown className="h-6 w-6 shrink-0 text-slate-400 transition-transform duration-200 group-open:rotate-180" />
-                    </summary>
-
-                    <div className="border-t border-orange-100 bg-orange-50/20 p-4 sm:p-6">
-                      <div className="grid gap-4 lg:grid-cols-2">
-                        {hotExams.map((exam, examIndex) => (
-                          <article key={`${period.label}-${exam.id}-${examIndex}`} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-md">
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="min-w-0">
-                                <span className="inline-flex rounded-full bg-orange-50 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-orange-600">
-                                  Đề số {examIndex + 1}
-                                </span>
-                                <h4 className="mt-3 line-clamp-2 font-black leading-6 text-slate-800">
-                                  {period.label} - {subject.name} - Đề {examIndex + 1}
-                                </h4>
-                              </div>
-                              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-500">
-                                <FileText className="h-5 w-5" />
-                              </span>
-                            </div>
-                            <p className="mt-2 line-clamp-1 text-xs font-semibold text-slate-400">{exam.title}</p>
-                            <div className="mt-4 flex flex-wrap gap-4 text-xs font-bold uppercase text-slate-400">
-                              <span className="inline-flex items-center gap-1.5"><FileText className="h-4 w-4" />{exam.questionCount} câu</span>
-                              <span className="inline-flex items-center gap-1.5"><Clock3 className="h-4 w-4" />{exam.durationMinutes} phút</span>
-                            </div>
-                            <Link href={exam.href} className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-3 text-sm font-black text-white transition hover:bg-orange-600">
-                              <Play className="h-4 w-4 fill-current" /> Làm đề
-                            </Link>
-                          </article>
-                        ))}
-                      </div>
+              <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                {hotExams.map((exam) => (
+                  <article key={exam.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-md">
+                    <h3 className="font-black leading-6 text-slate-800">{exam.title}</h3>
+                    <div className="mt-4 flex flex-wrap gap-4 text-xs font-bold uppercase text-slate-400">
+                      <span className="inline-flex items-center gap-1.5"><FileText className="h-4 w-4" />{exam.questionCount} câu</span>
+                      <span className="inline-flex items-center gap-1.5"><Clock3 className="h-4 w-4" />{exam.durationMinutes} phút</span>
+                      <span className="inline-flex items-center gap-1.5"><Eye className="h-4 w-4" />{exam.attemptCount} lượt thi</span>
                     </div>
-                  </details>
+                    <Link href={exam.href} className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-3 text-sm font-black text-white transition hover:bg-orange-600">
+                      <Play className="h-4 w-4 fill-current" /> Làm đề
+                    </Link>
+                  </article>
                 ))}
               </div>
+              {!hotExams.length ? <p className="mt-6 rounded-2xl border border-dashed border-orange-200 bg-white px-5 py-10 text-center text-sm font-semibold text-slate-500">Chưa có đề thi được xuất bản.</p> : null}
             </>
           ) : null}
 
@@ -366,6 +335,7 @@ export function SubjectLearningDetail({
                   </article>
                 ))}
               </div>
+              {!subject.theoryChapters.length ? <p className="mt-6 rounded-2xl border border-dashed border-emerald-200 bg-white px-5 py-10 text-center text-sm font-semibold text-slate-500">Chưa có bài lý thuyết được xuất bản.</p> : null}
             </>
           ) : null}
         </section>

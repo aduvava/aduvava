@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import {
   BookOpenCheck,
   CalendarDays,
@@ -143,7 +143,7 @@ function ClassroomModal({
   function submitJoin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const code = String(new FormData(event.currentTarget).get("code") ?? "").trim().toUpperCase();
-    const classroom = [...defaultClassrooms, ...readCustomClassrooms()].find((item) => item.code === code);
+    const classroom = defaultClassrooms.find((item) => item.code === code);
     if (!classroom) {
       setMessage("Không tìm thấy lớp. Hãy kiểm tra lại mã mời.");
       return;
@@ -228,9 +228,7 @@ export function ClassroomHub() {
   const [modal, setModal] = useState<ModalMode>(null);
   const [createdMessage, setCreatedMessage] = useState("");
 
-  useEffect(() => setCustomClassrooms(readCustomClassrooms()), []);
-
-  const classrooms = useMemo(() => [...customClassrooms, ...defaultClassrooms], [customClassrooms]);
+  const classrooms = useMemo(() => defaultClassrooms, []);
   const filteredClassrooms = useMemo(() => {
     const keyword = search.trim().toLocaleLowerCase("vi");
     return classrooms.filter((classroom) => {
@@ -270,9 +268,6 @@ export function ClassroomHub() {
             />
           </label>
           <div className="flex flex-wrap gap-3">
-            <button type="button" onClick={() => setModal("join")} className="inline-flex items-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 px-5 py-3.5 text-sm font-extrabold text-orange-600 hover:bg-orange-100">
-              <KeyRound className="h-4 w-4" /> Tham gia lớp
-            </button>
             <div className="flex rounded-2xl bg-slate-50 p-1">
               <button type="button" onClick={() => setView("grid")} aria-label="Xem dạng lưới" className={clsx("grid h-11 w-11 place-items-center rounded-xl transition", view === "grid" ? "bg-white text-orange-500 shadow-sm" : "text-slate-400")}>
                 <Grid2X2 className="h-5 w-5" />

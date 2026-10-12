@@ -126,7 +126,7 @@ export default async function AdminUsersPage() {
       </section>
 
       <div className="mt-8">
-        <AdminResourceManager resource="users" defaultPayload={{ email: "student@example.com", name: "Học sinh mới", password: "Demo@123", role: "STUDENT" }} />
+        <AdminResourceManager resource="users" defaultPayload={{ email: "", name: "", password: "", role: "STUDENT" }} />
       </div>
     </main>
   );
