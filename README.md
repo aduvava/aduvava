@@ -4,7 +4,7 @@ Eduva is a full-stack Next.js 15 application using PostgreSQL and Prisma. It inc
 
 ## Supabase Postgres setup
 
-The app already uses Prisma with PostgreSQL for accounts, exams, attempts, and admin data. Use a separate Supabase project for Eduva so its schema and records stay separate from other apps. In Supabase, open **Connect**, copy the **Session pooler** connection URI (port `5432`), and put it in `DATABASE_URL` in `.env`. Do not put a database password or any privileged key in a `NEXT_PUBLIC_` variable. In Codespaces, add the URI as the `DATABASE_URL` Codespaces secret; setup applies the Prisma schema and skips demo seeding by default.
+The app uses Prisma with PostgreSQL for accounts, exams, attempts, and admin data. Use the dedicated Eduva Supabase project so its schema and records stay separate from other apps. In Supabase, open **Connect**, copy the **Session pooler** connection URI (port `5432`), and put it in `DATABASE_URL` in `.env`. Do not put a database password or any privileged key in a `NEXT_PUBLIC_` variable. In Codespaces, add the URI as the `DATABASE_URL` Codespaces secret; setup applies the Prisma schema without creating sample content.
 
 Copy `.env.example` to `.env`, then set `NEXTAUTH_SECRET` and `NEXTAUTH_URL`. To create the schema, run:
 
@@ -14,7 +14,7 @@ npm run db:generate
 npm run db:push
 ```
 
-The seed step is optional. `npm run db:seed` provisions only the admin account from `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD`. To also insert sample students, exams, and documents, explicitly set `EDUVA_SEED_DEMO_DATA=true`. Use a unique admin password of at least 16 characters.
+The seed step is optional. `npm run db:seed` provisions only the admin account from `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD`. It never inserts sample students, exams, rankings, or documents. Use a unique admin password of at least 16 characters.
 
 Google login is optional. To enable it, configure the OAuth client ID and secret in `.env`, set the JavaScript origin to the site URL, and add `<NEXTAUTH_URL>/api/auth/callback/google` as an authorized redirect URI.
 
@@ -50,11 +50,11 @@ Google login is optional. To enable it, configure the OAuth client ID and secret
 
 The web app is on port 3000. The standalone admin service binds to host localhost port 4000; keep remote access behind a trusted HTTPS reverse proxy. PostgreSQL and uploaded files use persistent Docker volumes.
 
-The seed requires `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD`. Demo users and sample content are added only when `EDUVA_SEED_DEMO_DATA=true`; no default administrator password is shipped.
+The seed requires `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` and creates only that administrator account. No default password or sample content is shipped.
 
 ## Temporary GitHub preview (Codespaces)
 
-This is a private test environment. By default it starts the Next.js app with a separate temporary PostgreSQL database and demo data. To test against the dedicated Eduva Supabase project, configure the `DATABASE_URL` Codespaces secret first; setup applies the app schema but does not seed any users or sample content by default. To create the first admin, set `EDUVA_SEED_DATABASE=true`, `SEED_ADMIN_EMAIL`, and `SEED_ADMIN_PASSWORD` as Codespaces secrets. Add `EDUVA_SEED_DEMO_DATA=true` only if you also want sample records.
+This is a private test environment. By default it starts the Next.js app with a separate temporary PostgreSQL database and creates only a temporary Admin account. To test against the dedicated Eduva Supabase project, configure the `DATABASE_URL` Codespaces secret first; setup applies the app schema but does not seed users or content by default. To create the first Admin, set `EDUVA_SEED_DATABASE=true`, `SEED_ADMIN_EMAIL`, and `SEED_ADMIN_PASSWORD` as Codespaces secrets.
 
 1. Open the repository on GitHub, choose **Code → Codespaces → Create codespace on main**.
 2. Wait for setup to finish. The student site opens on port **3000**; the standalone admin site opens on port **4000** from the **Ports** panel. The integrated admin panel is also available at `/admin` on port 3000.
