@@ -132,7 +132,7 @@ export default async function DashboardPage() {
   const firstName = user.name?.trim().split(/\s+/).at(-1) ?? "bạn";
   const continueLearning = inProgressAttempt
     ? { title: inProgressAttempt.exam.title, href: `/attempts/${inProgressAttempt.id}` }
-    : { title: "Luyện đề THPTQG", href: "/thi-thptqg" };
+    : { title: "Tìm đề luyện tập", href: "/exams" };
   const submittedDates = new Set(
     attempts
       .map((attempt) => attempt.submittedAt)
