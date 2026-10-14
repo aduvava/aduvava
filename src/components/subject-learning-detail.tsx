@@ -178,9 +178,6 @@ export function SubjectLearningDetail({
             <h2 className="flex items-center gap-3 text-2xl font-black">
               <Flame className="h-7 w-7 fill-orange-500 text-orange-500" /> Đề thi hot
             </h2>
-            <Link href="/thi-thptqg" className="text-sm font-black text-orange-500 hover:text-orange-600">
-              Xem tất cả
-            </Link>
           </div>
           <div className="mt-5 grid gap-5 lg:grid-cols-3">
             {hotExams.slice(0, 3).map((exam) => (
