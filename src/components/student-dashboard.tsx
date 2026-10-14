@@ -315,9 +315,6 @@ function ExamCenter({ exams }: { exams: ExamItem[] }) {
     <section className="rounded-[1.5rem] border border-orange-100 bg-white p-4 shadow-[0_10px_26px_rgba(81,52,24,0.05)]">
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-lg font-black text-slate-900">Đề thi gợi ý cho bạn</h2>
-        <Link href="/thi-thptqg" className="shrink-0 text-xs font-extrabold text-orange-500 hover:text-orange-600">
-          Xem tất cả
-        </Link>
       </div>
       <div className="mt-4 space-y-3">
         {exams.slice(0, 3).map((exam, index) => (
