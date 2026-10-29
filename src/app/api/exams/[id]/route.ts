@@ -19,7 +19,20 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
     return jsonOk({
       exam: {
-        ...exam,
+        id: exam.id,
+        code: exam.code,
+        slug: exam.slug,
+        title: exam.title,
+        description: exam.description,
+        family: exam.family,
+        type: exam.type,
+        accessLevel: exam.accessLevel,
+        year: exam.year,
+        durationMinutes: exam.durationMinutes,
+        educationLevel: exam.educationLevel,
+        examStructure: exam.examStructure,
+        targetScore: exam.targetScore,
+        subject: exam.subject,
         questions: exam.questions.map((question) => ({
           id: question.id,
           topic: question.topic,
