@@ -228,6 +228,8 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
     if (submitting) return;
     setSubmitting(true);
     setStatus("Đang nộp bài...");
+    // Drain pending writes before collecting unsaved changes.
+    await saveQueueRef.current.catch(() => undefined);
     const dirtyIds = Array.from(dirtyRef.current);
     if (dirtyIds.length) {
       try {
