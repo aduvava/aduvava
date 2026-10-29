@@ -375,7 +375,8 @@ model Attempt {
   userId          String
   examId          String
   status          AttemptStatus @default(IN_PROGRESS)
-  startedAt       DateTime      @default(now())
+  startedAt       DateTime      @default(now()
+  extraSeconds    Int           @default(0))
   submittedAt     DateTime?
   durationSeconds Int           @default(0)
   score           Float         @default(0)
