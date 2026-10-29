@@ -78,7 +78,7 @@ export default async function AttemptPage({ params }: { params: Promise<{ id: st
       examDescription={attempt.exam.description}
       subjectSlug={attempt.exam.subject.slug}
       subjectName={attempt.exam.subject.name}
-      initialSeconds={Math.max(0, attempt.exam.durationMinutes * 60 - Math.floor((Date.now() - attempt.startedAt.getTime()) / 1000))}
+      initialSeconds={Math.max(0, attempt.exam.durationMinutes * 60 + attempt.extraSeconds - Math.floor((Date.now() - attempt.startedAt.getTime()) / 1000))}
       questions={questions}
       initialAnswers={attempt.answers.map((answer) => ({ questionId: answer.questionId, value: answer.value }))}
       submitEffect={typeof submitEffectMetadata?.effect === "string" ? submitEffectMetadata.effect : null}
