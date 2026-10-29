@@ -157,7 +157,7 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
       Promise.all(dirtyIds.map((questionId) => persistAnswer(questionId, answersRef.current[questionId], true)))
         .then(() => setStatus("Đã tự động lưu"))
         .catch(() => setStatus("Tự động lưu thất bại"));
-    }, 30000);
+    }, 10000);
     return () => window.clearInterval(autosave);
   }, [attemptId]);
 
@@ -198,7 +198,7 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
     answersRef.current = next;
     dirtyRef.current.add(questionId);
     setAnswers(next);
-    setStatus("Đã ghi nháp, hệ thống sẽ tự động lưu mỗi 30 giây");
+    setStatus("Đã ghi nháp, hệ thống sẽ tự động lưu mỗi 10 giây");
   }
 
   async function activateHelper(helper: HelperItem) {
@@ -398,7 +398,7 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
                     {question.type === "SHORT_ANSWER" ? (
                       <div className="mt-6">
                         <label className="text-sm font-black uppercase tracking-wide text-slate-500">Trả lời ngắn</label>
-                        <input className="mt-3 w-full rounded-2xl border-2 border-slate-200 px-4 py-3 text-base font-bold outline-none focus:border-orange-400" value={(value as string) ?? ""} onChange={(event) => void save(question.id, event.target.value)} placeholder="Nhập câu trả lời" />
+                        <input className="mt-3 w-full rounded-2xl border-2 border-slate-200 px-4 py-3 text-base font-bold outline-none focus:border-orange-400" value={(value as string) ?? ""} onChange={(event) => updateDraft(question.id, event.target.value)} placeholder="Nhập câu trả lời" />
                       </div>
                     ) : null}
 
@@ -407,7 +407,7 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
                         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3">
                           <div>
                             <p className="font-black text-slate-900">Khung soạn thảo tự luận</p>
-                            <p className="text-xs font-semibold text-slate-400">Bài viết được tự động lưu mỗi 30 giây.</p>
+                            <p className="text-xs font-semibold text-slate-400">Bài viết được tự động lưu mỗi 10 giây.</p>
                           </div>
                           <span className="rounded-full bg-orange-50 px-4 py-2 text-sm font-black text-orange-600">{countWords(value)} từ</span>
                         </div>
@@ -554,7 +554,7 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
                   {question.type === "SHORT_ANSWER" ? (
                     <div className="mt-8">
                       <label className="text-sm font-black uppercase tracking-wide text-slate-500">Đáp án trả lời ngắn</label>
-                      <input className="mt-3 w-full rounded-2xl border-2 border-slate-200 px-4 py-3 text-base font-bold outline-none focus:border-orange-400" value={(value as string) ?? ""} onChange={(event) => void save(question.id, event.target.value)} placeholder="Nhập đáp án" />
+                      <input className="mt-3 w-full rounded-2xl border-2 border-slate-200 px-4 py-3 text-base font-bold outline-none focus:border-orange-400" value={(value as string) ?? ""} onChange={(event) => updateDraft(question.id, event.target.value)} placeholder="Nhập đáp án" />
                     </div>
                   ) : null}
 
@@ -563,7 +563,7 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
                       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3">
                         <div>
                           <p className="font-black text-slate-900">Khung soạn thảo tự luận</p>
-                          <p className="text-xs font-semibold text-slate-400">Bài viết được tự động lưu mỗi 30 giây.</p>
+                          <p className="text-xs font-semibold text-slate-400">Bài viết được tự động lưu mỗi 10 giây.</p>
                         </div>
                         <span className="rounded-full bg-orange-50 px-4 py-2 text-sm font-black text-orange-600">{countWords(value)} từ</span>
                       </div>
