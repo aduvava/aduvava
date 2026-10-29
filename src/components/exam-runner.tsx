@@ -93,6 +93,8 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
   const [answers, setAnswers] = useState<Record<string, unknown>>(() => Object.fromEntries(initialAnswers.map((answer) => [answer.questionId, answer.value])));
   const answersRef = useRef<Record<string, unknown>>(answers);
   const dirtyRef = useRef<Set<string>>(new Set());
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const submittingRef = useRef(false);
   const [marked, setMarked] = useState<Set<string>>(new Set());
   const [status, setStatus] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -161,25 +163,33 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
 
   async function persistAnswer(questionId: string, value: unknown, silent = false) {
     if (!silent) setStatus("Đang lưu...");
-    const response = await fetch(`/api/attempts/${attemptId}/answers`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ questionId, value }),
+    // Serialize saves so a delayed old request cannot overwrite a newer response.
+    const operation = saveQueueRef.current.catch(() => undefined).then(async () => {
+      const response = await fetch(`/api/attempts/${attemptId}/answers`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questionId, value }),
+      });
+      if (!response.ok) throw new Error("Save failed");
+      // Only mark saved if this is still the user's latest edit.
+      if (JSON.stringify(answersRef.current[questionId]) === JSON.stringify(value)) {
+        dirtyRef.current.delete(questionId);
+      }
     });
-    if (response.ok) dirtyRef.current.delete(questionId);
-    if (!silent) setStatus(response.ok ? "Đã tự động lưu" : "Lưu thất bại");
-    if (!response.ok) throw new Error("Save failed");
+    saveQueueRef.current = operation;
+    await operation;
+    if (!silent) setStatus("Đã lưu");
   }
 
   async function save(questionId: string, value: unknown) {
     const next = { ...answersRef.current, [questionId]: value };
     answersRef.current = next;
+    dirtyRef.current.add(questionId);
     setAnswers(next);
     try {
       await persistAnswer(questionId, value);
     } catch {
       setStatus("Lưu thất bại, hệ thống sẽ thử lại khi tự động lưu");
-      dirtyRef.current.add(questionId);
     }
   }
 
