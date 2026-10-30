@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { lockAttempt, isAttemptExpired } from "@/lib/attempt-lock";
 import { prisma } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk, readJson, requireUser } from "@/lib/api";
 
@@ -17,13 +18,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { id } = await params;
     const payload = helperSchema.parse(await readJson<unknown>(request));
 
-    const attempt = await prisma.attempt.findFirst({
+    const result = await prisma.$transaction(async (tx) => {
+    const attempt = await lockAttempt(tx, id, user.id);
+    const exam = await tx.exam.findUniqueOrThrow({ where: { id: attempt.examId }, select: { durationMinutes: true } });
+    if (attempt.status !== "IN_PROGRESS" || isAttemptExpired(attempt, exam.durationMinutes)) throw new HttpError(409, "Bài thi đã hết hạn hoặc đã nộp.");
+    /* previously: const attempt = await prisma.attempt.findFirst({
       where: { id, userId: user.id, status: "IN_PROGRESS" },
       select: { id: true, examId: true },
     });
-    if (!attempt) throw new HttpError(404, "Không tìm thấy bài làm đang mở.");
+    */
 
-    const purchase = await prisma.storePurchase.findFirst({
+    const purchase = await tx.storePurchase.findFirst({
       where: {
         userId: user.id,
         itemId: payload.itemId,
@@ -46,9 +51,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (kind === "extraTime") {
       const minutes = Number(metadata.minutes ?? 5);
       result.seconds = Math.max(60, Math.min(20 * 60, minutes * 60));
+      await tx.attempt.update({ where: { id }, data: { extraSeconds: { increment: result.seconds as number } } });
     } else if (kind === "fiftyFifty") {
       if (!payload.questionId) throw new HttpError(400, "Cần chọn câu hỏi để dùng 50/50.");
-      const question = await prisma.question.findFirst({
+      const question = await tx.question.findFirst({
         where: { id: payload.questionId, examId: attempt.examId, type: "SINGLE_CHOICE" },
         include: { answerOptions: { orderBy: { label: "asc" } } },
       });
@@ -64,8 +70,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       result.message = "Đã kích hoạt Bùa hộ mệnh cho câu hiện tại.";
     }
 
-    await prisma.storePurchase.delete({ where: { id: purchase.id } });
+    await tx.storePurchase.delete({ where: { id: purchase.id } });
 
+    return result;
+    }, { timeout: 10000, maxWait: 10000 });
     return jsonOk(result);
   } catch (error) {
     return handleRouteError(error);

@@ -93,6 +93,8 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
   const [answers, setAnswers] = useState<Record<string, unknown>>(() => Object.fromEntries(initialAnswers.map((answer) => [answer.questionId, answer.value])));
   const answersRef = useRef<Record<string, unknown>>(answers);
   const dirtyRef = useRef<Set<string>>(new Set());
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const submittingRef = useRef(false);
   const [marked, setMarked] = useState<Set<string>>(new Set());
   const [status, setStatus] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -155,31 +157,39 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
       Promise.all(dirtyIds.map((questionId) => persistAnswer(questionId, answersRef.current[questionId], true)))
         .then(() => setStatus("Đã tự động lưu"))
         .catch(() => setStatus("Tự động lưu thất bại"));
-    }, 30000);
+    }, 10000);
     return () => window.clearInterval(autosave);
   }, [attemptId]);
 
   async function persistAnswer(questionId: string, value: unknown, silent = false) {
     if (!silent) setStatus("Đang lưu...");
-    const response = await fetch(`/api/attempts/${attemptId}/answers`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ questionId, value }),
+    // Serialize saves so a delayed old request cannot overwrite a newer response.
+    const operation = saveQueueRef.current.catch(() => undefined).then(async () => {
+      const response = await fetch(`/api/attempts/${attemptId}/answers`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questionId, value }),
+      });
+      if (!response.ok) throw new Error("Save failed");
+      // Only mark saved if this is still the user's latest edit.
+      if (JSON.stringify(answersRef.current[questionId]) === JSON.stringify(value)) {
+        dirtyRef.current.delete(questionId);
+      }
     });
-    if (response.ok) dirtyRef.current.delete(questionId);
-    if (!silent) setStatus(response.ok ? "Đã tự động lưu" : "Lưu thất bại");
-    if (!response.ok) throw new Error("Save failed");
+    saveQueueRef.current = operation;
+    await operation;
+    if (!silent) setStatus("Đã lưu");
   }
 
   async function save(questionId: string, value: unknown) {
     const next = { ...answersRef.current, [questionId]: value };
     answersRef.current = next;
+    dirtyRef.current.add(questionId);
     setAnswers(next);
     try {
       await persistAnswer(questionId, value);
     } catch {
       setStatus("Lưu thất bại, hệ thống sẽ thử lại khi tự động lưu");
-      dirtyRef.current.add(questionId);
     }
   }
 
@@ -188,7 +198,7 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
     answersRef.current = next;
     dirtyRef.current.add(questionId);
     setAnswers(next);
-    setStatus("Đã ghi nháp, hệ thống sẽ tự động lưu mỗi 30 giây");
+    setStatus("Đã ghi nháp, hệ thống sẽ tự động lưu mỗi 10 giây");
   }
 
   async function activateHelper(helper: HelperItem) {
@@ -218,6 +228,8 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
     if (submitting) return;
     setSubmitting(true);
     setStatus("Đang nộp bài...");
+    // Drain pending writes before collecting unsaved changes.
+    await saveQueueRef.current.catch(() => undefined);
     const dirtyIds = Array.from(dirtyRef.current);
     if (dirtyIds.length) {
       try {
@@ -386,7 +398,7 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
                     {question.type === "SHORT_ANSWER" ? (
                       <div className="mt-6">
                         <label className="text-sm font-black uppercase tracking-wide text-slate-500">Trả lời ngắn</label>
-                        <input className="mt-3 w-full rounded-2xl border-2 border-slate-200 px-4 py-3 text-base font-bold outline-none focus:border-orange-400" value={(value as string) ?? ""} onChange={(event) => void save(question.id, event.target.value)} placeholder="Nhập câu trả lời" />
+                        <input className="mt-3 w-full rounded-2xl border-2 border-slate-200 px-4 py-3 text-base font-bold outline-none focus:border-orange-400" value={(value as string) ?? ""} onChange={(event) => updateDraft(question.id, event.target.value)} placeholder="Nhập câu trả lời" />
                       </div>
                     ) : null}
 
@@ -395,7 +407,7 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
                         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3">
                           <div>
                             <p className="font-black text-slate-900">Khung soạn thảo tự luận</p>
-                            <p className="text-xs font-semibold text-slate-400">Bài viết được tự động lưu mỗi 30 giây.</p>
+                            <p className="text-xs font-semibold text-slate-400">Bài viết được tự động lưu mỗi 10 giây.</p>
                           </div>
                           <span className="rounded-full bg-orange-50 px-4 py-2 text-sm font-black text-orange-600">{countWords(value)} từ</span>
                         </div>
@@ -542,7 +554,7 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
                   {question.type === "SHORT_ANSWER" ? (
                     <div className="mt-8">
                       <label className="text-sm font-black uppercase tracking-wide text-slate-500">Đáp án trả lời ngắn</label>
-                      <input className="mt-3 w-full rounded-2xl border-2 border-slate-200 px-4 py-3 text-base font-bold outline-none focus:border-orange-400" value={(value as string) ?? ""} onChange={(event) => void save(question.id, event.target.value)} placeholder="Nhập đáp án" />
+                      <input className="mt-3 w-full rounded-2xl border-2 border-slate-200 px-4 py-3 text-base font-bold outline-none focus:border-orange-400" value={(value as string) ?? ""} onChange={(event) => updateDraft(question.id, event.target.value)} placeholder="Nhập đáp án" />
                     </div>
                   ) : null}
 
@@ -551,7 +563,7 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
                       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3">
                         <div>
                           <p className="font-black text-slate-900">Khung soạn thảo tự luận</p>
-                          <p className="text-xs font-semibold text-slate-400">Bài viết được tự động lưu mỗi 30 giây.</p>
+                          <p className="text-xs font-semibold text-slate-400">Bài viết được tự động lưu mỗi 10 giây.</p>
                         </div>
                         <span className="rounded-full bg-orange-50 px-4 py-2 text-sm font-black text-orange-600">{countWords(value)} từ</span>
                       </div>
