@@ -1,0 +1,42 @@
+name: One-time read-only moderate dependency audit refresh
+on:
+  push:
+    branches: [improve/security-performance]
+    paths: [.github/workflows/audit-refresh-verify.yml]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: build-only-placeholder-not-for-runtime
+      DATABASE_URL: postgresql://postgres:build-only@127.0.0.1:5432/eduva?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Update vulnerable transitive packages in lockfile only
+        run: |
+          npm ci
+          npm audit fix --package-lock-only
+          node -e "const p=require('./package-lock.json'); console.log('BASELINE_UPDATED_VERSION='+p.packages['node_modules/baseline-browser-mapping'].version)"
+      - name: Validate patched lockfile and existing software
+        run: |
+          npm ci
+          npm run db:generate
+          npx tsc --noEmit -p tsconfig.ci.json
+          npm test
+          npm run build
+          npm audit --omit=dev --audit-level=moderate
+      - name: Emit verified lockfile for controlled commit review
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const text = fs.readFileSync('package-lock.json').toString('base64');
+          for (let index = 0; index < text.length; index += 3000)
+            console.log('VERIFIED_LOCK_' + String(index / 3000).padStart(4, '0') + ':' + text.slice(index, index + 3000));
+          NODE
