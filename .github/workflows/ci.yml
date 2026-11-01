@@ -42,6 +42,10 @@ jobs:
           node --check admin-server/image-file-validation.js
           node --check src/lib/security-throttle.js
           node --check src/lib/document-file-validation.js
+          node --check src/lib/document-malware-scan.js
+          node --check src/lib/private-document-storage.js
+          node --check scripts/migrate-document-storage.js
+          node --check scripts/public-launch-preflight.js
           node --check src/lib/payment-transition.js
 
       - name: TypeScript check
