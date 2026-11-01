@@ -24,7 +24,7 @@ export function parseDelimited(text: string, separator: "," | "\t" = ","): strin
   let row: string[] = [];
   let field = "";
   let quoted = false;
-  for (let i = 0; i < text.length; i++) {
+  for (let i = text.charCodeAt(0) === 0xFEFF ? 1 : 0; i < text.length; i++) {
     const ch = text[i];
     if (ch === '"') {
       if (quoted && text[i + 1] === '"') { field += '"'; i++; }
