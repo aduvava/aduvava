@@ -22,8 +22,9 @@ jobs:
       - name: Update vulnerable transitive packages in lockfile only
         run: |
           npm ci
+          npm install --save-dev --save-exact postcss@8.5.32
           npm audit fix --package-lock-only
-          node -e "const p=require('./package-lock.json'); console.log('BASELINE_UPDATED_VERSION='+p.packages['node_modules/baseline-browser-mapping'].version)"
+          node -e "const p=require('./package-lock.json'); console.log('BASELINE_UPDATED_VERSION='+p.packages['node_modules/baseline-browser-mapping'].version); console.log('POSTCSS_UPDATED_VERSION='+p.packages['node_modules/postcss'].version)"
       - name: Validate patched lockfile and existing software
         run: |
           npm ci
@@ -31,12 +32,14 @@ jobs:
           npx tsc --noEmit -p tsconfig.ci.json
           npm test
           npm run build
-          npm audit --omit=dev --audit-level=moderate
+          npm audit --audit-level=moderate
       - name: Emit verified lockfile for controlled commit review
         run: |
           node - <<'NODE'
           const fs = require('node:fs');
-          const text = fs.readFileSync('package-lock.json').toString('base64');
-          for (let index = 0; index < text.length; index += 3000)
-            console.log('VERIFIED_LOCK_' + String(index / 3000).padStart(4, '0') + ':' + text.slice(index, index + 3000));
+          for (const [kind, file] of [['PACKAGE', 'package.json'], ['LOCK', 'package-lock.json']]) {
+            const text = fs.readFileSync(file).toString('base64');
+            for (let index = 0; index < text.length; index += 3000)
+              console.log('VERIFIED_' + kind + '_' + String(index / 3000).padStart(4, '0') + ':' + text.slice(index, index + 3000));
+          }
           NODE
