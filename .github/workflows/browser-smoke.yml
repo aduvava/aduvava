@@ -1,0 +1,70 @@
+name: Chromium browser smoke
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chromium-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser:
+    name: Desktop and mobile browser acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: eduva_browser_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d eduva_browser_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/eduva_browser_ci?schema=public
+      NEXTAUTH_URL: http://127.0.0.1:3000
+      NEXTAUTH_SECRET: isolated-chromium-ci-only-not-for-production
+      NEXT_TELEMETRY_DISABLED: '1'
+      DOCUMENT_SCAN_REQUIRED: 'false'
+      BROWSER_SMOKE_CI_ONLY: 'yes'
+      BROWSER_SMOKE_URL: http://127.0.0.1:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install, migrate disposable DB and compile production app
+        run: |
+          npm ci
+          npm run db:generate
+          npx prisma migrate deploy
+          npm run build
+      - name: Install pinned Chromium test harness without changing project lockfile
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Start local app and run browser acceptance
+        shell: bash
+        run: |
+          npm run start -- --port 3000 > /tmp/eduva-browser-app.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true; tail -100 /tmp/eduva-browser-app.log' EXIT
+          ready=0
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail http://127.0.0.1:3000/api/auth/csrf >/dev/null; then ready=1; break; fi
+            sleep 2
+          done
+          if [ "$ready" != 1 ]; then echo 'Server startup timed out'; exit 1; fi
+          node scripts/browser-smoke.js
