@@ -32,6 +32,24 @@ async function request(path: string, init: RequestInit = {}, jar?: Jar) {
   if (jar) storeCookies(response, jar);
   return response;
 }
+const adminBase = process.env.SMOKE_ADMIN_BASE_URL ?? "http://127.0.0.1:4000";
+async function adminRequest(path: string, init: RequestInit = {}, jar?: Jar) {
+  const headers = new Headers(init.headers);
+  if (jar?.size) headers.set("cookie", Array.from(jar, ([key, value]) => `${key}=${value}`).join("; "));
+  const response = await fetch(new URL(path, adminBase), { ...init, headers, redirect: "manual" });
+  if (jar) storeCookies(response, jar);
+  return response;
+}
+async function postAdminForm(path: string, body: Record<string, string>, jar?: Jar, trusted = true) {
+  return adminRequest(path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      ...(trusted ? { Origin: adminBase } : {}),
+    },
+    body: new URLSearchParams(body).toString(),
+  }, jar);
+}
 async function assertStatus(response: Response, expected: number, operation: string) {
   if (response.status !== expected) {
     const body = (await response.text()).slice(0, 1200);
@@ -216,6 +234,32 @@ async function run() {
     await assertStatus(paidAgain, 200, "repeat payment confirmation must be idempotent");
     assert.equal(await prisma.subscription.count({ where: { userId: studentId } }), 1,
       "repeated payment confirmation must not extend VIP");
+    console.log("SMOKE: standalone Admin also uses atomic VIP confirmation with CSRF protection");
+    const adminJar = cookies();
+    const adminLogin = await postAdminForm("/login", { email: adminEmail, password }, adminJar);
+    await assertStatus(adminLogin, 303, "standalone Admin login");
+    assert.ok(adminJar.has("ava_admin_session"), "standalone session cookie was not set");
+    const secondCheckout = await postJson("/api/payments/checkout", { planId }, studentAuth.jar);
+    await assertStatus(secondCheckout, 201, "second pending VIP checkout");
+    const secondData = await secondCheckout.json() as { payment: { id: string } };
+    const csrfBlocked = await postAdminForm(
+      `/payments/${secondData.payment.id}/status`, { status: "PAID" }, adminJar, false,
+    );
+    await assertStatus(csrfBlocked, 403, "reject cross-origin/missing-Origin bank approval");
+    assert.equal((await prisma.payment.findUniqueOrThrow({ where: { id: secondData.payment.id } })).status, "PENDING");
+    const approveSecond = await postAdminForm(
+      `/payments/${secondData.payment.id}/status`, { status: "PAID" }, adminJar,
+    );
+    await assertStatus(approveSecond, 303, "standalone Admin manual bank approval");
+    assert.equal((await prisma.payment.findUniqueOrThrow({ where: { id: secondData.payment.id } })).status, "PAID");
+    assert.equal(await prisma.subscription.count({ where: { userId: studentId } }), 2);
+    const approveSecondAgain = await postAdminForm(
+      `/payments/${secondData.payment.id}/status`, { status: "PAID" }, adminJar,
+    );
+    await assertStatus(approveSecondAgain, 303, "standalone repeated payment verification");
+    assert.equal(await prisma.subscription.count({ where: { userId: studentId } }), 2,
+      "repeated confirmation on standalone Admin must not create a third subscription");
+
     const reversal = await postJson(`/api/admin/payments/${result.payment?.id}`, { status: "FAILED" }, adminAuth.jar, "PUT");
     await assertStatus(reversal, 409, "paid payment must not be reverted without reconciliation");
     const unlockedPro = await request(`/api/exams/${proExam.id}`, {}, studentAuth.jar);
