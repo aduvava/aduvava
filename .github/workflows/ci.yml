@@ -35,6 +35,12 @@ jobs:
       - name: Generate Prisma Client
         run: npm run db:generate
 
+      - name: Syntax-check standalone Admin and shared payment service
+        run: |
+          node --check admin-server/server.js
+          node --check admin-server/request-security.js
+          node --check src/lib/payment-transition.js
+
       - name: TypeScript check
         run: npx tsc --noEmit -p tsconfig.ci.json
 
