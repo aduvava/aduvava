@@ -18,7 +18,7 @@ async function listResource(resource: string) {
     case "subscriptions":
       return prisma.subscription.findMany({ include: { user: { select: { id: true, email: true, name: true, role: true } }, plan: true }, orderBy: { createdAt: "desc" } });
     case "payments":
-      return prisma.payment.findMany({ include: { user: true, plan: true }, orderBy: { createdAt: "desc" } });
+      return prisma.payment.findMany({ include: { user: { select: { id: true, email: true, name: true, role: true } }, plan: true }, orderBy: { createdAt: "desc" } });
     case "plans":
       return prisma.plan.findMany({ orderBy: [{ price: "asc" }, { createdAt: "asc" }] });
     case "store-items":
