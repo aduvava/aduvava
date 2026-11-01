@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { ZodError } from "zod";
+import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
@@ -35,12 +37,15 @@ export async function requireUser() {
 
 export async function requireAdmin() {
   const user = await requireUser();
-  if (user.role !== "ADMIN") throw new HttpError(403, "Admin access required");
+  // Recheck the role in the database so revoked admins cannot keep using stale JWTs.
+  const current = await prisma.user.findUnique({ where: { id: user.id }, select: { role: true } });
+  if (current?.role !== "ADMIN") throw new HttpError(403, "Admin access required");
   return user;
 }
 
 export function handleRouteError(error: unknown) {
   if (error instanceof HttpError) return jsonError(error.message, error.status);
+  if (error instanceof ZodError) return jsonError("Invalid request payload", 400);
   console.error(error);
   return jsonError("Unexpected server error", 500);
 }
