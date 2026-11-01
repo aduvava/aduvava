@@ -6,6 +6,8 @@ import assert from "node:assert/strict";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import { unlink } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { documentStoredPath, documentStorageDirectory } from "../src/lib/private-document-storage";
 import { join } from "node:path";
 import { consumeSecurityThrottle, throttleKey, TooManyRequestsError } from "../src/lib/security-throttle";
 
@@ -194,6 +196,9 @@ async function run() {
     createdDocumentIds.push(uploadedResult.document.id);
     const docRecord = await prisma.document.findUniqueOrThrow({ where: { id: uploadedResult.document.id } });
     uploadedFiles.push(docRecord.storedName);
+    assert.ok(existsSync(documentStoredPath(docRecord.storedName)), "uploaded PDF must be in private storage");
+    assert.ok(!existsSync(join(process.cwd(), "public", "uploads", "documents", docRecord.storedName)),
+      "new upload must never exist within public assets");
     const unauthorizedDocument = await request(`/api/documents/${docRecord.id}/file`);
     // The uploader can access their own pending file. Unauthenticated access is always denied.
     assert.ok([401, 302, 307, 308].includes(unauthorizedDocument.status));
@@ -360,7 +365,7 @@ async function run() {
   } finally {
     // Completely disposable test database: cleanup even if an assertion fails.
     if (createdDocumentIds.length) await prisma.document.deleteMany({ where: { id: { in: createdDocumentIds } } });
-    for (const name of uploadedFiles) await unlink(join(process.cwd(), "public", "uploads", "documents", name)).catch(() => undefined);
+    for (const name of uploadedFiles) await unlink(documentStoredPath(name)).catch(() => undefined);
     await prisma.leadMessage.deleteMany({ where: { email: contactEmail } });
     if (createdExamIds.length) {
       await prisma.exam.deleteMany({ where: { id: { in: createdExamIds } } });
