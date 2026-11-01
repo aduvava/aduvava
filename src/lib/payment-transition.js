@@ -4,6 +4,14 @@
 // interfaces. Never mark a payment as PAID before its subscription is committed.
 const VALID_STATUSES = new Set(["PENDING", "PAID", "FAILED"]);
 
+class PaymentTransitionError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.name = "PaymentTransitionError";
+    this.status = status;
+  }
+}
+
 function planMonths(interval) {
   if (interval === "QUARTER") return 3;
   if (interval === "YEAR") return 12;
@@ -35,7 +43,7 @@ function asMetadata(value) {
  * are retried, but other errors are rethrown without changing payment state.
  */
 async function transitionManualPayment(db, paymentId, nextStatus) {
-  if (!VALID_STATUSES.has(nextStatus)) throw new Error("Invalid payment status");
+  if (!VALID_STATUSES.has(nextStatus)) throw new PaymentTransitionError(400, "Invalid payment status");
 
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
@@ -44,33 +52,33 @@ async function transitionManualPayment(db, paymentId, nextStatus) {
           where: { id: paymentId },
           include: { plan: true },
         });
-        if (!current) throw new Error("Payment not found");
+        if (!current) throw new PaymentTransitionError(404, "Payment not found");
         if (current.provider !== "manual-bank-transfer") {
-          throw new Error("Only manual bank transfer payments can be confirmed here");
+          throw new PaymentTransitionError(409, "Only manual bank transfer payments can be confirmed here");
         }
 
         const metadata = asMetadata(current.metadata);
         if (current.status === "PAID") {
           if (nextStatus !== "PAID") {
-            throw new Error("Settled payments cannot be reset or reversed");
+            throw new PaymentTransitionError(409, "Settled payments cannot be reset or reversed");
           }
           // Legacy PAID payments were not fully atomic and lack a stable
           // subscription link. Do not grant another VIP without reconciliation.
           if (typeof metadata.vipSubscriptionId !== "string") {
-            throw new Error("Legacy paid payment requires manual VIP reconciliation");
+            throw new PaymentTransitionError(409, "Legacy paid payment requires manual VIP reconciliation");
           }
           const linked = await tx.subscription.findUnique({
             where: { id: metadata.vipSubscriptionId },
             select: { id: true, userId: true, planId: true },
           });
           if (!linked || linked.userId !== current.userId || linked.planId !== current.planId) {
-            throw new Error("Paid payment has no matching VIP subscription");
+            throw new PaymentTransitionError(409, "Paid payment has no matching VIP subscription");
           }
           return { payment: current, activated: false, subscriptionId: linked.id };
         }
 
         if (metadata.adminVipActivatedAt || metadata.vipSubscriptionId) {
-          throw new Error("Payment already has an activation marker; reconcile manually");
+          throw new PaymentTransitionError(409, "Payment already has an activation marker; reconcile manually");
         }
 
         if (nextStatus !== "PAID") {
@@ -127,4 +135,4 @@ async function transitionManualPayment(db, paymentId, nextStatus) {
   throw new Error("Payment confirmation failed after transaction retries");
 }
 
-module.exports = { transitionManualPayment, extendUtcMonths };
+module.exports = { transitionManualPayment, extendUtcMonths, PaymentTransitionError };
