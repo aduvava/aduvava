@@ -1,11 +1,13 @@
 import bcrypt from "bcryptjs";
 import { registerSchema } from "@/lib/registration";
 import { prisma } from "@/lib/db";
+import { rateLimitOperation } from "@/lib/security-throttle";
 import { handleRouteError, HttpError, jsonOk, readJson } from "@/lib/api";
 
 export async function POST(request: Request) {
   try {
     const payload = registerSchema.parse(await readJson<unknown>(request));
+    await rateLimitOperation(prisma, "register", payload.email, request.headers);
     const existing = await prisma.user.findUnique({ where: { email: payload.email } });
     if (existing) throw new HttpError(409, "Email already exists");
 
