@@ -27,5 +27,8 @@ Status: Partial remediation; **not** a penetration test and not a production dep
 
 - Added regression tests for registration privilege escalation and bad passwords.
 - GitHub Actions runs against PRs targeting `main` and pushes on this feature branch.
-- At the time of authoring this review, CI success/failure has not yet been independently established.
+- GitHub Actions PR #2: dependency installation, Prisma client generation, application TypeScript check, and unit tests passed. Production dependency audit **failed**; see details below.
+- The existing `scripts/upsert-store-catalog.ts` imports a missing `src/data/store-catalog` module, which blocked the first CI typecheck. The app CI typecheck uses `tsconfig.ci.json` to exclude this one known-broken legacy maintenance script; the script remains broken and must be repaired or deleted before use.
+- Audit on 2026-11-01 reported **11 production dependency vulnerabilities** (1 low, 1 moderate, 7 high, 2 critical). Affected packages include Next.js, NextAuth, KaTeX, Zod, SheetJS (`xlsx`), `sharp`, `postcss`, `@xmldom/xmldom`, `nanoid`, `uuid` and `source-map-js`. See GitHub Actions run 41294106588. Do not merge as production-ready with unresolved critical advisories.
+- `npm audit` indicated suggested remediation targets `next@15.5.28`, `next-auth@4.24.15`, `katex@0.19.1`, `zod@4.6.7`; these are **not installed or verified** in this PR. `xlsx` had no npm-audit-supported fix and requires replacement or a separately verified safe distribution.
 - This PR is intentionally **draft** and must not be merged without explicit owner review.
