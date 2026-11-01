@@ -71,7 +71,7 @@ const schemas = {
     imageKey: text(200), badge: optionalText(200),
     isFeatured: z.boolean(), isConsumable: z.boolean(), isActive: z.boolean(),
     stock: positiveInt.nullable(), sortOrder: z.number().int(),
-    metadata: z.record(z.unknown()).nullable(),
+    metadata: z.record(z.string(), z.unknown()).nullable(),
   }),
   "theory-chapters": z.object({
     subjectId: id, educationLevel: z.enum(["THCS", "THPT", "EXAM_10", "THPTQG"]).nullable(),
