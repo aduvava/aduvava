@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
+import { validateDocumentBuffer, InvalidDocumentError, MAX_FILE_SIZE } from "@/lib/document-file-validation";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { rateLimitOperation } from "@/lib/security-throttle";
@@ -9,13 +10,6 @@ import { handleRouteError, HttpError, jsonOk, requireUser } from "@/lib/api";
 
 export const runtime = "nodejs";
 
-const MAX_FILE_SIZE = 15 * 1024 * 1024;
-const allowedExtensions = new Set([".pdf", ".docx", ".pptx"]);
-const allowedMimeTypes = new Set([
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-]);
 
 const metadataSchema = z.object({
   title: z.string().trim().min(5).max(180),
@@ -117,23 +111,22 @@ export async function POST(request: Request) {
     if (!(file instanceof File)) throw new HttpError(400, "Vui lòng đính kèm tài liệu.");
     if (!file.size || file.size > MAX_FILE_SIZE) throw new HttpError(400, "Tệp phải nhỏ hơn hoặc bằng 15MB.");
 
-    const extension = path.extname(file.name).toLowerCase();
-    if (!allowedExtensions.has(extension) || (file.type && !allowedMimeTypes.has(file.type))) {
-      throw new HttpError(400, "Chỉ hỗ trợ PDF, DOCX và PPTX.");
+    // Ignore extensions and browser-supplied MIME claims until content is verified.
+    const buffer = Buffer.from(await file.arrayBuffer());
+    let verified;
+    try {
+      verified = validateDocumentBuffer(buffer, file.name, file.type);
+    } catch (error) {
+      if (error instanceof InvalidDocumentError) throw new HttpError(400, error.message);
+      throw error;
     }
-    const mimeType = file.type || (
-      extension === ".pdf"
-        ? "application/pdf"
-        : extension === ".docx"
-          ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          : "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-    );
+    const { extension, mimeType } = verified;
 
     const storedName = `${randomUUID()}${extension}`;
     const uploadDirectory = path.join(process.cwd(), "public", "uploads", "documents");
     await mkdir(uploadDirectory, { recursive: true });
     const storedPath = path.join(uploadDirectory, storedName);
-    await writeFile(storedPath, Buffer.from(await file.arrayBuffer()));
+    await writeFile(storedPath, buffer, { flag: "wx" });
 
     let document;
     try {
