@@ -5,6 +5,7 @@ const path = require("path");
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
 const { createCsv } = require("./csv-export");
+const { transitionManualPayment } = require("../src/lib/payment-transition.js");
 
 loadEnv(path.join(__dirname, "..", ".env"));
 
@@ -1872,28 +1873,6 @@ function parsePlanForm(form) {
   };
 }
 
-async function activateVipFromPayment(payment) {
-  const plan = payment.plan || await prisma.plan.findUnique({ where: { id: payment.planId } });
-  if (!plan) throw new Error("Không tìm thấy gói VIP của giao dịch");
-  const now = new Date();
-  const latestActive = await prisma.subscription.findFirst({
-    where: { userId: payment.userId, status: "ACTIVE", endsAt: { gt: now } },
-    orderBy: { endsAt: "desc" },
-  });
-  const startsAt = latestActive?.endsAt && latestActive.endsAt > now ? latestActive.endsAt : now;
-  const endsAt = new Date(startsAt);
-  endsAt.setMonth(endsAt.getMonth() + planDurationMonths(plan.interval));
-  await prisma.subscription.create({
-    data: {
-      userId: payment.userId,
-      planId: payment.planId,
-      status: "ACTIVE",
-      startsAt,
-      endsAt,
-    },
-  });
-}
-
 async function activateVipForUser(userId, planId) {
   const [targetUser, plan] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, email: true } }),
@@ -2071,30 +2050,15 @@ async function updatePaymentStatus(req, res, id) {
     const form = await readForm(req);
     const nextStatus = String(form.get("status") || "");
     if (!paymentStatuses.includes(nextStatus)) throw new Error("Trạng thái giao dịch không hợp lệ");
-    const current = await prisma.payment.findUnique({ where: { id }, include: { plan: true, user: true } });
-    if (!current) throw new Error("Không tìm thấy giao dịch");
-    const metadata = current.metadata && typeof current.metadata === "object" && !Array.isArray(current.metadata) ? current.metadata : {};
-    const shouldActivateVip = nextStatus === "PAID" && current.status !== "PAID" && !metadata.adminVipActivatedAt;
-    const payment = await prisma.payment.update({
-      where: { id },
-      data: {
-        status: nextStatus,
-        ...(shouldActivateVip ? { metadata: { ...metadata, adminVipActivatedAt: new Date().toISOString() } } : {}),
-      },
-      include: { plan: true, user: true },
-    });
-    if (shouldActivateVip) {
-      await activateVipFromPayment(payment);
-      await prisma.notification.create({
-        data: {
-          userId: payment.userId,
-          title: "Gói VIP đã được kích hoạt",
-          message: `Giao dịch ${payment.reference} đã được duyệt. Gói ${payment.plan?.name || "VIP"} đã được cộng vào tài khoản.`,
-          href: "/vip",
-        },
-      }).catch(() => null);
-    }
-    redirect(res, `/payments?notice=${encodeURIComponent(nextStatus === "PAID" ? "Đã cập nhật giao dịch và kích hoạt VIP" : "Đã cập nhật trạng thái giao dịch")}`);
+    // Same atomic, serializable settlement path as the integrated Admin API.
+    // A failed subscription creation leaves the payment PENDING/FAILED, not PAID.
+    const result = await transitionManualPayment(prisma, id, nextStatus);
+    const message = result.activated
+      ? "Đã xác nhận giao dịch và kích hoạt VIP"
+      : nextStatus === "PAID"
+        ? "Giao dịch đã được xác nhận trước đó, không cấp VIP lần nữa"
+        : "Đã cập nhật trạng thái giao dịch";
+    redirect(res, `/payments?notice=${encodeURIComponent(message)}`);
   } catch (error) {
     redirect(res, `/payments?notice=${encodeURIComponent(error.message || "Không thể cập nhật giao dịch")}`);
   }
