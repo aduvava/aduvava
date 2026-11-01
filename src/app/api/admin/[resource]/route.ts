@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { parseAdminInput } from "@/lib/admin-input";
 import { prisma } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk, readJson, requireAdmin } from "@/lib/api";
 
@@ -15,7 +16,7 @@ async function listResource(resource: string) {
     case "users":
       return prisma.user.findMany({ select: { id: true, email: true, name: true, role: true, createdAt: true, profile: true }, orderBy: { createdAt: "desc" } });
     case "subscriptions":
-      return prisma.subscription.findMany({ include: { user: true, plan: true }, orderBy: { createdAt: "desc" } });
+      return prisma.subscription.findMany({ include: { user: { select: { id: true, email: true, name: true, role: true } }, plan: true }, orderBy: { createdAt: "desc" } });
     case "payments":
       return prisma.payment.findMany({ include: { user: true, plan: true }, orderBy: { createdAt: "desc" } });
     case "plans":
@@ -49,7 +50,7 @@ async function createResource(resource: string, body: Record<string, unknown>) {
     case "blogs":
       return prisma.blogPost.create({ data: body as never });
     case "users": {
-      const password = typeof body.password === "string" ? body.password.trim() : "";
+      const password = typeof body.password === "string" ? body.password : "";
       if (password.length < 8) throw new HttpError(400, "Mật khẩu phải có ít nhất 8 ký tự");
       return prisma.user.create({
         data: {
@@ -93,7 +94,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ res
   try {
     const { resource } = await params;
     await requireAdmin();
-    const body = await readJson<Record<string, unknown>>(request);
+    const input = await readJson<unknown>(request);
+    const body = parseAdminInput(resource, input, "create");
     const item = await createResource(resource, body);
     return jsonOk({ item }, 201);
   } catch (error) {
