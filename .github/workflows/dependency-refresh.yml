@@ -1,0 +1,37 @@
+name: One-time dependency security refresh
+
+on:
+  push:
+    branches: [improve/security-performance]
+    paths: [.github/workflows/dependency-refresh.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-lockfile:
+    if: github.repository == 'aduvava/aduvava' && github.ref == 'refs/heads/improve/security-performance'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install patched versions without forcing major upgrades
+        run: |
+          npm ci
+          npm install --save-exact next@15.5.28 next-auth@4.24.15
+          npm audit fix --omit=dev || true
+      - name: Commit updated dependency manifests only on feature branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          if ! git diff --cached --quiet; then
+            git commit -m "security: update patched Next.js and NextAuth dependency lockfile"
+            git push origin HEAD:improve/security-performance
+          fi
