@@ -74,6 +74,8 @@ async function run() {
   let adminId: string | undefined;
   let studentId: string | undefined;
   let planId: string | undefined;
+  let subjectId: string | undefined;
+  const createdExamIds: string[] = [];
   try {
     console.log("SMOKE: public registration and auth with isolated PostgreSQL");
     const bad = await postJson("/api/auth/register", {
@@ -112,6 +114,14 @@ async function run() {
     assert.ok(deniedAdmin.status === 403 || (deniedAdmin.status >= 300 && deniedAdmin.status < 400),
       "student must not access admin API");
 
+    console.log("SMOKE: profile never leaks stored password hashes");
+    const profileResponse = await request("/api/profile", {}, studentAuth.jar);
+    await assertStatus(profileResponse, 200, "student profile");
+    const profileBody = await profileResponse.json() as { profile: Record<string, unknown> };
+    assert.equal(profileBody.profile.email, studentEmail);
+    assert.ok(!("passwordHash" in profileBody.profile), "never expose a bcrypt password hash");
+    assert.ok(!("accounts" in profileBody.profile), "never expose OAuth credentials");
+
     console.log("SMOKE: checkout creates pending payment without subscription");
     const checkout = await postJson("/api/payments/checkout", { planId }, studentAuth.jar);
     await assertStatus(checkout, 201, "manual checkout");
@@ -123,11 +133,95 @@ async function run() {
 
     const adminAuth = await login(adminEmail, password);
     assert.equal(adminAuth.session.user?.role, "ADMIN");
+
+    console.log("SMOKE: exam detail and discovery are protected against answer/key leaks");
+    const subject = await prisma.subject.create({
+      data: { slug: `smoke-subject-${nonce}`, name: "Test subject", description: "Integration tests only", family: "THPTQG" },
+    });
+    subjectId = subject.id;
+    const privateExam = await prisma.exam.create({
+      data: {
+        code: `SEC-PRIVATE-${nonce}`, slug: `smoke-private-${nonce}`,
+        title: "Private exam", description: "Only owner and grantees may read",
+        family: "THPTQG", type: "PRACTICE", accessLevel: "FREE",
+        year: 2026, durationMinutes: 30, subjectId, ownerId: adminId,
+        shareMode: "RESTRICTED", shareToken: `secret-${nonce}`,
+        isPublished: true, questions: { create: [{
+          type: "SINGLE_CHOICE", position: 1, prompt: "Private question?",
+          points: 1, correctText: "PRIVATE-ANSWER-SECRET", explanation: "PRIVATE-SOLUTION-SECRET",
+          answerOptions: { create: [
+            { label: "A", content: "First", isCorrect: true },
+            { label: "B", content: "Second", isCorrect: false },
+          ] },
+        }] },
+      },
+    });
+    createdExamIds.push(privateExam.id);
+    const proExam = await prisma.exam.create({
+      data: {
+        code: `SEC-PRO-${nonce}`, slug: `smoke-pro-${nonce}`,
+        title: "Pro exam", description: "Only VIP may read questions",
+        family: "THPTQG", type: "MOCK", accessLevel: "PRO",
+        year: 2026, durationMinutes: 30, subjectId, shareMode: "PUBLIC", isPublished: true,
+        questions: { create: [{ type: "SINGLE_CHOICE", position: 1, prompt: "Pro question?",
+          points: 1, correctText: "PRO-SECRET", explanation: "PRO-SOLUTION",
+          answerOptions: { create: [{ label: "A", content: "Yes", isCorrect: true },
+            { label: "B", content: "No", isCorrect: false }] } }] },
+      },
+    });
+    createdExamIds.push(proExam.id);
+    const anonymousExam = await request(`/api/exams/${proExam.id}`);
+    await assertStatus(anonymousExam, 401, "anonymous exam detail must require login");
+    const deniedPrivate = await request(`/api/exams/${privateExam.id}`, {}, studentAuth.jar);
+    await assertStatus(deniedPrivate, 403, "private exam detail without invitation");
+    const deniedPro = await request(`/api/exams/${proExam.id}`, {}, studentAuth.jar);
+    await assertStatus(deniedPro, 403, "PRO exam without subscription");
+    const catalog = await request("/api/exams", {}, studentAuth.jar);
+    await assertStatus(catalog, 200, "exam catalog");
+    const listed = await catalog.json() as { exams: Array<Record<string, unknown>> };
+    assert.ok(!listed.exams.some((exam) => exam.id === privateExam.id), "private exam must not appear in search");
+    assert.ok(listed.exams.some((exam) => exam.id === proExam.id), "public PRO exam can be listed without leaking questions");
+    assert.ok(!JSON.stringify(listed).includes(`secret-${nonce}`), "do not leak sharing tokens");
+    await prisma.examAccessGrant.create({ data: { examId: privateExam.id, userId: studentId } });
+    const grantedPrivate = await request(`/api/exams/${privateExam.id}`, {}, studentAuth.jar);
+    await assertStatus(grantedPrivate, 200, "private exam access granted by owner");
+    const grantedBody = await grantedPrivate.json() as { exam: Record<string, unknown> };
+    assert.ok(!("shareToken" in grantedBody.exam) && !("sharePasswordHash" in grantedBody.exam));
+    assert.ok(!JSON.stringify(grantedBody).includes("PRIVATE-ANSWER-SECRET"));
+    assert.ok(!JSON.stringify(grantedBody).includes("PRIVATE-SOLUTION-SECRET"));
+    assert.ok(!JSON.stringify(grantedBody).includes('"isCorrect"'));
+    const ownerPrivate = await request(`/api/exams/${privateExam.id}`, {}, adminAuth.jar);
+    await assertStatus(ownerPrivate, 200, "exam owner access");
     const adminRead = await request("/api/admin/payments", {}, adminAuth.jar);
     await assertStatus(adminRead, 200, "admin list payments");
     const body = await adminRead.json() as { items: Array<{ user: Record<string, unknown> }> };
     assert.ok(body.items.some((payment) => payment.user && !("passwordHash" in payment.user)),
       "admin response must never expose user password hashes");
+
+    console.log("SMOKE: only atomic reconciliation may mark payment PAID");
+    const createPaid = await postJson("/api/admin/payments", {
+      userId: studentId, planId, amount: 75000, status: "PAID",
+      provider: "manual-bank-transfer", reference: `BAD-PAID-${nonce}`,
+    }, adminAuth.jar);
+    await assertStatus(createPaid, 400, "reject direct paid-payment creation");
+    const paid = await postJson(`/api/admin/payments/${result.payment?.id}`, { status: "PAID" }, adminAuth.jar, "PUT");
+    await assertStatus(paid, 200, "atomic VIP payment settlement");
+    const settled = await prisma.payment.findUniqueOrThrow({ where: { id: result.payment!.id } });
+    assert.equal(settled.status, "PAID");
+    const marker = settled.metadata as Record<string, unknown> | null;
+    assert.ok(marker && typeof marker.vipSubscriptionId === "string", "must save linked VIP subscription ID");
+    assert.equal(await prisma.subscription.count({ where: { userId: studentId } }), 1,
+      "paid payment must activate exactly one VIP subscription");
+    const paidAgain = await postJson(`/api/admin/payments/${result.payment?.id}`, { status: "PAID" }, adminAuth.jar, "PUT");
+    await assertStatus(paidAgain, 200, "repeat payment confirmation must be idempotent");
+    assert.equal(await prisma.subscription.count({ where: { userId: studentId } }), 1,
+      "repeated payment confirmation must not extend VIP");
+    const reversal = await postJson(`/api/admin/payments/${result.payment?.id}`, { status: "FAILED" }, adminAuth.jar, "PUT");
+    await assertStatus(reversal, 409, "paid payment must not be reverted without reconciliation");
+    const unlockedPro = await request(`/api/exams/${proExam.id}`, {}, studentAuth.jar);
+    await assertStatus(unlockedPro, 200, "VIP subscription unlocks PRO exam");
+    const proBody = await unlockedPro.json();
+    assert.ok(!JSON.stringify(proBody).includes("PRO-SECRET"), "never send PRO answer key");
 
     const tamper = await postJson(`/api/admin/users/${studentId}`, { coins: 9999999 }, adminAuth.jar, "PUT");
     await assertStatus(tamper, 400, "reject mass assignment of coins");
@@ -138,10 +232,23 @@ async function run() {
     await assertStatus(promote, 200, "admin explicit teacher promotion");
     assert.equal((await prisma.user.findUniqueOrThrow({ where: { id: studentId } })).role, "TEACHER");
 
+    console.log("SMOKE: revoked teacher and admin lose Server Component access too");
+    const teacherAuth = await login(studentEmail, password);
+    assert.equal(teacherAuth.session.user?.role, "TEACHER");
+    const activeTeacher = await request("/teacher", {}, teacherAuth.jar);
+    await assertStatus(activeTeacher, 200, "teacher dashboard before revocation");
+    await prisma.user.update({ where: { id: studentId }, data: { role: "STUDENT" } });
+    const staleTeacher = await request("/teacher", {}, teacherAuth.jar);
+    assert.ok(staleTeacher.status === 307 || staleTeacher.status === 308,
+      "teacher dashboard must redirect after database role revocation");
+
     console.log("SMOKE: revoked admin role cannot use old authenticated JWT");
     await prisma.user.update({ where: { id: adminId }, data: { role: "STUDENT" } });
     const revoked = await request("/api/admin/users", {}, adminAuth.jar);
     await assertStatus(revoked, 403, "revoke admin while JWT still has ADMIN");
+    const revokedAdminPage = await request("/admin", {}, adminAuth.jar);
+    assert.ok(revokedAdminPage.status === 307 || revokedAdminPage.status === 308,
+      "server-rendered admin page must reject revoked JWT role");
     await prisma.user.update({ where: { id: adminId }, data: { role: "ADMIN" } });
 
     const privateAsset = await request("/uploads/documents/smoke-secret.pdf", {}, studentAuth.jar);
@@ -150,6 +257,10 @@ async function run() {
     console.log("SMOKE PASSED: register, credentials login, RBAC, checkout, admin fields, JWT revocation, uploads");
   } finally {
     // Completely disposable test database: cleanup even if an assertion fails.
+    if (createdExamIds.length) {
+      await prisma.exam.deleteMany({ where: { id: { in: createdExamIds } } });
+    }
+    if (subjectId) await prisma.subject.delete({ where: { id: subjectId } });
     if (studentId) {
       await prisma.payment.deleteMany({ where: { userId: studentId } });
       await prisma.subscription.deleteMany({ where: { userId: studentId } });
