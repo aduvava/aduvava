@@ -36,6 +36,9 @@ jobs:
       NEXTAUTH_SECRET: isolated-ci-sessions-only-do-not-use-in-production
       NEXT_TELEMETRY_DISABLED: '1'
       SMOKE_BASE_URL: http://127.0.0.1:3000
+      # Scanner behavior is unit-tested with a fake clamd TCP server; isolated
+      # integration uses only disposable sample PDF bytes, no real users.
+      DOCUMENT_SCAN_REQUIRED: 'false'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
