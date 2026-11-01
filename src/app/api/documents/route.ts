@@ -1,4 +1,6 @@
 import { randomUUID } from "crypto";
+import { documentStorageDirectory, documentStoredPath } from "@/lib/private-document-storage";
+import { scanDocumentBuffer } from "@/lib/document-malware-scan";
 import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { validateDocumentBuffer, InvalidDocumentError, MAX_FILE_SIZE } from "@/lib/document-file-validation";
@@ -121,11 +123,13 @@ export async function POST(request: Request) {
       throw error;
     }
     const { extension, mimeType } = verified;
+    // Scan before touching the filesystem or creating any approval-eligible DB row.
+    await scanDocumentBuffer(buffer);
 
     const storedName = `${randomUUID()}${extension}`;
-    const uploadDirectory = path.join(process.cwd(), "public", "uploads", "documents");
+    const uploadDirectory = documentStorageDirectory();
     await mkdir(uploadDirectory, { recursive: true });
-    const storedPath = path.join(uploadDirectory, storedName);
+    const storedPath = documentStoredPath(storedName);
     await writeFile(storedPath, buffer, { flag: "wx" });
 
     let document;
