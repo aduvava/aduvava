@@ -3,6 +3,7 @@ import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { rateLimitOperation } from "@/lib/security-throttle";
 import { documentCatalog, documentTypes } from "@/lib/document-catalog";
 import { handleRouteError, HttpError, jsonOk, requireUser } from "@/lib/api";
 
@@ -100,6 +101,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user = await requireUser();
+    await rateLimitOperation(prisma, "upload", user.id, request.headers);
     const formData = await request.formData();
     const payload = metadataSchema.parse({
       title: formData.get("title"),
