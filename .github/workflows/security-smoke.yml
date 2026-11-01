@@ -46,7 +46,7 @@ jobs:
         run: |
           npm ci
           npm run db:generate
-          npx prisma db push --skip-generate
+          npx prisma migrate deploy
       - name: Build server against isolated PostgreSQL
         run: npm run build
       - name: Start server and exercise registration, login, RBAC, payments, uploads
