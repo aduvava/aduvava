@@ -1,10 +1,12 @@
 import { prisma } from "@/lib/db";
+import { HttpError } from "@/lib/api";
+import { randomBytes } from "node:crypto";
 
 export async function createManualCheckout(userId: string, planId: string) {
   const plan = await prisma.plan.findUnique({ where: { id: planId } });
-  if (!plan) throw new Error("Plan not found");
+  if (!plan || !plan.isActive) throw new HttpError(404, "Subscription plan is not available");
 
-  const reference = `EDUVA-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  const reference = `EDUVA-${randomBytes(12).toString("hex").toUpperCase()}`;
   const payment = await prisma.payment.create({
     data: {
       userId,
