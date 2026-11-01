@@ -6,6 +6,7 @@ const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
 const { createCsv } = require("./csv-export");
 const { transitionManualPayment } = require("../src/lib/payment-transition.js");
+const { trustedPostOrigin, cookieSecuritySuffix } = require("./request-security");
 
 loadEnv(path.join(__dirname, "..", ".env"));
 
@@ -2416,7 +2417,7 @@ async function handleLogin(req, res) {
   sessions.set(token, { userId: user.id, expires: Date.now() + 1000 * 60 * 60 * 12 });
   res.writeHead(303, {
     Location: "/",
-    "Set-Cookie": `${sessionCookie}=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=43200`,
+    "Set-Cookie": `${sessionCookie}=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=43200${cookieSecuritySuffix(req)}`,
   });
   res.end();
 }
@@ -2578,6 +2579,12 @@ async function router(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || `localhost:${port}`}`);
   const pathname = url.pathname.replace(/\/+$/, "") || "/";
 
+  // Protect all state-changing Admin forms, including login and VIP approval.
+  if (req.method === "POST" && !trustedPostOrigin(req)) {
+    sendText(res, "Invalid request origin", 403);
+    return;
+  }
+
   if (pathname === "/health") {
     sendText(res, "ok");
     return;
@@ -2604,7 +2611,7 @@ async function router(req, res) {
     if (token) sessions.delete(token);
     res.writeHead(303, {
       Location: "/login",
-      "Set-Cookie": `${sessionCookie}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`,
+      "Set-Cookie": `${sessionCookie}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${cookieSecuritySuffix(req)}`,
     });
     res.end();
     return;
