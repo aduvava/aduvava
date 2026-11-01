@@ -1,38 +1,38 @@
-# Eduva — Phase 1 security review and Next.js 16 migration
+# Eduva — Phase 1 hardening and pre-public security gate
 
-**Date:** 2026-11-01  
+**Reviewed:** 2026-11-01  
 **Branch:** `improve/security-performance`  
 **Draft PR:** https://github.com/aduvava/aduvava/pull/2  
-**Release gate:** Do not merge or auto-merge without explicit owner approval.
+**Approval:** No merge or auto-merge into `main` until explicitly approved by the owner.
 
-## Implemented security improvements
+## Fixes on this branch
 
-1. **Registration:** Reject self-assigned `TEACHER`/`ADMIN` roles. All public accounts are created as `STUDENT`. Normalize emails, check password length, and use strict validation.
-2. **Authentication and RBAC:** Recheck account existence and current roles from the database on authenticated API calls, preventing stale JWT claims from retaining server-side elevated permissions.
-3. **Admin API:** Strict Zod allowlists for POST/PUT, preventing arbitrary Prisma updates, nested relation writes, and balance/password-hash assignment. Restrict embedded user fields returned from payment/subscription admin endpoints.
-4. **Documents:** Block direct URLs under `/uploads/documents/` via the Next.js request proxy; preview HTML uses sandboxed Content Security Policy. Apply equivalent private-file rules to any external CDN/reverse proxy.
-5. **Excel and CSV:** Remove vulnerable SheetJS `xlsx`. Use `read-excel-file` and `write-excel-file` for `.xlsx`; use safe, bounded CSV/TSV import and formula-safe CSV for Admin exports. Legacy `.xls` is no longer supported.
-6. **Dependency updates:** Next.js `15.5.19` → `16.4.3`, NextAuth `4.24.14` → `4.24.15`, KaTeX `0.17.0` → `0.19.1`, Zod `3.25.76` → `4.6.7`. Upgrade to Node `>=20.9` for Next.js 16.
-7. **Next.js 16 migration:** Rename `src/middleware.ts` to `src/proxy.ts`, preserving access checks, and verify Turbopack production compilation.
-8. **CI:** Read-only workflow verifies locked install, Prisma client generation, TypeScript, all unit tests, production build, and production dependency audit at High/Critical threshold. Separate isolated PostgreSQL integration workflow exercises the running web app.
+- **Public signup:** always creates STUDENT accounts. Prevents self-service teacher/admin escalation, normalizes email and validates passwords.
+- **Identity and RBAC:** authenticated API methods recheck current user/role in PostgreSQL. `getCurrentUser()` used by Server Components now also refreshes account existence and current DB role, so teacher/admin pages reject revoked sessions.
+- **Student profile:** `GET /api/profile` uses an explicit Prisma select; it does not return `passwordHash`, OAuth accounts, or credentials.
+- **Exam APIs:** `GET /api/exams/[id]` requires a session and `canAccessExam()`, including VIP and private-sharing grants. It exposes only safe exam and question fields, excluding share tokens, share password hashes, correct answers and explanations before submission. `GET /api/exams` filters unshared private exams and never exports share secrets.
+- **Integrated Admin:** strict per-resource Zod field allowlists prevent mass assignment and nested Prisma writes. User credentials are excluded from payment API responses. Payment updates accept **status only**, cannot be deleted or created with PAID status, and are settled via the shared transactional service.
+- **VIP payment reconciliation:** `src/lib/payment-transition.js` implements `Serializable` PostgreSQL transactions for status changes, VIP subscription creation and notification. A successful PAID payment stores its linked `vipSubscriptionId`; confirming the same payment twice is idempotent. PAID reversals and historical PAID rows without a verifiable linked subscription require manual reconciliation.
+- **Standalone Admin:** both Admin interfaces use the exact same VIP settlement service. Admin form POST requests require a same-origin Origin/Referer, including login and bank confirmation. Secure admin session cookies are used when `ADMIN_PUBLIC_ORIGIN` is HTTPS. Keep the standalone Admin private behind a trusted HTTPS proxy, and set `ADMIN_PUBLIC_ORIGIN` to its externally reachable HTTPS origin.
+- **Documents:** direct Next.js static access to user-uploaded documents is denied; DOCX HTML previews have a sandbox Content Security Policy. The same document privacy restrictions must be enforced at any external CDN/proxy.
+- **Dependencies/CI:** Next.js 16.4.3, patched NextAuth/KaTeX/Zod, and replacement of SheetJS xlsx. Read-only CI checks TS, Node syntax, Prisma, tests, production build and dependency audit.
 
-## Verified results on the feature branch
+## Latest validated automated test results
 
-- **Main CI:** https://github.com/aduvava/aduvava/actions/runs/41296633395 — **success**.
-- **Security integration smoke:** https://github.com/aduvava/aduvava/actions/runs/41296633425 — **success** with isolated PostgreSQL 16.
-- Main CI passed `npm ci`, Prisma, TypeScript, unit tests (including XLSX round-trip), `npm run build`, and `npm audit --omit=dev --audit-level=high`.
-- Integration tests verified student registration, NextAuth credentials login, rejection of unauthorized Admin access, payment creation with `PENDING` status and no subscription, rejection of Admin mass assignment, authorized role changes, administrator role revocation despite a stale JWT, and direct upload URL protection.
-- The previous **1 High + 1 Moderate** PostCSS/Next.js findings no longer fail the upgraded production audit. A successful audit at the configured threshold does not mean the full dependency graph has zero low/moderate advisories or that a penetration test has been completed.
-- Temporary dependency-refresh workflows were removed after their work. Both permanent workflows operate with `contents: read` only.
+- **Main CI**: https://github.com/aduvava/aduvava/actions/runs/41299005042 — **success**, 34/34 unit tests; TypeScript, standalone Admin syntax, production build and high/critical dependency audit passed.
+- **Integration smoke**: https://github.com/aduvava/aduvava/actions/runs/41299005035 — **success** against disposable PostgreSQL 16, running both Next.js and standalone Admin Server.
+- Integration covers private/protected PRO exam APIs, secret/answer-key non-disclosure, account profile redaction, login and database role revocation for Server Components, payment checkout pending without VIP, settled payment activation, repeat confirmation idempotency, PAID-reversal rejection, protected Admin form submissions and denied direct document static URLs.
+- `npm audit --omit=dev --audit-level=high` passes but still reports **one moderate `baseline-browser-mapping` advisory**; the configured threshold does not check every possible issue.
+- An automated green check is **not** an external penetration test or proof of production security.
 
-## Known limitations and follow-up risks
+## Remaining pre-public work
 
-- **Standalone admin server:** `admin-server/server.js` is separate from the Next.js Admin APIs and still needs in-depth CSRF, authentication rate-limiting, cookie security, file-import, and privileged transaction review. Next.js resource allowlists do not automatically apply to it.
-- **Payments:** Manual bank-transfer confirmation, replay resistance, audit trail, and VIP entitlement activation need focused transactional/security review; the smoke test only covers the pending checkout path.
-- **Uploads:** Validate uploaded file contents, not just extensions/MIME; deploy malware scanning and enforce document privacy in any CDN/reverse proxy. Sandbox preview restricts HTML but is not antivirus.
-- **Authorization:** Test access control throughout teacher-specific views and admin operations, not only the API smoke cases. User-interface proxy checks can still reflect a stale JWT; server APIs use current database roles.
-- **Operational security:** Add persistent IP/account rate limits, secret scanning, branch protection/required checks, database backups and restore drills. These have not been verified in the connected production environment.
-- **Legacy script:** `scripts/upsert-store-catalog.ts` still imports a missing `src/data/store-catalog`; excluded from the application typecheck and build, not repaired.
-- **End-to-end QA:** Browser-based login and XLSX UI testing, payment reconciliation, real deployment, real SMTP/OAuth, and production database tests were not performed.
+1. **Rate limits and abuse prevention:** add persistent IP/account throttling for public registration, login, password guessing, contact forms and exam password submissions; monitor anomalous traffic.
+2. **Uploads and hosting:** verify file signatures and limits, ZIP document decompression limits, antivirus processing, and keep sensitive uploads private in every deployment layer. The Next.js proxy alone is insufficient when CDN/static hosting bypasses it.
+3. **Manual payment operations:** train administrators to verify bank funds externally before clicking PAID. Review existing legacy PAID records for incomplete VIP activation; manual reconciliation is required. Add change history, refunds/reversals workflow and reconciliation reporting before collecting real money at scale.
+4. **Standalone Admin hardening:** configure `ADMIN_PUBLIC_ORIGIN` and HTTPS, add login rate limits and intrusion monitoring, and audit all privileged upload operations and Admin forms. Admin sessions are in-memory; deployments must tolerate restart/session loss.
+5. **Database and delivery:** independently verify backups, restore drills, least-privilege credentials, correct `NEXTAUTH_URL`, secrets, HTTPS, database migrations (`prisma migrate deploy`), GitHub required checks/branch protection and deployment rollback.
+6. **Manual acceptance:** review actual student/teacher/Admin UI on desktop/mobile, XLSX import/export and real bank-reconciliation workflow on staging with realistic permissions. Automated API tests do not replace human browser QA.
+7. **Other known gaps:** forgotten-password page is not functional; AI grading returns HTTP 503; legacy `scripts/upsert-store-catalog.ts` still imports a missing module; full production-scale/load tests are pending.
 
-**Owner review required before merging into `main`.**
+**Release recommendation:** Do not expose the standalone Admin server or accept live payments until operational/security checks above are addressed. Keep PR #2 Draft. Never merge without owner approval.
