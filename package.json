@@ -23,7 +23,7 @@
     "@prisma/client": "5.22.0",
     "bcryptjs": "2.4.3",
     "clsx": "2.1.1",
-    "katex": "0.17.0",
+    "katex": "0.19.1",
     "lucide-react": "0.468.0",
     "mammoth": "1.12.0",
     "next": "15.5.28",
@@ -32,8 +32,7 @@
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "tsx": "4.22.4",
-    "xlsx": "0.18.5",
-    "zod": "3.25.76"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@types/bcryptjs": "2.4.6",
