@@ -10,6 +10,8 @@ const { trustedPostOrigin, cookieSecuritySuffix } = require("./request-security"
 const { rateLimitOperation, TooManyRequestsError } = require("../src/lib/security-throttle.js");
 const { validateDocumentBuffer } = require("../src/lib/document-file-validation.js");
 const { validateMotivationImageBuffer } = require("./image-file-validation.js");
+const { documentStorageDirectory, documentStoredPath, readPrivateDocument } = require("../src/lib/private-document-storage.js");
+const { scanDocumentBuffer } = require("../src/lib/document-malware-scan.js");
 
 loadEnv(path.join(__dirname, "..", ".env"));
 
@@ -1658,7 +1660,7 @@ const documentMimeTypes = new Map([
 ]);
 
 function documentsDirectory() {
-  return path.join(process.cwd(), "public", "uploads", "documents");
+  return documentStorageDirectory();
 }
 
 function safeUploadName(filename) {
@@ -1783,10 +1785,12 @@ async function uploadDocument(req, res, user) {
     if (!file.size || file.size > 15 * 1024 * 1024) throw new Error("Tệp phải nhỏ hơn hoặc bằng 15MB.");
     // Validate actual bytes and Office ZIP structure, not just the extension.
     const { extension, mimeType } = validateDocumentBuffer(file.buffer, file.filename, file.mimeType);
+    // Malware scanning is mandatory in production unless explicitly disabled.
+    await scanDocumentBuffer(file.buffer);
     const storedName = `${crypto.randomUUID()}${extension}`;
     const uploadDirectory = documentsDirectory();
     fs.mkdirSync(uploadDirectory, { recursive: true });
-    const filePath = path.join(uploadDirectory, storedName);
+    const filePath = documentStoredPath(storedName);
     fs.writeFileSync(filePath, file.buffer, { flag: "wx" });
     try {
       await prisma.document.create({
@@ -1819,9 +1823,9 @@ async function uploadDocument(req, res, user) {
 async function sendDocumentFile(res, id) {
   const item = await prisma.document.findUnique({ where: { id } });
   if (!item) return sendHtml(res, "Không tìm thấy tài liệu", 404);
-  const filePath = path.join(documentsDirectory(), item.storedName);
-  if (!fs.existsSync(filePath)) return sendHtml(res, "Tệp tài liệu không còn tồn tại", 404);
-  const file = fs.readFileSync(filePath);
+  let file;
+  try { file = readPrivateDocument(item.storedName); }
+  catch { return sendHtml(res, "Tệp tài liệu không còn tồn tại", 404); }
   res.writeHead(200, {
     "Content-Type": item.mimeType,
     "Content-Length": String(file.length),
@@ -1838,7 +1842,7 @@ async function deleteDocument(req, res, id) {
     return;
   }
   await prisma.document.delete({ where: { id } });
-  fs.rmSync(path.join(documentsDirectory(), item.storedName), { force: true });
+  fs.rmSync(documentStoredPath(item.storedName), { force: true });
   redirect(res, `/documents?notice=${encodeURIComponent("Đã xóa tài liệu khỏi hệ thống")}`);
 }
 
