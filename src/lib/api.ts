@@ -32,14 +32,18 @@ export async function readJson<T>(request: Request) {
 export async function requireUser() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new HttpError(401, "Authentication required");
-  return session.user;
+  // Enforce account existence and current roles, rather than trusting stale JWT claims.
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true, name: true, email: true, image: true, role: true },
+  });
+  if (!user) throw new HttpError(401, "Authentication required");
+  return user;
 }
 
 export async function requireAdmin() {
   const user = await requireUser();
-  // Recheck the role in the database so revoked admins cannot keep using stale JWTs.
-  const current = await prisma.user.findUnique({ where: { id: user.id }, select: { role: true } });
-  if (current?.role !== "ADMIN") throw new HttpError(403, "Admin access required");
+  if (user.role !== "ADMIN") throw new HttpError(403, "Admin access required");
   return user;
 }
 
