@@ -64,6 +64,13 @@ async function consumeSecurityThrottle(db, scope, subject, { limit, windowSecond
   `);
   const row = rows[0];
   if (!row) throw new Error("Throttle database unavailable");
+  // Opportunistic pruning keeps expired attack identifiers from growing forever.
+  // Throttling remains fail-closed; only best-effort cleanup failures are ignored.
+  if (Math.random() < 0.005 && typeof db.securityThrottle?.deleteMany === "function") {
+    void db.securityThrottle.deleteMany({
+      where: { expiresAt: { lt: new Date(Date.now() - 7 * 86400000) } },
+    }).catch(() => undefined);
+  }
   if (row.hits > limit) {
     throw new TooManyRequestsError((new Date(row.expiresAt).getTime() - Date.now()) / 1000);
   }
