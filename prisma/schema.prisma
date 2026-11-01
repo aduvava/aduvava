@@ -713,3 +713,14 @@ model Notification {
 
   @@index([userId, isRead, createdAt])
 }
+
+// Persistent, atomic abuse-prevention counters shared across all app replicas.
+// Identifiers are HMAC-hashed before storage; no plain emails or IP addresses.
+model SecurityThrottle {
+  key       String   @id @db.VarChar(100)
+  hits      Int      @default(0)
+  expiresAt DateTime
+  updatedAt DateTime @updatedAt
+
+  @@index([expiresAt])
+}
