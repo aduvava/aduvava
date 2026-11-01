@@ -24,8 +24,7 @@ jobs:
       - name: Install patched versions without forcing major upgrades
         run: |
           npm ci
-          npm install --save-exact katex@0.19.1 zod@4.6.7
-          npm uninstall xlsx
+          npm install --save-exact read-excel-file@9.3.14 write-excel-file@4.1.1
           npm audit fix --omit=dev || true
       - name: Commit updated dependency manifests only on feature branch
         run: |
@@ -33,6 +32,6 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package.json package-lock.json
           if ! git diff --cached --quiet; then
-            git commit -m "security: upgrade KaTeX and Zod and remove vulnerable xlsx dependency"
+            git commit -m "security: replace SheetJS with maintained spreadsheet packages"
             git push origin HEAD:improve/security-performance
           fi
