@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { prisma } from "@/lib/db";
+import { PaymentTransitionError } from "@/lib/payment-transition";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
@@ -48,7 +49,7 @@ export async function requireAdmin() {
 }
 
 export function handleRouteError(error: unknown) {
-  if (error instanceof HttpError) return jsonError(error.message, error.status);
+  if (error instanceof HttpError || error instanceof PaymentTransitionError) return jsonError(error.message, error.status);
   if (error instanceof ZodError) return jsonError("Invalid request payload", 400);
   console.error(error);
   return jsonError("Unexpected server error", 500);
