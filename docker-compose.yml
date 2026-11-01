@@ -30,7 +30,7 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - eduva-uploads:/app/public/uploads
+      - eduva-uploads:/app/storage
 
   admin:
     build:
@@ -49,7 +49,7 @@ services:
     ports:
       - "127.0.0.1:4000:4000"
     volumes:
-      - eduva-uploads:/app/public/uploads
+      - eduva-uploads:/app/storage
       - eduva-admin-config:/app/admin-server/data
 
 volumes:
