@@ -1,34 +1,34 @@
-# Phase 1 security review — Eduva
+# Eduva — Phase 1 security review (2026-11-01)
 
-Review date: 2026-11-01
-Branch: `improve/security-performance`
-Status: Partial remediation; **not** a penetration test and not a production deployment sign-off.
+**Branch:** `improve/security-performance`  
+**PR:** https://github.com/aduvava/aduvava/pull/2 (**DRAFT, not merged**)  
+**Scope:** Source and CI review only. No deployed-system pentest, database backup verification or production acceptance.
 
-## Confirmed findings and fixes
+## Fixes implemented on this branch
 
-1. **Public privilege escalation via registration** (high). `src/app/api/auth/register/route.ts` accepted `TEACHER` in a public request and persisted it as the new user's role. The public endpoint now only accepts `STUDENT` (or no role), sets the persisted role explicitly to `STUDENT`, and tests reject teacher/admin injection. Admin-provisioned teacher accounts remain possible via privileged workflows.
-2. **Stale admin-role JWT** (high). `requireAdmin()` previously trusted the JWT session role without refreshing it. The function now checks the user's current database role for each admin API call, so revocation is enforced on subsequent requests.
-3. **Unvalidated registration input / inconsistent errors** (medium). Public registration now has a strict schema with bounded fields, normalized email, minimum 8-character password, and a bcrypt-compatible 72-byte password limit. Zod validation errors now result in HTTP 400 rather than HTTP 500.
-4. **CI missing** (medium). The repository had tests but no `.github/workflows` workflow. Added GitHub Actions with a locked install, Prisma generation, TypeScript check, unit tests, and a high-severity production dependency audit.
+1. **Public registration privilege escalation:** Public signup no longer accepts a TEACHER or ADMIN role, persists STUDENT explicitly, bounds inputs and increases password minimum to eight characters / maximum 72 bcrypt UTF-8 bytes. Added regression tests.
+2. **Stale JWT authorization:** Authenticated API requests now look up the current user and role in PostgreSQL so removed or downgraded users are no longer trusted based on stale JWT claims.
+3. **Admin mass assignment:** Added strict Zod allowlists by resource for POST/PUT. This blocks arbitrary Prisma fields, nested relation writes and modification of balances and password hashes. Sensitive embedded user fields in payment and subscription read responses are restricted.
+4. **Untrusted document access:** Next.js middleware blocks direct `/uploads/documents/` serving; document access must use authorized APIs. Preview HTML is returned with a sandboxed Content Security Policy. This must also be enforced on any CDN or reverse proxy exposing static files.
+5. **Dependency vulnerability reduction:** Updated Next.js 15.5.19→15.5.28, NextAuth 4.24.14→4.24.15, KaTeX 0.17.0→0.19.1, Zod 3.25.76→4.6.7; replaced vulnerable SheetJS `xlsx@0.18.5` usage and removed the package. The admin user export is now Excel-readable CSV with formula-injection defenses. The exam editor uses `read-excel-file` and `write-excel-file` for .xlsx, and a capped CSV/TSV parser; legacy .xls is no longer supported.
+6. **CI and tests:** Added a read-only GitHub Actions CI workflow checking locked install, Prisma, application TypeScript, 27 unit tests, production build and `npm audit --omit=dev --audit-level=high`. Temporary write-enabled npm-refresh workflows have been removed. The PR remains draft with no auto-merge.
 
-## Pending work / risk acceptance needed
+## Latest verified CI results
 
-- **Admin mass-assignment**: `src/app/api/admin/[resource]/route.ts` and `[id]/route.ts` still pass raw body data to Prisma using `as never`. Restrict writes per resource with Zod allowlists; particularly review user roles, subscriptions and payment statuses. They are behind `requireAdmin()` but defense in depth is still needed.
-- **Authentication abuse**: add IP + account-based rate limiting for login and registration using shared persistent storage, with bot protection and monitoring. Avoid memory-only counters on multi-instance deployments.
-- **Payments**: audit every approval and entitlement transition, replay protection, and ensure only trusted confirmations can activate subscriptions. The checkout route already requires authentication, but that alone is not sufficient.
-- **JWT role freshness beyond admin**: examine teacher-specific endpoints and ensure server-side authoritative role checks before privileged actions.
-- **Admin standalone server**: review the separate `admin-server/server.js` (approximately 130 KB) for authentication, CSRF, input validation and upload handling.
-- **File handling**: inspect upload MIME/content checks, file size limits, storage authorization, and downloading of private documents.
-- **Dependency review**: review the pinned `xlsx@0.18.5` dependency and other results from `npm audit`. Do not upgrade major dependencies blindly; test compatibility.
-- **Database**: verify encrypted offsite backups, restoration drills, least-privilege credentials and production migration workflow.
-- **Deployment**: configure required PR checks and branch protections in GitHub repository settings. A CI workflow alone does not prevent bypass or direct pushes.
+- Typecheck and **27/27 unit tests passed** in the PostCSS compatibility experiment (run 41295271676).
+- Next.js optimized production build **completed successfully** in that experiment (with an isolated, uncommitted PostCSS override). During prerender, it logged expected database connection errors because the test runner had no actual PostgreSQL server; deployment must be validated against an initialized database.
+- The normal CI build step was added afterward; review the latest CI run on the PR for its independent result.
+- The latest dependency scan after the above upgrades reported **2 production vulnerabilities (1 moderate, 1 high)**, down from **11 (including 2 critical)**. Both remaining items were reported against the PostCSS version nested under Next.js. `npm audit` still fails at `--audit-level=high`.
+- A test override targeting PostCSS 8.5.31 **did not remove those reported vulnerabilities**, despite the rest of the compatibility tests and production build passing; the override was **not committed**. Consider a tested Next.js major upgrade or a supported upstream patch; do not silently downgrade the audit threshold.
 
-## Verification
+## Known remaining risks and next steps
 
-- Added regression tests for registration privilege escalation and bad passwords.
-- GitHub Actions runs against PRs targeting `main` and pushes on this feature branch.
-- GitHub Actions PR #2: dependency installation, Prisma client generation, application TypeScript check, and unit tests passed. Production dependency audit **failed**; see details below.
-- The existing `scripts/upsert-store-catalog.ts` imports a missing `src/data/store-catalog` module, which blocked the first CI typecheck. The app CI typecheck uses `tsconfig.ci.json` to exclude this one known-broken legacy maintenance script; the script remains broken and must be repaired or deleted before use.
-- Audit on 2026-11-01 reported **11 production dependency vulnerabilities** (1 low, 1 moderate, 7 high, 2 critical). Affected packages include Next.js, NextAuth, KaTeX, Zod, SheetJS (`xlsx`), `sharp`, `postcss`, `@xmldom/xmldom`, `nanoid`, `uuid` and `source-map-js`. See GitHub Actions run 41294106588. Do not merge as production-ready with unresolved critical advisories.
-- `npm audit` indicated suggested remediation targets `next@15.5.28`, `next-auth@4.24.15`, `katex@0.19.1`, `zod@4.6.7`; these are **not installed or verified** in this PR. `xlsx` had no npm-audit-supported fix and requires replacement or a separately verified safe distribution.
-- This PR is intentionally **draft** and must not be merged without explicit owner review.
+- **Production audit blocker:** Follow a supported Next.js/PostCSS remediation path and re-run the security audit, with build and integration tests.
+- **Legacy catalog script:** `scripts/upsert-store-catalog.ts` imports the missing `src/data/store-catalog`; it remains broken. It is explicitly excluded from app TypeScript/build checks, not fixed. Repair or remove only after confirming whether it is still used.
+- **Standalone admin server:** Its large HTTP implementation needs deeper security review for CSRF, brute-force protections, session cookie attributes, file imports, payment confirmations, and role changes. The integrated admin API allowlists do **not** protect this separate server.
+- **Payment approvals and entitlements:** Review administrator confirmation flow, replay protection, subscription state transitions, audit trails and consistency with actual bank transfers.
+- **Input and upload controls:** Add persistent rate limiting, content sniffing / archive decompression limits, file authorization tests and malware scanning where appropriate.
+- **Database / operations:** Verify backups and restore drills, least-privilege credentials, migration deployment process and audit logs; configure required CI checks and main-branch protection in GitHub settings.
+- **QA:** Run integration tests with an isolated PostgreSQL database, exercise teacher/admin role transitions, upload and download restrictions, all admin CRUD screens, and XLSX import/export.
+
+**Release gate:** Keep this PR in Draft. Do not merge into `main` without owner approval; do not consider it production-ready while high-severity audit or remaining workflow risks persist.
