@@ -8,3 +8,6 @@ coverage/
 !.env.example
 .codespaces-preview-credentials
 *.log
+
+# Never commit runtime-uploaded private documents
+/storage/
