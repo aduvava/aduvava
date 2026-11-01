@@ -1,6 +1,6 @@
 # Eduva
 
-Eduva is a full-stack Next.js 15 application using PostgreSQL and Prisma. It includes the student site, NextAuth login, a role-protected admin area, and an optional standalone admin server.
+Eduva is a full-stack Next.js 16 application using PostgreSQL and Prisma. It includes the student site, NextAuth login, a role-protected admin area, and an optional standalone admin server.
 
 ## Supabase Postgres setup
 
@@ -20,7 +20,7 @@ Google login is optional. To enable it, configure the OAuth client ID and secret
 
 ## Local setup
 
-1. Install Node.js 20 or newer.
+1. Install Node.js 20.9 or newer (Node.js 22 recommended).
 2. Configure `.env` as described above.
 3. Install dependencies and generate the Prisma client:
 
@@ -44,11 +44,11 @@ Google login is optional. To enable it, configure the OAuth client ID and secret
 3. Initialize the database once:
 
    ```bash
-   docker compose exec web npm run db:push
+   docker compose exec web npx prisma migrate deploy
    docker compose exec web npm run db:seed
    ```
 
-The web app is on port 3000. The standalone admin service binds to host localhost port 4000; keep remote access behind a trusted HTTPS reverse proxy. PostgreSQL and uploaded files use persistent Docker volumes.
+The web app is on port 3000. The standalone admin service binds to host localhost port 4000; keep it private behind a trusted HTTPS reverse proxy and set ADMIN_PUBLIC_ORIGIN to its exact public HTTPS origin. Protect sensitive documents in any external web server/CDN; direct access to /uploads/documents/ is blocked only at the Next.js proxy layer. Verify database and upload backups before deploying. PostgreSQL and uploaded files use persistent Docker volumes.
 
 The seed requires `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` and creates only that administrator account. No default password or sample content is shipped.
 
