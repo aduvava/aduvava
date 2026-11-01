@@ -20,6 +20,7 @@ import {
 import { clsx } from "clsx";
 import { getNationalExamRule, getNationalQuestionCount } from "@/lib/national-exam-rules";
 import { RichContent as FormattedContent } from "@/components/rich-content";
+import { parseDelimited, rowsToObjects } from "@/lib/spreadsheet-import";
 
 type Subject = { id: string; name: string; slug: string; family: "THPTQG" | "DGNL" };
 type EducationLevel = "THCS" | "THPT" | "EXAM_10" | "THPTQG";
@@ -232,12 +233,15 @@ function parseQuestions(text: string): DraftQuestion[] {
 }
 
 async function parseSpreadsheetFile(file: File): Promise<DraftQuestion[]> {
-  const XLSX = await import("xlsx");
-  const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
-  const sheetName = workbook.SheetNames[0];
-  if (!sheetName) return [];
-
-  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(workbook.Sheets[sheetName], { defval: "" });
+  if (file.size > 5 * 1024 * 1024) throw new Error("Spreadsheet file too large");
+  const lowerName = file.name.toLowerCase();
+  const rawRows = lowerName.endsWith(".xlsx")
+    ? await (async () => {
+        const { readSheet } = await import("read-excel-file/browser");
+        return readSheet(file);
+      })()
+    : parseDelimited(await file.text(), lowerName.endsWith(".tsv") ? "\t" : ",");
+  const rows = rowsToObjects(rawRows);
   return rows.flatMap((row) => {
     const prompt = getRowField(row, ["question", "prompt", "cau hoi", "câu hỏi", "noi dung cau hoi", "nội dung câu hỏi"]);
     const image = getRowField(row, ["image", "anh", "ảnh", "hinh anh", "hình ảnh", "url anh", "image url"]);
@@ -338,7 +342,12 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
       return;
     }
 
-    if (/\.(xlsx|xls|csv|tsv)$/i.test(lowerName)) {
+    if (lowerName.endsWith(".xls")) {
+      setMessage("Định dạng XLS cũ không được hỗ trợ. Hãy lưu lại dưới dạng XLSX hoặc CSV.");
+      return;
+    }
+
+    if (/\.(xlsx|csv|tsv)$/i.test(lowerName)) {
       try {
         const parsed = await parseSpreadsheetFile(file);
         setQuestions(parsed);
@@ -403,22 +412,16 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
   }
 
   async function downloadExcelTemplate() {
-    const XLSX = await import("xlsx");
-    const worksheet = XLSX.utils.json_to_sheet(spreadsheetSampleRows, { header: spreadsheetHeaders });
-    (worksheet as unknown as { "!cols"?: Array<{ wch: number }> })["!cols"] = [
-      { wch: 42 },
-      { wch: 34 },
-      { wch: 24 },
-      { wch: 24 },
-      { wch: 24 },
-      { wch: 24 },
-      { wch: 12 },
-      { wch: 48 },
+    const { default: writeExcelFile } = await import("write-excel-file/browser");
+    const columns = [42, 34, 24, 24, 24, 24, 12, 48].map((width) => ({ width }));
+    const data = [
+      spreadsheetHeaders,
+      ...spreadsheetSampleRows.map((row) =>
+        spreadsheetHeaders.map((header) => row[header as keyof typeof row] ?? ""),
+      ),
     ];
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "questions");
-    const output = XLSX.write(workbook, { bookType: "xlsx", type: "array" }) as ArrayBuffer;
-    downloadBlob(new Blob([output], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "mau-tao-de-thi.xlsx");
+    const blob = await writeExcelFile(data, { sheet: "questions", columns }).toBlob();
+    downloadBlob(blob, "mau-tao-de-thi.xlsx");
   }
 
   async function saveExam() {
@@ -647,7 +650,7 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
               </div>
               {templateButtons}
             </div>
-            <input ref={fileInput} type="file" accept=".txt,.xlsx,.xls,.csv,.tsv,.pdf,image/*" className="hidden" onChange={(event) => void handleFile(event.target.files?.[0])} />
+            <input ref={fileInput} type="file" accept=".txt,.xlsx,.csv,.tsv,.pdf,image/*" className="hidden" onChange={(event) => void handleFile(event.target.files?.[0])} />
             <button type="button" onClick={() => fileInput.current?.click()} className="mt-5 grid min-h-56 w-full place-items-center rounded-3xl border-2 border-dashed border-blue-200 bg-blue-50/40 p-6 text-center transition hover:border-blue-400">
               <span>
                 <UploadCloud className="mx-auto h-12 w-12 text-blue-500" />
