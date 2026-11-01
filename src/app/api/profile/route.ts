@@ -16,7 +16,17 @@ export async function GET() {
     const user = await requireUser();
     const profile = await prisma.user.findUnique({
       where: { id: user.id },
-      include: { profile: true, subscriptions: { include: { plan: true }, orderBy: { createdAt: "desc" } } }
+      // Explicitly avoid returning credentials, passwordHash, OAuth tokens or
+      // unrelated internal fields to the browser.
+      select: {
+        id: true, name: true, email: true, image: true, role: true,
+        coins: true, exp: true, createdAt: true,
+        equippedDashboardImageId: true, equippedAvatarFrameId: true,
+        equippedNameColorId: true, equippedTitleId: true,
+        equippedSubmitEffectId: true, equippedAvatarItemId: true,
+        profile: true,
+        subscriptions: { include: { plan: true }, orderBy: { createdAt: "desc" } },
+      }
     });
     return jsonOk({ profile });
   } catch (error) {
