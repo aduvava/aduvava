@@ -29,8 +29,26 @@ export function AdminResourceManager({ resource, defaultPayload }: { resource: s
 
   async function updateItem() {
     if (!updateId) return setMessage("Nhập ID cần cập nhật.");
+    let safePayload = payload;
+    if (resource === "payments") {
+      // Payment confirmation is a settlement action, not a generic JSON edit.
+      // Ownership, amount and reference are immutable after checkout.
+      try {
+        const parsed = JSON.parse(payload) as { status?: string };
+        if (!["PENDING", "PAID", "FAILED"].includes(parsed.status ?? "")) {
+          return setMessage("Chỉ được nhập trạng thái PENDING, PAID hoặc FAILED.");
+        }
+        if (parsed.status === "PAID" &&
+            !window.confirm("Xác nhận đã nhận đủ tiền chuyển khoản? Thao tác này sẽ kích hoạt VIP thật.")) {
+          return;
+        }
+        safePayload = JSON.stringify({ status: parsed.status });
+      } catch {
+        return setMessage("JSON trạng thái thanh toán không hợp lệ.");
+      }
+    }
     setMessage("Đang cập nhật...");
-    const response = await fetch(`/api/admin/${resource}/${updateId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: payload });
+    const response = await fetch(`/api/admin/${resource}/${updateId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: safePayload });
     setMessage(response.ok ? "Đã cập nhật" : "Cập nhật thất bại.");
     if (response.ok) load();
   }
@@ -84,9 +102,22 @@ export function AdminResourceManager({ resource, defaultPayload }: { resource: s
                   <p className="mt-1 break-all font-mono text-xs text-ink/50">{String(item.id)}</p>
                   {item.status ? <p className="mt-1 text-xs font-bold text-moss">{String(item.status)}</p> : null}
                 </div>
-                <button onClick={() => deleteItem(item.id)} className="rounded-full bg-clay px-3 py-2 text-xs font-bold text-white">
-                  Delete
-                </button>
+                {resource === "payments" ? (
+                  <button
+                    onClick={() => {
+                      setUpdateId(String(item.id ?? ""));
+                      setPayload(JSON.stringify({ status: item.status ?? "PENDING" }, null, 2));
+                      setMessage("Chọn trạng thái rồi nhấn Update. Chỉ đánh dấu PAID sau khi đã đối soát ngân hàng.");
+                    }}
+                    className="rounded-full bg-moss px-3 py-2 text-xs font-bold text-white"
+                  >
+                    Đối soát
+                  </button>
+                ) : (
+                  <button onClick={() => deleteItem(item.id)} className="rounded-full bg-clay px-3 py-2 text-xs font-bold text-white">
+                    Delete
+                  </button>
+                )}
               </div>
             </div>
           ))}
