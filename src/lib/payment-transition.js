@@ -1,0 +1,130 @@
+"use strict";
+
+// A single transaction implements all PAID -> VIP activations from both admin
+// interfaces. Never mark a payment as PAID before its subscription is committed.
+const VALID_STATUSES = new Set(["PENDING", "PAID", "FAILED"]);
+
+function planMonths(interval) {
+  if (interval === "QUARTER") return 3;
+  if (interval === "YEAR") return 12;
+  if (interval === "MONTH") return 1;
+  throw new Error("Unknown subscription interval");
+}
+
+function extendUtcMonths(date, months) {
+  const end = new Date(date);
+  const originalDay = end.getUTCDate();
+  end.setUTCDate(1);
+  end.setUTCMonth(end.getUTCMonth() + months);
+  const finalDay = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() + 1, 0)).getUTCDate();
+  end.setUTCDate(Math.min(originalDay, finalDay));
+  return end;
+}
+
+function asMetadata(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+/**
+ * Treat payments as immutable after settlement. A completed payment has exactly
+ * one linked subscription via metadata.vipSubscriptionId; the link, status,
+ * subscription and notification are written atomically.
+ *
+ * Prisma TransactionIsolationLevel.Serializable on Postgres prevents two
+ * concurrent confirmations from granting VIP twice. Serialization conflicts
+ * are retried, but other errors are rethrown without changing payment state.
+ */
+async function transitionManualPayment(db, paymentId, nextStatus) {
+  if (!VALID_STATUSES.has(nextStatus)) throw new Error("Invalid payment status");
+
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      return await db.$transaction(async (tx) => {
+        const current = await tx.payment.findUnique({
+          where: { id: paymentId },
+          include: { plan: true },
+        });
+        if (!current) throw new Error("Payment not found");
+        if (current.provider !== "manual-bank-transfer") {
+          throw new Error("Only manual bank transfer payments can be confirmed here");
+        }
+
+        const metadata = asMetadata(current.metadata);
+        if (current.status === "PAID") {
+          if (nextStatus !== "PAID") {
+            throw new Error("Settled payments cannot be reset or reversed");
+          }
+          // Legacy PAID payments were not fully atomic and lack a stable
+          // subscription link. Do not grant another VIP without reconciliation.
+          if (typeof metadata.vipSubscriptionId !== "string") {
+            throw new Error("Legacy paid payment requires manual VIP reconciliation");
+          }
+          const linked = await tx.subscription.findUnique({
+            where: { id: metadata.vipSubscriptionId },
+            select: { id: true, userId: true, planId: true },
+          });
+          if (!linked || linked.userId !== current.userId || linked.planId !== current.planId) {
+            throw new Error("Paid payment has no matching VIP subscription");
+          }
+          return { payment: current, activated: false, subscriptionId: linked.id };
+        }
+
+        if (metadata.adminVipActivatedAt || metadata.vipSubscriptionId) {
+          throw new Error("Payment already has an activation marker; reconcile manually");
+        }
+
+        if (nextStatus !== "PAID") {
+          const payment = current.status === nextStatus ? current : await tx.payment.update({
+            where: { id: paymentId },
+            data: { status: nextStatus },
+          });
+          return { payment, activated: false, subscriptionId: null };
+        }
+
+        // Only an administrator who has verified bank funds may call this path.
+        const now = new Date();
+        const previous = await tx.subscription.findFirst({
+          where: { userId: current.userId, status: "ACTIVE", endsAt: { gt: now } },
+          orderBy: { endsAt: "desc" },
+        });
+        const startsAt = previous?.endsAt && previous.endsAt > now ? previous.endsAt : now;
+        const endsAt = extendUtcMonths(startsAt, planMonths(current.plan.interval));
+        const subscription = await tx.subscription.create({
+          data: {
+            userId: current.userId,
+            planId: current.planId,
+            status: "ACTIVE",
+            startsAt,
+            endsAt,
+          },
+        });
+        const payment = await tx.payment.update({
+          where: { id: paymentId },
+          data: {
+            status: "PAID",
+            metadata: {
+              ...metadata,
+              adminVipActivatedAt: now.toISOString(),
+              vipSubscriptionId: subscription.id,
+            },
+          },
+        });
+        await tx.notification.create({
+          data: {
+            userId: current.userId,
+            title: "Gói VIP đã được kích hoạt",
+            message: `Giao dịch ${current.reference} đã được duyệt. Gói ${current.plan.name} có hiệu lực đến ${endsAt.toISOString().slice(0, 10)}.`,
+            href: "/vip",
+          },
+        });
+        return { payment, activated: true, subscriptionId: subscription.id };
+      }, { isolationLevel: "Serializable", maxWait: 10000, timeout: 20000 });
+    } catch (error) {
+      if (error?.code === "P2034" && attempt < 3) continue;
+      throw error;
+    }
+  }
+  throw new Error("Payment confirmation failed after transaction retries");
+}
+
+module.exports = { transitionManualPayment, extendUtcMonths };
