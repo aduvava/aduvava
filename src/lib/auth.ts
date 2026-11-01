@@ -6,6 +6,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { rateLimitOperation, TooManyRequestsError } from "@/lib/security-throttle";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -21,9 +22,17 @@ const providers: NextAuthOptions["providers"] = [
       password: { label: "Password", type: "password" },
       role: { label: "Role", type: "text" }
     },
-    async authorize(credentials) {
+    async authorize(credentials, request) {
       const parsed = loginSchema.safeParse(credentials);
       if (!parsed.success) return null;
+      // Limit all attempts (successful and failed) before bcrypt work.
+      // NextAuth credentials requests expose request.headers.
+      try {
+        await rateLimitOperation(prisma, "login", parsed.data.email, request.headers);
+      } catch (error) {
+        if (error instanceof TooManyRequestsError) return null;
+        throw error; // Fail closed when the throttle database is unavailable.
+      }
 
       const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
       if (!user?.passwordHash) return null;
