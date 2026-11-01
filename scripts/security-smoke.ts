@@ -215,6 +215,20 @@ async function run() {
     const adminAuth = await login(adminEmail, password);
     assert.equal(adminAuth.session.user?.role, "ADMIN");
 
+    console.log("SMOKE: moderation and authorized document fetch use private storage");
+    const moderation = await postJson(
+      `/api/admin/documents/${docRecord.id}/moderate`,
+      { action: "APPROVE" }, adminAuth.jar,
+    );
+    await assertStatus(moderation, 200, "approve private-storage document");
+    assert.equal((await prisma.document.findUniqueOrThrow({ where: { id: docRecord.id } })).status, "APPROVED");
+    const authorizedPdf = await request(`/api/documents/${docRecord.id}/file`, {}, studentAuth.jar);
+    await assertStatus(authorizedPdf, 200, "student reads approved private document");
+    assert.ok((await authorizedPdf.arrayBuffer()).byteLength > 10);
+    const previewPdf = await request(`/api/documents/${docRecord.id}/preview`, {}, studentAuth.jar);
+    await assertStatus(previewPdf, 200, "preview of approved private document");
+    assert.equal(previewPdf.headers.get("cache-control"), "private, no-store");
+
     console.log("SMOKE: exam detail and discovery are protected against answer/key leaks");
     const subject = await prisma.subject.create({
       data: { slug: `smoke-subject-${nonce}`, name: "Test subject", description: "Integration tests only", family: "THPTQG" },
