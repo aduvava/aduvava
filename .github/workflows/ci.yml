@@ -57,5 +57,5 @@ jobs:
           DATABASE_URL: postgresql://postgres:build-only@127.0.0.1:5432/eduva?schema=public
         run: npm run build
 
-      - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high
+      - name: Audit all dependencies (including build tooling)
+        run: npm audit --audit-level=moderate
