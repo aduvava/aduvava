@@ -24,6 +24,9 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/eduva?schema=public
       MOCK_PAYMENT_BASE_URL: http://admin:4000
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: "3310"
+      DOCUMENT_SCAN_REQUIRED: ${DOCUMENT_SCAN_REQUIRED:-true}
     depends_on:
       db:
         condition: service_healthy
@@ -43,6 +46,9 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/eduva?schema=public
       ADMIN_HOST: 0.0.0.0
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: "3310"
+      DOCUMENT_SCAN_REQUIRED: ${DOCUMENT_SCAN_REQUIRED:-true}
     depends_on:
       db:
         condition: service_healthy
@@ -52,7 +58,17 @@ services:
       - eduva-uploads:/app/storage
       - eduva-admin-config:/app/admin-server/data
 
+  # Optional container profile: start with --profile malware-scanning.
+  # No published TCP port: clamd's plaintext INSTREAM protocol must remain internal.
+  clamav:
+    image: clamav/clamav:stable
+    profiles: ["malware-scanning"]
+    restart: unless-stopped
+    volumes:
+      - eduva-clamav-db:/var/lib/clamav
+
 volumes:
+  eduva-clamav-db:
   eduva-db:
   eduva-uploads:
   eduva-admin-config:
