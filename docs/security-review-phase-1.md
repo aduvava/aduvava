@@ -1,38 +1,39 @@
-# Eduva — Phase 1 hardening and pre-public security gate
+# Eduva — Pre-public security review (2026-11-01)
 
-**Reviewed:** 2026-11-01  
+**Repository:** `aduvava/aduvava`  
 **Branch:** `improve/security-performance`  
-**Draft PR:** https://github.com/aduvava/aduvava/pull/2  
-**Approval:** No merge or auto-merge into `main` until explicitly approved by the owner.
+**PR:** https://github.com/aduvava/aduvava/pull/2 (**DRAFT — do not merge without owner approval**)  
+**Scope:** Source remediation, automated unit and isolated integration verification. Not an independent penetration test or production certification.
 
-## Fixes on this branch
+## Implemented security improvements
 
-- **Public signup:** always creates STUDENT accounts. Prevents self-service teacher/admin escalation, normalizes email and validates passwords.
-- **Identity and RBAC:** authenticated API methods recheck current user/role in PostgreSQL. `getCurrentUser()` used by Server Components now also refreshes account existence and current DB role, so teacher/admin pages reject revoked sessions.
-- **Student profile:** `GET /api/profile` uses an explicit Prisma select; it does not return `passwordHash`, OAuth accounts, or credentials.
-- **Exam APIs:** `GET /api/exams/[id]` requires a session and `canAccessExam()`, including VIP and private-sharing grants. It exposes only safe exam and question fields, excluding share tokens, share password hashes, correct answers and explanations before submission. `GET /api/exams` filters unshared private exams and never exports share secrets.
-- **Integrated Admin:** strict per-resource Zod field allowlists prevent mass assignment and nested Prisma writes. User credentials are excluded from payment API responses. Payment updates accept **status only**, cannot be deleted or created with PAID status, and are settled via the shared transactional service.
-- **VIP payment reconciliation:** `src/lib/payment-transition.js` implements `Serializable` PostgreSQL transactions for status changes, VIP subscription creation and notification. A successful PAID payment stores its linked `vipSubscriptionId`; confirming the same payment twice is idempotent. PAID reversals and historical PAID rows without a verifiable linked subscription require manual reconciliation.
-- **Standalone Admin:** both Admin interfaces use the exact same VIP settlement service. Admin form POST requests require a same-origin Origin/Referer, including login and bank confirmation. Secure admin session cookies are used when `ADMIN_PUBLIC_ORIGIN` is HTTPS. Keep the standalone Admin private behind a trusted HTTPS proxy, and set `ADMIN_PUBLIC_ORIGIN` to its externally reachable HTTPS origin.
-- **Documents:** direct Next.js static access to user-uploaded documents is denied; DOCX HTML previews have a sandbox Content Security Policy. The same document privacy restrictions must be enforced at any external CDN/proxy.
-- **Dependencies/CI:** Next.js 16.4.3, patched NextAuth/KaTeX/Zod, and replacement of SheetJS xlsx. Read-only CI checks TS, Node syntax, Prisma, tests, production build and dependency audit.
+1. **Identity and permissions:** Public signup always creates STUDENT; user-facing APIs and protected Server Components recheck live account existence and role in PostgreSQL rather than trusting JWT claims. Teacher/Admin revocation takes effect on subsequent requests. Login input is validated and both credential and standalone Admin login are throttled.
+2. **Privacy and exam access:** `GET /api/profile` only selects safe fields (never `passwordHash` or OAuth tokens). Exam detail APIs require login, subscription entitlement and sharing grants; exam list excludes unshared private exams. Answer keys, explanations, `shareToken` and `sharePasswordHash` are not sent to students before submission.
+3. **Admin APIs:** Zod allowlists reject arbitrary Prisma mass-assignment writes and nested relation updates. Payment read responses omit user password hashes. Admin payment status edits use a shared transactional service; direct PAID creation, deletion and reversing settled payments are rejected.
+4. **VIP settlement:** Next.js Admin and the standalone Admin use one serializable PostgreSQL transaction to set PAID status, create VIP subscription, store a subscription link and notify the user. Reconfirming a settled payment is idempotent. Legacy PAID rows without links require human reconciliation. Administrators must verify the **actual bank transfer** before marking PAID.
+5. **Standalone Admin:** Same-origin checks reject cross-site POSTs including payment confirmation, cookies use Secure with an HTTPS `ADMIN_PUBLIC_ORIGIN`, rate limits protect login, request bodies are bounded while streaming, stack traces are not returned to clients, and motivation image uploads check file signatures/basic dimensions.
+6. **User uploads:** Both upload interfaces verify PDF signatures and OOXML ZIP structure for DOCX/PPTX, prevent archive traversal/macro entries, and enforce limits on size, entry count and expansion ratio. Pending files remain private in application routes; DOCX preview HTML uses a sandbox CSP. The same restrictions must be implemented at CDN/reverse-proxy level.
+7. **Abuse prevention:** Migration `20261101120000_security_throttle` creates persistent Postgres rate buckets for credentials attempts, signup, exam-password guessing, contact, document upload and checkout. Atomic SQL operations apply across replicas; identifiers are HMAC-hashed, and only trusted proxies may enable X-Forwarded-For parsing.
+8. **Runtime and dependencies:** Next.js updated to `16.4.3`, NextAuth to `4.24.15`, patched KaTeX and Zod, vulnerable `xlsx` replaced with `read-excel-file` / `write-excel-file` and guarded CSV. PostCSS updated to `8.5.32`; `baseline-browser-mapping` updated to `2.11.34`. Temporary dependency migration workflows removed; permanent CI permissions are read-only.
 
-## Latest validated automated test results
+## Verified results on the final review commit
 
-- **Main CI**: https://github.com/aduvava/aduvava/actions/runs/41299005042 — **success**, 34/34 unit tests; TypeScript, standalone Admin syntax, production build and high/critical dependency audit passed.
-- **Integration smoke**: https://github.com/aduvava/aduvava/actions/runs/41299005035 — **success** against disposable PostgreSQL 16, running both Next.js and standalone Admin Server.
-- Integration covers private/protected PRO exam APIs, secret/answer-key non-disclosure, account profile redaction, login and database role revocation for Server Components, payment checkout pending without VIP, settled payment activation, repeat confirmation idempotency, PAID-reversal rejection, protected Admin form submissions and denied direct document static URLs.
-- `npm audit --omit=dev --audit-level=high` passes but still reports **one moderate `baseline-browser-mapping` advisory**; the configured threshold does not check every possible issue.
-- An automated green check is **not** an external penetration test or proof of production security.
+- **Main CI:** https://github.com/aduvava/aduvava/actions/runs/41300859987 — **SUCCESS** on SHA `37c3a298bf44f49e406b0fe41ea7a87d739f84eb`.
+- **PostgreSQL integration:** https://github.com/aduvava/aduvava/actions/runs/41300860034 — **SUCCESS** on the same SHA, using disposable PostgreSQL 16 and both Admin implementations.
+- **Unit tests:** **45 passed, 0 failed**. Prisma generation and migrations, TypeScript check, standalone Node syntax, Next.js production build, and integration tests passed.
+- **Dependency scan:** `npm audit --audit-level=moderate` reported **0 vulnerabilities across all installed dependencies**, including build tooling, in this successful CI run. This does not guarantee vulnerabilities will not be discovered later.
+- **Integration coverage:** credentials, role revocation on protected pages and APIs, PRO/private exams, profile redaction, two Admin VIP approval paths with idempotency and CSRF protection, contact HTTP 429 with Retry-After, shared database throttle buckets, PDF spoofing rejection and private-file authorization.
+- These are controlled CI results; production CDN, infrastructure, passwords, backups, payment/bank integrations and user browsers have **not** been inspected or exercised in the actual deployment.
 
-## Remaining pre-public work
+## Operational gates still required before going public
 
-1. **Rate limits and abuse prevention:** add persistent IP/account throttling for public registration, login, password guessing, contact forms and exam password submissions; monitor anomalous traffic.
-2. **Uploads and hosting:** verify file signatures and limits, ZIP document decompression limits, antivirus processing, and keep sensitive uploads private in every deployment layer. The Next.js proxy alone is insufficient when CDN/static hosting bypasses it.
-3. **Manual payment operations:** train administrators to verify bank funds externally before clicking PAID. Review existing legacy PAID records for incomplete VIP activation; manual reconciliation is required. Add change history, refunds/reversals workflow and reconciliation reporting before collecting real money at scale.
-4. **Standalone Admin hardening:** configure `ADMIN_PUBLIC_ORIGIN` and HTTPS, add login rate limits and intrusion monitoring, and audit all privileged upload operations and Admin forms. Admin sessions are in-memory; deployments must tolerate restart/session loss.
-5. **Database and delivery:** independently verify backups, restore drills, least-privilege credentials, correct `NEXTAUTH_URL`, secrets, HTTPS, database migrations (`prisma migrate deploy`), GitHub required checks/branch protection and deployment rollback.
-6. **Manual acceptance:** review actual student/teacher/Admin UI on desktop/mobile, XLSX import/export and real bank-reconciliation workflow on staging with realistic permissions. Automated API tests do not replace human browser QA.
-7. **Other known gaps:** forgotten-password page is not functional; AI grading returns HTTP 503; legacy `scripts/upsert-store-catalog.ts` still imports a missing module; full production-scale/load tests are pending.
+1. **Staging and secrets:** Configure TLS, strong and unique secrets, correct `NEXTAUTH_URL`, secure `DATABASE_URL`, private standalone Admin port, and exact HTTPS `ADMIN_PUBLIC_ORIGIN`. Run `npx prisma migrate deploy` before starting the upgraded apps. Set `SECURITY_TRUST_PROXY_IP_HEADERS=true` ONLY if your reverse proxy strips all client-supplied forwarding headers.
+2. **Malware scanning and storage:** Structural PDF/OOXML validation **is not antivirus**. Add malware scanning/quarantine before releasing user files; enforce body limits and document privacy in every CDN/reverse-proxy origin and store files on persistent, access-controlled storage.
+3. **Backup / restore:** Verify off-site PostgreSQL and upload backups with an actual restore drill. Prepare a migration/rollout rollback procedure, rotate any exposed secrets and test logs/monitoring/alerts.
+4. **Bank payments:** Confirm the operator can reconcile transfers by amount/reference, handle refunds/disputes and maintain a durable audit trail. Investigate preexisting PAID payments missing `vipSubscriptionId` before accepting real money.
+5. **Browser and abuse testing:** Manually test student, teacher and Admin journeys on mobile/desktop, real file submissions, XLSX import/export, session expiration, failed login limits and user-facing error messages. Functional password recovery remains incomplete; AI grading is currently unavailable.
+6. **Release governance:** Require PR code review plus the main CI and PostgreSQL security smoke checks on protected `main`, verify production configuration, and get explicit owner approval before merge/deployment. No auto-merge was enabled.
 
-**Release recommendation:** Do not expose the standalone Admin server or accept live payments until operational/security checks above are addressed. Keep PR #2 Draft. Never merge without owner approval.
+## Launch decision
+
+Automated unit, integration, production build and dependency checks are now green. **This is not yet a production launch sign-off:** operational security, malware scanning, backup restoration and bank reconciliation need deployment-specific verification. Keep this PR in Draft until the owner reviews it and authorizes merge.
