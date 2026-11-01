@@ -7,6 +7,8 @@ const bcrypt = require("bcryptjs");
 const { createCsv } = require("./csv-export");
 const { transitionManualPayment } = require("../src/lib/payment-transition.js");
 const { trustedPostOrigin, cookieSecuritySuffix } = require("./request-security");
+const { rateLimitOperation, TooManyRequestsError } = require("../src/lib/security-throttle.js");
+const { validateDocumentBuffer } = require("../src/lib/document-file-validation.js");
 
 loadEnv(path.join(__dirname, "..", ".env"));
 
@@ -346,15 +348,23 @@ function parseCookies(req) {
 }
 
 async function readBody(req) {
-  const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
-  return Buffer.concat(chunks).toString("utf8");
+  return (await readBodyBuffer(req)).toString("utf8");
 }
 
 async function readBodyBuffer(req) {
+  // Reject oversized requests as data arrives, not after buffering them.
+  const multipart = String(req.headers["content-type"] || "").includes("multipart/form-data");
+  const limit = multipart ? 18 * 1024 * 1024 : 1024 * 1024;
+  const declared = Number(req.headers["content-length"]);
+  if (Number.isFinite(declared) && declared > limit) throw new Error("Request body exceeds size limit");
+  let total = 0;
   const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
-  return Buffer.concat(chunks);
+  for await (const chunk of req) {
+    total += chunk.length;
+    if (total > limit) throw new Error("Request body exceeds size limit");
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks, total);
 }
 
 async function readForm(req) {
@@ -1769,13 +1779,16 @@ async function uploadDocument(req, res, user) {
     if (!title || !description || !grade || !subject || !file) throw new Error("Vui lòng nhập đủ thông tin và chọn tệp tài liệu.");
     if (!studyFlows.some((flow) => flow.id === level)) throw new Error("Cấp học không hợp lệ.");
     if (!documentTypes.some((item) => item.value === type) || !documentStatuses.includes(status)) throw new Error("Phân loại hoặc trạng thái không hợp lệ.");
-    if (file.size > 15 * 1024 * 1024) throw new Error("Tệp phải nhỏ hơn hoặc bằng 15MB.");
-    const { extension, mimeType } = safeUploadName(file.filename);
+    if (!file.size || file.size > 15 * 1024 * 1024) throw new Error("Tệp phải nhỏ hơn hoặc bằng 15MB.");
+    // Validate actual bytes and Office ZIP structure, not just the extension.
+    const { extension, mimeType } = validateDocumentBuffer(file.buffer, file.filename, file.mimeType);
     const storedName = `${crypto.randomUUID()}${extension}`;
     const uploadDirectory = documentsDirectory();
     fs.mkdirSync(uploadDirectory, { recursive: true });
-    fs.writeFileSync(path.join(uploadDirectory, storedName), file.buffer);
-    await prisma.document.create({
+    const filePath = path.join(uploadDirectory, storedName);
+    fs.writeFileSync(filePath, file.buffer, { flag: "wx" });
+    try {
+      await prisma.document.create({
       data: {
         title,
         description,
@@ -1792,6 +1805,10 @@ async function uploadDocument(req, res, user) {
         uploaderId: user.id,
       },
     });
+    } catch (error) {
+      fs.rmSync(filePath, { force: true });
+      throw error;
+    }
     redirect(res, `/documents?notice=${encodeURIComponent("Đã tải tài liệu lên hệ thống")}`);
   } catch (error) {
     redirect(res, `/documents?notice=${encodeURIComponent(error.message || "Không thể tải tài liệu")}`);
@@ -2406,6 +2423,18 @@ async function handleLogin(req, res) {
   const form = await readForm(req);
   const email = String(form.get("email") || "").trim().toLowerCase();
   const password = String(form.get("password") || "");
+  try {
+    await rateLimitOperation(prisma, "admin-login", email || "empty", req.headers);
+  } catch (error) {
+    if (error instanceof TooManyRequestsError) {
+      sendHtml(res, loginPage("Quá nhiều lần đăng nhập. Hãy thử lại sau."), 429, {
+        "Retry-After": String(error.retryAfterSeconds),
+        "Cache-Control": "no-store",
+      });
+      return;
+    }
+    throw error;
+  }
   const user = await prisma.user.findUnique({ where: { email } });
   const valid = user?.role === "ADMIN" && user.passwordHash && await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
