@@ -5,6 +5,9 @@
 import assert from "node:assert/strict";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
+import { unlink } from "node:fs/promises";
+import { join } from "node:path";
+import { consumeSecurityThrottle, throttleKey, TooManyRequestsError } from "../src/lib/security-throttle";
 
 const prisma = new PrismaClient();
 const base = process.env.SMOKE_BASE_URL ?? "http://127.0.0.1:3000";
@@ -94,6 +97,9 @@ async function run() {
   let planId: string | undefined;
   let subjectId: string | undefined;
   const createdExamIds: string[] = [];
+  const uploadedFiles: string[] = [];
+  const createdDocumentIds: string[] = [];
+  const contactEmail = `smoke-contact-${nonce}@example.test`;
   try {
     console.log("SMOKE: public registration and auth with isolated PostgreSQL");
     const bad = await postJson("/api/auth/register", {
@@ -139,6 +145,57 @@ async function run() {
     assert.equal(profileBody.profile.email, studentEmail);
     assert.ok(!("passwordHash" in profileBody.profile), "never expose a bcrypt password hash");
     assert.ok(!("accounts" in profileBody.profile), "never expose OAuth credentials");
+
+    console.log("SMOKE: PostgreSQL throttle is shared and blocks concurrent attempts");
+    const throttleScope = `smoke-bucket-${nonce}`.replace(/[^a-z0-9-]/g, "");
+    const throttleSubject = studentEmail;
+    const limits = await Promise.allSettled(
+      Array.from({ length: 8 }, () => consumeSecurityThrottle(prisma, throttleScope, throttleSubject, {
+        limit: 5, windowSeconds: 120,
+      })),
+    );
+    assert.equal(limits.filter((x) => x.status === "fulfilled").length, 5);
+    assert.equal(limits.filter((x) => x.status === "rejected" &&
+      x.reason instanceof TooManyRequestsError).length, 3);
+    assert.equal(await prisma.securityThrottle.count({ where: { key: throttleKey(throttleScope, throttleSubject) } }), 1);
+
+    console.log("SMOKE: contact route returns HTTP 429 after its account quota");
+    for (let i = 0; i < 5; i++) {
+      const contact = await postJson("/api/contact", {
+        name: "Contact Test", email: contactEmail, message: "A valid contact form message from integration tests",
+      });
+      await assertStatus(contact, i < 4 ? 201 : 429, "contact request throttle");
+      if (i === 4) assert.ok(Number(contact.headers.get("retry-after")) > 0, "Retry-After required");
+    }
+
+    console.log("SMOKE: upload validates PDF bytes, not just extensions");
+    const metadata = {
+      title: "Tài liệu smoke kiểm thử", description: "Bản kiểm thử chữ ký tệp PDF bằng PostgreSQL",
+      level: "THCS", grade: "Lớp 6", subject: "Toán", type: "FORMULA_HANDBOOK",
+    };
+    const makeForm = (bytes: Uint8Array) => {
+      const form = new FormData();
+      for (const [key, value] of Object.entries(metadata)) form.set(key, value);
+      form.set("file", new Blob([bytes], { type: "application/pdf" }), "test.pdf");
+      return form;
+    };
+    const rejectedFile = await request("/api/documents", {
+      method: "POST", body: makeForm(new TextEncoder().encode("MZ executable with a PDF filename")),
+    }, studentAuth.jar);
+    await assertStatus(rejectedFile, 400, "spoofed PDF must be rejected");
+    const uploaded = await request("/api/documents", {
+      method: "POST", body: makeForm(new TextEncoder().encode("%PDF-1.7\\n1 0 obj\\n<<>>\\nendobj\\n%%EOF\\n")),
+    }, studentAuth.jar);
+    await assertStatus(uploaded, 201, "valid PDF uploaded for moderation");
+    const uploadedResult = await uploaded.json() as { document: { id: string; status: string } };
+    assert.equal(uploadedResult.document.status, "PENDING");
+    createdDocumentIds.push(uploadedResult.document.id);
+    const docRecord = await prisma.document.findUniqueOrThrow({ where: { id: uploadedResult.document.id } });
+    uploadedFiles.push(docRecord.storedName);
+    const unauthorizedDocument = await request(`/api/documents/${docRecord.id}/file`, {}, adminAuthPlaceholder());
+    // The uploader can access their own pending file. Unauthenticated access is always denied.
+    assert.ok([401, 302, 307, 308].includes(unauthorizedDocument.status));
+    function adminAuthPlaceholder(): Jar { return new Map(); }
 
     console.log("SMOKE: checkout creates pending payment without subscription");
     const checkout = await postJson("/api/payments/checkout", { planId }, studentAuth.jar);
@@ -301,6 +358,9 @@ async function run() {
     console.log("SMOKE PASSED: register, credentials login, RBAC, checkout, admin fields, JWT revocation, uploads");
   } finally {
     // Completely disposable test database: cleanup even if an assertion fails.
+    if (createdDocumentIds.length) await prisma.document.deleteMany({ where: { id: { in: createdDocumentIds } } });
+    for (const name of uploadedFiles) await unlink(join(process.cwd(), "public", "uploads", "documents", name)).catch(() => undefined);
+    await prisma.leadMessage.deleteMany({ where: { email: contactEmail } });
     if (createdExamIds.length) {
       await prisma.exam.deleteMany({ where: { id: { in: createdExamIds } } });
     }
