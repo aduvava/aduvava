@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { rateLimitOperation } from "@/lib/security-throttle";
 import { handleRouteError, HttpError, jsonOk, readJson, requireUser } from "@/lib/api";
 
 const accessSchema = z.object({
@@ -17,6 +18,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (exam.ownerId === user.id || exam.shareMode === "PUBLIC") return jsonOk({ ok: true });
     if (exam.shareMode !== "PASSWORD" || !exam.sharePasswordHash) throw new HttpError(403, "Đề thi không cho phép truy cập bằng mật khẩu.");
 
+    await rateLimitOperation(prisma, "exam-password", `${user.id}:${exam.id}`, request.headers);
     const valid = await bcrypt.compare(payload.password, exam.sharePasswordHash);
     if (!valid) throw new HttpError(403, "Mật khẩu không đúng.");
 
