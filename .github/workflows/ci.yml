@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   verify:
-    name: Typecheck, tests and dependency audit
+    name: Typecheck, tests, build and dependency audit
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -40,6 +40,13 @@ jobs:
 
       - name: Unit tests
         run: npm test
+
+      - name: Verify production build
+        env:
+          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_SECRET: build-only-placeholder-not-for-runtime
+          DATABASE_URL: postgresql://postgres:build-only@127.0.0.1:5432/eduva?schema=public
+        run: npm run build
 
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
