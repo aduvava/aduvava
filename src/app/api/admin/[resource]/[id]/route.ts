@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { parseAdminInput } from "@/lib/admin-input";
+import { transitionManualPayment } from "@/lib/payment-transition";
 import { handleRouteError, HttpError, jsonOk, readJson, requireAdmin } from "@/lib/api";
 
 async function updateResource(resource: string, id: string, body: Record<string, unknown>) {
@@ -26,7 +27,7 @@ async function updateResource(resource: string, id: string, body: Record<string,
     case "subscriptions":
       return prisma.subscription.update({ where: { id }, data: body as never });
     case "payments":
-      return prisma.payment.update({ where: { id }, data: body as never });
+      return (await transitionManualPayment(prisma, id, String(body.status))).payment;
     case "plans":
       return prisma.plan.update({ where: { id }, data: body as never });
     case "store-items":
@@ -55,7 +56,7 @@ async function getResource(resource: string, id: string) {
     case "subscriptions":
       return prisma.subscription.findUnique({ where: { id }, include: { user: { select: { id: true, email: true, name: true, role: true } }, plan: true } });
     case "payments":
-      return prisma.payment.findUnique({ where: { id }, include: { user: true, plan: true } });
+      return prisma.payment.findUnique({ where: { id }, include: { user: { select: { id: true, name: true, email: true, role: true } }, plan: true } });
     case "plans":
       return prisma.plan.findUnique({ where: { id } });
     case "store-items":
