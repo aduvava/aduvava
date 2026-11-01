@@ -39,6 +39,9 @@ jobs:
         run: |
           node --check admin-server/server.js
           node --check admin-server/request-security.js
+          node --check admin-server/image-file-validation.js
+          node --check src/lib/security-throttle.js
+          node --check src/lib/document-file-validation.js
           node --check src/lib/payment-transition.js
 
       - name: TypeScript check
