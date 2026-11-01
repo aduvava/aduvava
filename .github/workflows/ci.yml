@@ -36,7 +36,7 @@ jobs:
         run: npm run db:generate
 
       - name: TypeScript check
-        run: npx tsc --noEmit
+        run: npx tsc --noEmit -p tsconfig.ci.json
 
       - name: Unit tests
         run: npm test
