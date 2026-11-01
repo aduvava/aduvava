@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { prisma } from "@/lib/db";
 import { PaymentTransitionError } from "@/lib/payment-transition";
+import { TooManyRequestsError } from "@/lib/security-throttle";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
@@ -49,6 +50,12 @@ export async function requireAdmin() {
 }
 
 export function handleRouteError(error: unknown) {
+  if (error instanceof TooManyRequestsError) {
+    return NextResponse.json({ error: error.message }, {
+      status: 429,
+      headers: { "Retry-After": String(error.retryAfterSeconds), "Cache-Control": "no-store" },
+    });
+  }
   if (error instanceof HttpError || error instanceof PaymentTransitionError) return jsonError(error.message, error.status);
   if (error instanceof ZodError) return jsonError("Invalid request payload", 400);
   console.error(error);
