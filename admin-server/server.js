@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
-const XLSX = require("xlsx");
+const { createCsv } = require("./csv-export");
 
 loadEnv(path.join(__dirname, "..", ".env"));
 
@@ -1150,7 +1150,7 @@ async function usersPage(user, notice, url) {
     ${table(["Hạng", "Trường đại học", "Số lượng"], universityRows)}
   </div>`;
 
-  const body = `${pageHeader("Người dùng", "Xem toàn bộ tài khoản, hồ sơ cá nhân, VIP và thống kê học tập.", `<a class="button" href="/users/export.xlsx">Xuất Excel</a>`)}
+  const body = `${pageHeader("Người dùng", "Xem toàn bộ tài khoản, hồ sơ cá nhân, VIP và thống kê học tập.", `<a class="button" href="/users/export.csv">Xuất CSV (Excel)</a>`)}
     <div class="grid stats">${statCards}</div>
     <div style="margin-top:16px">${filters}</div>
     ${universityStatsBlock}
@@ -1159,7 +1159,7 @@ async function usersPage(user, notice, url) {
   return layout({ title: "Người dùng", active: "/users", user, notice, body });
 }
 
-async function exportUsersExcel(res) {
+async function exportUsersCsv(res) {
   const now = new Date();
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "desc" },
@@ -1212,14 +1212,10 @@ async function exportUsersExcel(res) {
     "Ngày tạo",
     "Cập nhật",
   ];
-  const workbook = XLSX.utils.book_new();
-  const worksheet = XLSX.utils.json_to_sheet(rows, { header: headers });
-  worksheet["!cols"] = headers.map((header) => ({ wch: Math.min(34, Math.max(12, header.length + 4)) }));
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Nguoi dung");
-  const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+  const buffer = Buffer.from(createCsv(headers, rows), "utf8");
   res.writeHead(200, {
-    "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "Content-Disposition": `attachment; filename="ava-users-${new Date().toISOString().slice(0, 10)}.xlsx"`,
+    "Content-Type": "text/csv; charset=utf-8",
+    "Content-Disposition": `attachment; filename="ava-users-${new Date().toISOString().slice(0, 10)}.csv"`,
     "Content-Length": buffer.length,
     "Cache-Control": "no-store",
   });
@@ -2654,7 +2650,7 @@ async function router(req, res) {
 
   if (pathname === "/" && req.method === "GET") return sendHtml(res, await dashboardPage(user, notice));
   if (pathname === "/users" && req.method === "GET") return sendHtml(res, await usersPage(user, notice, url));
-  if (pathname === "/users/export.xlsx" && req.method === "GET") return exportUsersExcel(res);
+  if (pathname === "/users/export.csv" && req.method === "GET") return exportUsersCsv(res);
   if (pathname.startsWith("/users/") && pathname.endsWith("/role") && req.method === "POST") {
     return redirect(res, `/users?notice=${encodeURIComponent("Vai trò tài khoản đang để cố định, admin không chỉnh tại đây")}`);
   }
