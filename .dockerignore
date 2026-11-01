@@ -9,3 +9,6 @@ node_modules
 .env.*
 !.env.example
 *.log
+
+# Private runtime document storage must never enter container build context
+storage/
