@@ -1,4 +1,5 @@
 name: One-time PostCSS security compatibility check
+# Revalidate after excluding legacy standalone catalog script from app build.
 on:
   push:
     branches: [improve/security-performance]
