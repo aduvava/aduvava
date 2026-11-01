@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { rateLimitOperation } from "@/lib/security-throttle";
 import { handleRouteError, jsonOk, readJson } from "@/lib/api";
 
 const contactSchema = z.object({
@@ -13,6 +14,7 @@ const contactSchema = z.object({
 export async function POST(request: Request) {
   try {
     const payload = contactSchema.parse(await readJson<unknown>(request));
+    await rateLimitOperation(prisma, "contact", payload.email, request.headers);
     const lead = await prisma.leadMessage.create({ data: payload });
     return jsonOk({ lead }, 201);
   } catch (error) {
