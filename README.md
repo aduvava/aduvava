@@ -74,3 +74,9 @@ The repaired lockfile includes complete optional dependency metadata for Linux a
 ### Public deployment security gates
 
 Run `npx prisma migrate deploy` (including the SecurityThrottle migration) before serving traffic. Apply HTTPS, private-file rules and upload size limits at every reverse proxy/CDN. Enable `SECURITY_TRUST_PROXY_IP_HEADERS` only behind a proxy that strips untrusted forwarding headers; the application otherwise uses account/global throttle buckets. Configure `ADMIN_PUBLIC_ORIGIN` for the standalone Admin service and keep port 4000 private. Validate uploaded files with antivirus; structural signatures and ZIP limits do not detect every threat. Back up and restore-test PostgreSQL and uploads before launch.
+
+### Private documents and virus scanning (pre-public hardening)
+
+New document uploads are stored outside `public/` (default `./storage/documents`). Older deployments must migrate existing `public/uploads/documents` files using the reviewed `scripts/migrate-document-storage.js` command after a verified backup. Document uploads and approvals in production require a clean ClamAV scan; if clamd is offline they fail closed. The optional Docker Compose ClamAV service is enabled with `docker compose --profile malware-scanning up -d --build`; ClamAV port 3310 is **not** published to the Internet.
+
+Run `docker compose exec web node scripts/public-launch-preflight.js` on the configured production host, then complete external TLS, CDN, backups, bank and browser acceptance separately. Read [the private storage and malware scanning runbook](docs/private-storage-malware-runbook.md) for migration and scanner setup. Keep the security PR Draft until explicit owner review.
