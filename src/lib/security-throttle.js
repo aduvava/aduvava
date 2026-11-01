@@ -86,6 +86,7 @@ async function rateLimitOperation(db, operation, subject, headers) {
     "exam-password": { account: [12, 900], ip: [100, 900] },
     contact: { account: [4, 3600], ip: [15, 3600], global: [1200, 3600] },
     upload: { account: [15, 3600], ip: [50, 3600] },
+    checkout: { account: [8, 3600], ip: [40, 3600] },
   };
   const policy = policies[operation];
   if (!policy) throw new Error("Unknown operation");
