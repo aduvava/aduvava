@@ -85,7 +85,7 @@ async function deleteResource(resource: string, id: string) {
     case "subscriptions":
       return prisma.subscription.delete({ where: { id } });
     case "payments":
-      return prisma.payment.delete({ where: { id } });
+      throw new HttpError(409, "Payment audit records cannot be deleted");
     case "plans":
       return prisma.plan.delete({ where: { id } });
     case "store-items":
