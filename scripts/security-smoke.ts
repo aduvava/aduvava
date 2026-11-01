@@ -176,7 +176,7 @@ async function run() {
     const makeForm = (bytes: Uint8Array) => {
       const form = new FormData();
       for (const [key, value] of Object.entries(metadata)) form.set(key, value);
-      form.set("file", new Blob([bytes], { type: "application/pdf" }), "test.pdf");
+      form.set("file", new Blob([new Uint8Array(bytes)], { type: "application/pdf" }), "test.pdf");
       return form;
     };
     const rejectedFile = await request("/api/documents", {
@@ -192,10 +192,9 @@ async function run() {
     createdDocumentIds.push(uploadedResult.document.id);
     const docRecord = await prisma.document.findUniqueOrThrow({ where: { id: uploadedResult.document.id } });
     uploadedFiles.push(docRecord.storedName);
-    const unauthorizedDocument = await request(`/api/documents/${docRecord.id}/file`, {}, adminAuthPlaceholder());
+    const unauthorizedDocument = await request(`/api/documents/${docRecord.id}/file`);
     // The uploader can access their own pending file. Unauthenticated access is always denied.
     assert.ok([401, 302, 307, 308].includes(unauthorizedDocument.status));
-    function adminAuthPlaceholder(): Jar { return new Map(); }
 
     console.log("SMOKE: checkout creates pending payment without subscription");
     const checkout = await postJson("/api/payments/checkout", { planId }, studentAuth.jar);
