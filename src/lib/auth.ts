@@ -73,5 +73,10 @@ export const authOptions: NextAuthOptions = {
 export async function getCurrentUser() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return null;
-  return session.user;
+  // Never authorize Server Components using a potentially stale JWT role.
+  // A deleted user or a revoked admin/teacher must lose access immediately.
+  return prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true, name: true, email: true, image: true, role: true },
+  });
 }
