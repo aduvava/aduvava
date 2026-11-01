@@ -1,0 +1,78 @@
+name: Security integration smoke
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: eduva_smoke
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d eduva_smoke"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/eduva_smoke?schema=public
+      NEXTAUTH_URL: http://127.0.0.1:3000
+      NEXTAUTH_SECRET: isolated-ci-sessions-only-do-not-use-in-production
+      NEXT_TELEMETRY_DISABLED: '1'
+      SMOKE_BASE_URL: http://127.0.0.1:3000
+      # Scanner behavior is unit-tested with a fake clamd TCP server; isolated
+      # integration uses only disposable sample PDF bytes, no real users.
+      DOCUMENT_SCAN_REQUIRED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install and initialize disposable PostgreSQL database
+        run: |
+          npm ci
+          npm run db:generate
+          npx prisma migrate deploy
+      - name: Build server against isolated PostgreSQL
+        run: npm run build
+      - name: Start server and exercise registration, login, RBAC, payments, uploads
+        shell: bash
+        run: |
+          npm run start -- --port 3000 > /tmp/eduva-security-smoke.log 2>&1 &
+          server_pid=$!
+          node admin-server/server.js > /tmp/eduva-admin-smoke.log 2>&1 &
+          admin_pid=$!
+          trap 'kill "$server_pid" "$admin_pid" 2>/dev/null || true; tail -60 /tmp/eduva-security-smoke.log; tail -40 /tmp/eduva-admin-smoke.log' EXIT
+          ready=0
+          for attempt in $(seq 1 50); do
+            if curl --silent --fail http://127.0.0.1:3000/api/auth/csrf > /dev/null; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" != 1 ]; then echo 'Server startup timed out'; exit 1; fi
+          admin_ready=0
+          for attempt in $(seq 1 25); do
+            if curl --silent --fail http://127.0.0.1:4000/health > /dev/null; then admin_ready=1; break; fi
+            sleep 1
+          done
+          if [ "$admin_ready" != 1 ]; then echo 'Admin server startup timed out'; exit 1; fi
+          node --import tsx scripts/security-smoke.ts

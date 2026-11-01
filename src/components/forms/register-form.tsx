@@ -2,13 +2,11 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useSearchParams } from "next/navigation";
 import { SCHOOL_GRADES, VIETNAM_PROVINCES } from "@/data/profile-options";
 
 export function RegisterForm() {
   const [message, setMessage] = useState<string | null>(null);
-  const searchParams = useSearchParams();
-  const role = searchParams.get("role") === "teacher" ? "TEACHER" : "STUDENT";
+  const role = "STUDENT" as const;
 
   async function submit(formData: FormData) {
     const payload = {
@@ -27,14 +25,14 @@ export function RegisterForm() {
       return;
     }
     await signIn("credentials", { email: payload.email, password: payload.password, role, redirect: false });
-    window.location.assign(role === "TEACHER" ? "/teacher" : "/onboarding");
+    window.location.assign("/onboarding");
   }
 
   return (
     <form action={submit} className="grid gap-4">
       <input name="name" required placeholder="Họ tên" className="rounded-2xl border border-ink/10 bg-white px-4 py-3 outline-none focus:border-moss" />
       <input name="email" type="email" required placeholder="Email" className="rounded-2xl border border-ink/10 bg-white px-4 py-3 outline-none focus:border-moss" />
-      <input name="password" type="password" required minLength={6} placeholder="Mật khẩu" className="rounded-2xl border border-ink/10 bg-white px-4 py-3 outline-none focus:border-moss" />
+      <input name="password" type="password" required minLength={8} placeholder="Mật khẩu (ít nhất 8 ký tự)" className="rounded-2xl border border-ink/10 bg-white px-4 py-3 outline-none focus:border-moss" />
       <div className="grid gap-3 md:grid-cols-2">
         <select name="grade" required defaultValue="" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100">
           <option value="" disabled>Chọn lớp</option>

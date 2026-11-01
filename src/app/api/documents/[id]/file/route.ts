@@ -1,5 +1,5 @@
 ﻿import { readFile } from "fs/promises";
-import path from "path";
+import { readPrivateDocument } from "@/lib/private-document-storage";
 import { prisma } from "@/lib/db";
 import { handleRouteError, HttpError, requireUser } from "@/lib/api";
 
@@ -16,8 +16,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       throw new HttpError(403, "Tài liệu chưa được công khai.");
     }
 
-    const filePath = path.join(process.cwd(), "public", "uploads", "documents", document.storedName);
-    const file = await readFile(filePath);
+    // Only load from non-public storage after authorization succeeds.
+    const file = readPrivateDocument(document.storedName);
 
     if (download && document.status === "APPROVED" && document.uploaderId !== user.id) {
       await prisma.$transaction(async (tx) => {

@@ -1,0 +1,78 @@
+#!/usr/bin/env node
+"use strict";
+
+// Browser smoke exercises real Chromium and a throwaway PostgreSQL database.
+// Hard fail if invoked against any real deployment or non-disposable database.
+const assert = require("node:assert/strict");
+const { PrismaClient } = require("@prisma/client");
+const { chromium } = require("playwright");
+
+const base = process.env.BROWSER_SMOKE_URL || "http://127.0.0.1:3000";
+const dbUrl = process.env.DATABASE_URL || "";
+if (process.env.BROWSER_SMOKE_CI_ONLY !== "yes" ||
+    !/^http:\/\/127\.0\.0\.1:3000$/.test(base) ||
+    !dbUrl.includes("/eduva_browser_ci")) {
+  console.error("Refusing browser smoke outside isolated localhost CI database.");
+  process.exit(2);
+}
+
+async function main() {
+  const email = "browser-smoke-" + Date.now() + "@example.test";
+  const password = "BrowserSmokeCI-Only-2026!";
+  const prisma = new PrismaClient();
+  const browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
+  try {
+    const desktop = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const page = await desktop.newPage();
+
+    await page.goto(base, { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { name: /Luyện Đề Thông Minh/i }).waitFor({ timeout: 30000 });
+
+    // Server authorization should protect logged-in pages in a real browser.
+    await page.goto(base + "/dashboard");
+    await page.waitForURL(/\/login\?/, { timeout: 15000 });
+
+    await page.goto(base + "/register");
+    await page.getByRole("heading", { name: "Tạo tài khoản học sinh" }).waitFor();
+    await page.locator('input[name="name"]').fill("Browser Tester");
+    await page.locator('input[name="email"]').fill(email);
+    await page.locator('input[name="password"]').fill(password);
+    await page.locator('select[name="grade"]').selectOption({ index: 1 });
+    await page.locator('select[name="province"]').selectOption({ index: 1 });
+    await page.getByRole("button", { name: "TẠO TÀI KHOẢN" }).click();
+    await page.waitForURL(/\/onboarding(?:\?|$)/, { timeout: 45000 });
+
+    const account = await prisma.user.findUniqueOrThrow({ where: { email } });
+    assert.equal(account.role, "STUDENT", "browser-created accounts must be STUDENT");
+
+    const sessionResult = await page.request.get(base + "/api/auth/session");
+    assert.equal(sessionResult.status(), 200);
+    const session = await sessionResult.json();
+    assert.equal(session.user?.email, email);
+
+    await page.goto(base + "/dashboard");
+    await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15000 });
+    assert.equal(new URL(page.url()).pathname, "/dashboard");
+
+    await page.goto(base + "/teacher");
+    await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15000 });
+    await page.goto(base + "/admin");
+    await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15000 });
+    await desktop.close();
+
+    const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true });
+    const mobilePage = await mobile.newPage();
+    await mobilePage.goto(base + "/login?role=student");
+    await mobilePage.getByRole("heading", { name: "Đăng nhập Học sinh" }).waitFor({ timeout: 20000 });
+    assert.equal(await mobilePage.locator('input[type="password"]').count(), 1);
+    assert.equal(await mobilePage.locator('input[type="email"]').count(), 1);
+    await mobile.close();
+
+    console.log("Chromium smoke passed: home, login guard, browser registration, session, RBAC, mobile login.");
+  } finally {
+    await browser.close();
+    await prisma.user.deleteMany({ where: { email } });
+    await prisma.$disconnect();
+  }
+}
+main().catch(error => { console.error("Chromium browser smoke failed:", error.stack || error); process.exitCode = 1; });

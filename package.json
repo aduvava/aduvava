@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "engines": {
-    "node": ">=20"
+    "node": ">=20.9.0"
   },
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0",
@@ -23,17 +23,18 @@
     "@prisma/client": "5.22.0",
     "bcryptjs": "2.4.3",
     "clsx": "2.1.1",
-    "katex": "0.17.0",
+    "katex": "0.19.1",
     "lucide-react": "0.468.0",
     "mammoth": "1.12.0",
-    "next": "15.5.19",
-    "next-auth": "4.24.14",
+    "next": "16.4.3",
+    "next-auth": "4.24.15",
     "prisma": "5.22.0",
     "react": "19.2.7",
     "react-dom": "19.2.7",
+    "read-excel-file": "9.3.14",
     "tsx": "4.22.4",
-    "xlsx": "0.18.5",
-    "zod": "3.25.76"
+    "write-excel-file": "4.1.1",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@types/bcryptjs": "2.4.6",
@@ -41,7 +42,7 @@
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "autoprefixer": "10.5.0",
-    "postcss": "8.5.15",
+    "postcss": "8.5.32",
     "tailwindcss": "3.4.19",
     "typescript": "5.9.3"
   }

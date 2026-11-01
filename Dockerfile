@@ -18,6 +18,7 @@ COPY --from=build /app/public ./public
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/src ./src
 COPY --from=build /app/admin-server ./admin-server
+COPY --from=build /app/scripts ./scripts
 COPY --from=build /app/package.json ./package.json
 EXPOSE 3000 4000
 CMD ["npm", "run", "start"]

@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { parseAdminInput } from "@/lib/admin-input";
+import { transitionManualPayment } from "@/lib/payment-transition";
 import { handleRouteError, HttpError, jsonOk, readJson, requireAdmin } from "@/lib/api";
 
 async function updateResource(resource: string, id: string, body: Record<string, unknown>) {
@@ -25,7 +27,7 @@ async function updateResource(resource: string, id: string, body: Record<string,
     case "subscriptions":
       return prisma.subscription.update({ where: { id }, data: body as never });
     case "payments":
-      return prisma.payment.update({ where: { id }, data: body as never });
+      return (await transitionManualPayment(prisma, id, String(body.status))).payment;
     case "plans":
       return prisma.plan.update({ where: { id }, data: body as never });
     case "store-items":
@@ -52,9 +54,9 @@ async function getResource(resource: string, id: string) {
     case "users":
       return prisma.user.findUnique({ where: { id }, select: { id: true, email: true, name: true, role: true, createdAt: true, profile: true } });
     case "subscriptions":
-      return prisma.subscription.findUnique({ where: { id }, include: { user: true, plan: true } });
+      return prisma.subscription.findUnique({ where: { id }, include: { user: { select: { id: true, email: true, name: true, role: true } }, plan: true } });
     case "payments":
-      return prisma.payment.findUnique({ where: { id }, include: { user: true, plan: true } });
+      return prisma.payment.findUnique({ where: { id }, include: { user: { select: { id: true, name: true, email: true, role: true } }, plan: true } });
     case "plans":
       return prisma.plan.findUnique({ where: { id } });
     case "store-items":
@@ -83,7 +85,7 @@ async function deleteResource(resource: string, id: string) {
     case "subscriptions":
       return prisma.subscription.delete({ where: { id } });
     case "payments":
-      return prisma.payment.delete({ where: { id } });
+      throw new HttpError(409, "Payment audit records cannot be deleted");
     case "plans":
       return prisma.plan.delete({ where: { id } });
     case "store-items":
@@ -113,7 +115,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ reso
   try {
     const { resource, id } = await params;
     await requireAdmin();
-    const body = await readJson<Record<string, unknown>>(request);
+    const input = await readJson<unknown>(request);
+    const body = parseAdminInput(resource, input, "update");
     const item = await updateResource(resource, id, body);
     return jsonOk({ item });
   } catch (error) {

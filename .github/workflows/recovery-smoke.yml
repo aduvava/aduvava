@@ -1,0 +1,40 @@
+name: Isolated backup and restore drill
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: recovery-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  recover:
+    name: PostgreSQL dump/restore and private upload recovery
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: isolated-test-only
+          POSTGRES_DB: eduva_recovery_test
+        options: >-
+          --health-cmd "pg_isready -U postgres -d eduva_recovery_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore isolated PostgreSQL and archived private documents
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+          RECOVERY_CI_ONLY: "yes"
+          RECOVERY_DB: eduva_recovery_test
+          RESTORE_DB: eduva_recovery_restored
+        run: bash scripts/verify-disaster-recovery-smoke.sh

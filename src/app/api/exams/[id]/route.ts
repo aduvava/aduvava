@@ -1,37 +1,40 @@
 import { prisma } from "@/lib/db";
-import { handleRouteError, HttpError, jsonOk } from "@/lib/api";
+import { canAccessExam } from "@/lib/access";
+import { handleRouteError, HttpError, jsonOk, requireUser } from "@/lib/api";
 
+// An exam's share token, password hash, answer keys and explanations must
+// never appear in a pre-submission student response.
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const user = await requireUser();
     const { id } = await params;
     const exam = await prisma.exam.findFirst({
       where: { OR: [{ id }, { slug: id }, { code: id }], isPublished: true },
-      include: {
+      select: {
+        id: true, code: true, slug: true, title: true, description: true,
+        family: true, type: true, accessLevel: true, year: true,
+        durationMinutes: true, educationLevel: true, examStructure: true,
+        subjectId: true, ownerId: true, shareMode: true,
         subject: true,
         questions: {
           orderBy: { position: "asc" },
-          include: { answerOptions: { orderBy: { label: "asc" } }, topic: true }
-        }
-      }
+          select: {
+            id: true, position: true, type: true, prompt: true, passage: true,
+            points: true, topic: true,
+            answerOptions: {
+              orderBy: { label: "asc" },
+              select: { id: true, label: true, content: true },
+            },
+          },
+        },
+      },
     });
-
     if (!exam) throw new HttpError(404, "Exam not found");
+    if (!(await canAccessExam(user.id, exam))) {
+      throw new HttpError(403, "You do not have access to this exam");
+    }
 
-    return jsonOk({
-      exam: {
-        ...exam,
-        questions: exam.questions.map((question) => ({
-          id: question.id,
-          topic: question.topic,
-          position: question.position,
-          type: question.type,
-          prompt: question.prompt,
-          passage: question.passage,
-          points: question.points,
-          answerOptions: question.answerOptions.map((option) => ({ id: option.id, label: option.label, content: option.content }))
-        }))
-      }
-    });
+    return jsonOk({ exam });
   } catch (error) {
     return handleRouteError(error);
   }

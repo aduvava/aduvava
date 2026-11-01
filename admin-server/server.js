@@ -4,7 +4,14 @@ const fs = require("fs");
 const path = require("path");
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
-const XLSX = require("xlsx");
+const { createCsv } = require("./csv-export");
+const { transitionManualPayment } = require("../src/lib/payment-transition.js");
+const { trustedPostOrigin, cookieSecuritySuffix } = require("./request-security");
+const { rateLimitOperation, TooManyRequestsError } = require("../src/lib/security-throttle.js");
+const { validateDocumentBuffer } = require("../src/lib/document-file-validation.js");
+const { validateMotivationImageBuffer } = require("./image-file-validation.js");
+const { documentStorageDirectory, documentStoredPath, readPrivateDocument } = require("../src/lib/private-document-storage.js");
+const { scanDocumentBuffer } = require("../src/lib/document-malware-scan.js");
 
 loadEnv(path.join(__dirname, "..", ".env"));
 
@@ -344,15 +351,23 @@ function parseCookies(req) {
 }
 
 async function readBody(req) {
-  const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
-  return Buffer.concat(chunks).toString("utf8");
+  return (await readBodyBuffer(req)).toString("utf8");
 }
 
 async function readBodyBuffer(req) {
+  // Reject oversized requests as data arrives, not after buffering them.
+  const multipart = String(req.headers["content-type"] || "").includes("multipart/form-data");
+  const limit = multipart ? 18 * 1024 * 1024 : 1024 * 1024;
+  const declared = Number(req.headers["content-length"]);
+  if (Number.isFinite(declared) && declared > limit) throw Object.assign(new Error("Request body exceeds size limit"), { statusCode: 413 });
+  let total = 0;
   const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
-  return Buffer.concat(chunks);
+  for await (const chunk of req) {
+    total += chunk.length;
+    if (total > limit) throw Object.assign(new Error("Request body exceeds size limit"), { statusCode: 413 });
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks, total);
 }
 
 async function readForm(req) {
@@ -1150,7 +1165,7 @@ async function usersPage(user, notice, url) {
     ${table(["Hạng", "Trường đại học", "Số lượng"], universityRows)}
   </div>`;
 
-  const body = `${pageHeader("Người dùng", "Xem toàn bộ tài khoản, hồ sơ cá nhân, VIP và thống kê học tập.", `<a class="button" href="/users/export.xlsx">Xuất Excel</a>`)}
+  const body = `${pageHeader("Người dùng", "Xem toàn bộ tài khoản, hồ sơ cá nhân, VIP và thống kê học tập.", `<a class="button" href="/users/export.csv">Xuất CSV (Excel)</a>`)}
     <div class="grid stats">${statCards}</div>
     <div style="margin-top:16px">${filters}</div>
     ${universityStatsBlock}
@@ -1159,7 +1174,7 @@ async function usersPage(user, notice, url) {
   return layout({ title: "Người dùng", active: "/users", user, notice, body });
 }
 
-async function exportUsersExcel(res) {
+async function exportUsersCsv(res) {
   const now = new Date();
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "desc" },
@@ -1212,14 +1227,10 @@ async function exportUsersExcel(res) {
     "Ngày tạo",
     "Cập nhật",
   ];
-  const workbook = XLSX.utils.book_new();
-  const worksheet = XLSX.utils.json_to_sheet(rows, { header: headers });
-  worksheet["!cols"] = headers.map((header) => ({ wch: Math.min(34, Math.max(12, header.length + 4)) }));
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Nguoi dung");
-  const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+  const buffer = Buffer.from(createCsv(headers, rows), "utf8");
   res.writeHead(200, {
-    "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "Content-Disposition": `attachment; filename="ava-users-${new Date().toISOString().slice(0, 10)}.xlsx"`,
+    "Content-Type": "text/csv; charset=utf-8",
+    "Content-Disposition": `attachment; filename="ava-users-${new Date().toISOString().slice(0, 10)}.csv"`,
     "Content-Length": buffer.length,
     "Cache-Control": "no-store",
   });
@@ -1649,7 +1660,7 @@ const documentMimeTypes = new Map([
 ]);
 
 function documentsDirectory() {
-  return path.join(process.cwd(), "public", "uploads", "documents");
+  return documentStorageDirectory();
 }
 
 function safeUploadName(filename) {
@@ -1771,13 +1782,18 @@ async function uploadDocument(req, res, user) {
     if (!title || !description || !grade || !subject || !file) throw new Error("Vui lòng nhập đủ thông tin và chọn tệp tài liệu.");
     if (!studyFlows.some((flow) => flow.id === level)) throw new Error("Cấp học không hợp lệ.");
     if (!documentTypes.some((item) => item.value === type) || !documentStatuses.includes(status)) throw new Error("Phân loại hoặc trạng thái không hợp lệ.");
-    if (file.size > 15 * 1024 * 1024) throw new Error("Tệp phải nhỏ hơn hoặc bằng 15MB.");
-    const { extension, mimeType } = safeUploadName(file.filename);
+    if (!file.size || file.size > 15 * 1024 * 1024) throw new Error("Tệp phải nhỏ hơn hoặc bằng 15MB.");
+    // Validate actual bytes and Office ZIP structure, not just the extension.
+    const { extension, mimeType } = validateDocumentBuffer(file.buffer, file.filename, file.mimeType);
+    // Malware scanning is mandatory in production unless explicitly disabled.
+    await scanDocumentBuffer(file.buffer);
     const storedName = `${crypto.randomUUID()}${extension}`;
     const uploadDirectory = documentsDirectory();
     fs.mkdirSync(uploadDirectory, { recursive: true });
-    fs.writeFileSync(path.join(uploadDirectory, storedName), file.buffer);
-    await prisma.document.create({
+    const filePath = documentStoredPath(storedName);
+    fs.writeFileSync(filePath, file.buffer, { flag: "wx" });
+    try {
+      await prisma.document.create({
       data: {
         title,
         description,
@@ -1794,6 +1810,10 @@ async function uploadDocument(req, res, user) {
         uploaderId: user.id,
       },
     });
+    } catch (error) {
+      fs.rmSync(filePath, { force: true });
+      throw error;
+    }
     redirect(res, `/documents?notice=${encodeURIComponent("Đã tải tài liệu lên hệ thống")}`);
   } catch (error) {
     redirect(res, `/documents?notice=${encodeURIComponent(error.message || "Không thể tải tài liệu")}`);
@@ -1803,9 +1823,9 @@ async function uploadDocument(req, res, user) {
 async function sendDocumentFile(res, id) {
   const item = await prisma.document.findUnique({ where: { id } });
   if (!item) return sendHtml(res, "Không tìm thấy tài liệu", 404);
-  const filePath = path.join(documentsDirectory(), item.storedName);
-  if (!fs.existsSync(filePath)) return sendHtml(res, "Tệp tài liệu không còn tồn tại", 404);
-  const file = fs.readFileSync(filePath);
+  let file;
+  try { file = readPrivateDocument(item.storedName); }
+  catch { return sendHtml(res, "Tệp tài liệu không còn tồn tại", 404); }
   res.writeHead(200, {
     "Content-Type": item.mimeType,
     "Content-Length": String(file.length),
@@ -1822,7 +1842,7 @@ async function deleteDocument(req, res, id) {
     return;
   }
   await prisma.document.delete({ where: { id } });
-  fs.rmSync(path.join(documentsDirectory(), item.storedName), { force: true });
+  fs.rmSync(documentStoredPath(item.storedName), { force: true });
   redirect(res, `/documents?notice=${encodeURIComponent("Đã xóa tài liệu khỏi hệ thống")}`);
 }
 
@@ -1874,28 +1894,6 @@ function parsePlanForm(form) {
     features: featureLines.length ? featureLines : ["Quyền truy cập gói VIP"],
     isActive: String(form.get("isActive") || "true") === "true",
   };
-}
-
-async function activateVipFromPayment(payment) {
-  const plan = payment.plan || await prisma.plan.findUnique({ where: { id: payment.planId } });
-  if (!plan) throw new Error("Không tìm thấy gói VIP của giao dịch");
-  const now = new Date();
-  const latestActive = await prisma.subscription.findFirst({
-    where: { userId: payment.userId, status: "ACTIVE", endsAt: { gt: now } },
-    orderBy: { endsAt: "desc" },
-  });
-  const startsAt = latestActive?.endsAt && latestActive.endsAt > now ? latestActive.endsAt : now;
-  const endsAt = new Date(startsAt);
-  endsAt.setMonth(endsAt.getMonth() + planDurationMonths(plan.interval));
-  await prisma.subscription.create({
-    data: {
-      userId: payment.userId,
-      planId: payment.planId,
-      status: "ACTIVE",
-      startsAt,
-      endsAt,
-    },
-  });
 }
 
 async function activateVipForUser(userId, planId) {
@@ -2075,30 +2073,15 @@ async function updatePaymentStatus(req, res, id) {
     const form = await readForm(req);
     const nextStatus = String(form.get("status") || "");
     if (!paymentStatuses.includes(nextStatus)) throw new Error("Trạng thái giao dịch không hợp lệ");
-    const current = await prisma.payment.findUnique({ where: { id }, include: { plan: true, user: true } });
-    if (!current) throw new Error("Không tìm thấy giao dịch");
-    const metadata = current.metadata && typeof current.metadata === "object" && !Array.isArray(current.metadata) ? current.metadata : {};
-    const shouldActivateVip = nextStatus === "PAID" && current.status !== "PAID" && !metadata.adminVipActivatedAt;
-    const payment = await prisma.payment.update({
-      where: { id },
-      data: {
-        status: nextStatus,
-        ...(shouldActivateVip ? { metadata: { ...metadata, adminVipActivatedAt: new Date().toISOString() } } : {}),
-      },
-      include: { plan: true, user: true },
-    });
-    if (shouldActivateVip) {
-      await activateVipFromPayment(payment);
-      await prisma.notification.create({
-        data: {
-          userId: payment.userId,
-          title: "Gói VIP đã được kích hoạt",
-          message: `Giao dịch ${payment.reference} đã được duyệt. Gói ${payment.plan?.name || "VIP"} đã được cộng vào tài khoản.`,
-          href: "/vip",
-        },
-      }).catch(() => null);
-    }
-    redirect(res, `/payments?notice=${encodeURIComponent(nextStatus === "PAID" ? "Đã cập nhật giao dịch và kích hoạt VIP" : "Đã cập nhật trạng thái giao dịch")}`);
+    // Same atomic, serializable settlement path as the integrated Admin API.
+    // A failed subscription creation leaves the payment PENDING/FAILED, not PAID.
+    const result = await transitionManualPayment(prisma, id, nextStatus);
+    const message = result.activated
+      ? "Đã xác nhận giao dịch và kích hoạt VIP"
+      : nextStatus === "PAID"
+        ? "Giao dịch đã được xác nhận trước đó, không cấp VIP lần nữa"
+        : "Đã cập nhật trạng thái giao dịch";
+    redirect(res, `/payments?notice=${encodeURIComponent(message)}`);
   } catch (error) {
     redirect(res, `/payments?notice=${encodeURIComponent(error.message || "Không thể cập nhật giao dịch")}`);
   }
@@ -2296,7 +2279,7 @@ async function uploadMotivationImage(req, res) {
     const { fields, files } = await readMultipartForm(req);
     const file = files.get("image");
     if (!file) throw new Error("Cần chọn file ảnh.");
-    const { extension } = safeMotivationImage(file.filename);
+    const { extension } = validateMotivationImageBuffer(file.buffer, file.filename);
     const title = String(fields.get("title") || "").trim();
     if (!title) throw new Error("Cần nhập tên ảnh.");
     const alt = String(fields.get("alt") || title).trim();
@@ -2445,6 +2428,18 @@ async function handleLogin(req, res) {
   const form = await readForm(req);
   const email = String(form.get("email") || "").trim().toLowerCase();
   const password = String(form.get("password") || "");
+  try {
+    await rateLimitOperation(prisma, "admin-login", email || "empty", req.headers);
+  } catch (error) {
+    if (error instanceof TooManyRequestsError) {
+      sendHtml(res, loginPage("Quá nhiều lần đăng nhập. Hãy thử lại sau."), 429, {
+        "Retry-After": String(error.retryAfterSeconds),
+        "Cache-Control": "no-store",
+      });
+      return;
+    }
+    throw error;
+  }
   const user = await prisma.user.findUnique({ where: { email } });
   const valid = user?.role === "ADMIN" && user.passwordHash && await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
@@ -2456,7 +2451,7 @@ async function handleLogin(req, res) {
   sessions.set(token, { userId: user.id, expires: Date.now() + 1000 * 60 * 60 * 12 });
   res.writeHead(303, {
     Location: "/",
-    "Set-Cookie": `${sessionCookie}=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=43200`,
+    "Set-Cookie": `${sessionCookie}=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=43200${cookieSecuritySuffix(req)}`,
   });
   res.end();
 }
@@ -2618,6 +2613,12 @@ async function router(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || `localhost:${port}`}`);
   const pathname = url.pathname.replace(/\/+$/, "") || "/";
 
+  // Protect all state-changing Admin forms, including login and VIP approval.
+  if (req.method === "POST" && !trustedPostOrigin(req)) {
+    sendText(res, "Invalid request origin", 403);
+    return;
+  }
+
   if (pathname === "/health") {
     sendText(res, "ok");
     return;
@@ -2644,7 +2645,7 @@ async function router(req, res) {
     if (token) sessions.delete(token);
     res.writeHead(303, {
       Location: "/login",
-      "Set-Cookie": `${sessionCookie}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`,
+      "Set-Cookie": `${sessionCookie}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${cookieSecuritySuffix(req)}`,
     });
     res.end();
     return;
@@ -2654,7 +2655,7 @@ async function router(req, res) {
 
   if (pathname === "/" && req.method === "GET") return sendHtml(res, await dashboardPage(user, notice));
   if (pathname === "/users" && req.method === "GET") return sendHtml(res, await usersPage(user, notice, url));
-  if (pathname === "/users/export.xlsx" && req.method === "GET") return exportUsersExcel(res);
+  if (pathname === "/users/export.csv" && req.method === "GET") return exportUsersCsv(res);
   if (pathname.startsWith("/users/") && pathname.endsWith("/role") && req.method === "POST") {
     return redirect(res, `/users?notice=${encodeURIComponent("Vai trò tài khoản đang để cố định, admin không chỉnh tại đây")}`);
   }
@@ -2726,7 +2727,8 @@ async function router(req, res) {
 const server = http.createServer((req, res) => {
   router(req, res).catch((error) => {
     console.error(error);
-    sendHtml(res, `<pre>${escapeHtml(error.stack || error.message)}</pre>`, 500);
+    if (!res.headersSent) sendText(res, error.statusCode === 413 ? "Request body too large" : "Internal server error", error.statusCode === 413 ? 413 : 500);
+    else res.end();
   });
 });
 

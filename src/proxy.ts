@@ -4,8 +4,16 @@ import { getToken } from "next-auth/jwt";
 
 const protectedPrefixes = ["/dashboard", "/teacher", "/leaderboard", "/classes", "/subjects", "/exams", "/attempts", "/results", "/theory", "/documents", "/notifications", "/dich-vu", "/vip"];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  // New uploads may be awaiting moderation. Direct static requests bypass the
+  // document API authorization checks, so disallow them here.
+  if (pathname.startsWith("/uploads/documents/")) {
+    return new NextResponse("Not Found", {
+      status: 404,
+      headers: { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" },
+    });
+  }
   const isProtected = protectedPrefixes.some((prefix) => pathname.startsWith(prefix));
   const isAdminLogin = pathname.startsWith("/admin/login");
   const isAdmin = (pathname.startsWith("/admin") && !isAdminLogin) || pathname.startsWith("/api/admin");
@@ -35,5 +43,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/teacher/:path*", "/leaderboard/:path*", "/classes/:path*", "/subjects/:path*", "/exams/:path*", "/attempts/:path*", "/results/:path*", "/theory/:path*", "/documents/:path*", "/notifications/:path*", "/dich-vu/:path*", "/vip/:path*", "/admin/:path*", "/api/admin/:path*"]
+  matcher: ["/dashboard/:path*", "/teacher/:path*", "/leaderboard/:path*", "/classes/:path*", "/subjects/:path*", "/exams/:path*", "/attempts/:path*", "/results/:path*", "/theory/:path*", "/documents/:path*", "/notifications/:path*", "/dich-vu/:path*", "/vip/:path*", "/admin/:path*", "/api/admin/:path*", "/uploads/documents/:path*"]
 };

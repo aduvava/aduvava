@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { readPrivateDocument } from "@/lib/private-document-storage";
+import { scanDocumentBuffer } from "@/lib/document-malware-scan";
 import { handleRouteError, HttpError, jsonOk, readJson, requireAdmin } from "@/lib/api";
 
 const moderationSchema = z.object({
@@ -31,6 +33,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return jsonOk({ document: rejected });
     }
 
+    // Admin approval must not publish files that bypassed upload-time scanning,
+    // e.g. legacy records or documents submitted before scanner enforcement.
+    await scanDocumentBuffer(readPrivateDocument(document.storedName));
     const approved = await prisma.$transaction(async (tx) => {
       const current = await tx.document.findUniqueOrThrow({ where: { id } });
       const reward = current.approvalRewarded ? 0 : 50;

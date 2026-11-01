@@ -1,10 +1,18 @@
 import { readFile } from "fs/promises";
-import path from "path";
+import { readPrivateDocument } from "@/lib/private-document-storage";
 import mammoth from "mammoth";
 import { prisma } from "@/lib/db";
 import { handleRouteError, HttpError, requireUser } from "@/lib/api";
 
 export const runtime = "nodejs";
+
+// User-supplied DOCX content must never be able to execute within the app origin.
+const previewHeaders = {
+  "Content-Type": "text/html; charset=utf-8",
+  "Content-Security-Policy": "sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'",
+  "X-Content-Type-Options": "nosniff",
+  "Cache-Control": "private, no-store",
+};
 
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[character] ?? character);
@@ -24,8 +32,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       throw new HttpError(403, "Tài liệu chưa được công khai.");
     }
 
-    const filePath = path.join(process.cwd(), "public", "uploads", "documents", document.storedName);
-    const file = await readFile(filePath);
+    const file = readPrivateDocument(document.storedName);
 
     if (document.mimeType === "application/pdf") {
       return new Response(new Uint8Array(file), {
@@ -35,7 +42,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
     if (document.mimeType.includes("wordprocessingml")) {
       const result = await mammoth.convertToHtml({ buffer: file });
-      return new Response(htmlPage(document.title, result.value), { headers: { "Content-Type": "text/html; charset=utf-8" } });
+      return new Response(htmlPage(document.title, result.value), { headers: previewHeaders });
     }
 
     return new Response(
@@ -43,7 +50,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         document.title,
         `<div style="max-width:720px;margin:80px auto;text-align:center"><h1>${escapeHtml(document.title)}</h1><p>Trình duyệt chưa hỗ trợ xem trực tiếp PowerPoint. Bạn có thể tải tệp <strong>${escapeHtml(document.originalName)}</strong> bằng nút tải xuống.</p></div>`,
       ),
-      { headers: { "Content-Type": "text/html; charset=utf-8" } },
+      { headers: previewHeaders },
     );
   } catch (error) {
     return handleRouteError(error);

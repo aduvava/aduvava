@@ -1,4 +1,9 @@
 import { NextResponse } from "next/server";
+import { ZodError } from "zod";
+import { prisma } from "@/lib/db";
+import { PaymentTransitionError } from "@/lib/payment-transition";
+import { TooManyRequestsError } from "@/lib/security-throttle";
+import { DocumentScanError } from "@/lib/document-malware-scan";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
@@ -30,7 +35,13 @@ export async function readJson<T>(request: Request) {
 export async function requireUser() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new HttpError(401, "Authentication required");
-  return session.user;
+  // Enforce account existence and current roles, rather than trusting stale JWT claims.
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true, name: true, email: true, image: true, role: true },
+  });
+  if (!user) throw new HttpError(401, "Authentication required");
+  return user;
 }
 
 export async function requireAdmin() {
@@ -40,7 +51,14 @@ export async function requireAdmin() {
 }
 
 export function handleRouteError(error: unknown) {
-  if (error instanceof HttpError) return jsonError(error.message, error.status);
+  if (error instanceof TooManyRequestsError) {
+    return NextResponse.json({ error: error.message }, {
+      status: 429,
+      headers: { "Retry-After": String(error.retryAfterSeconds), "Cache-Control": "no-store" },
+    });
+  }
+  if (error instanceof HttpError || error instanceof PaymentTransitionError || error instanceof DocumentScanError) return jsonError(error.message, error.status);
+  if (error instanceof ZodError) return jsonError("Invalid request payload", 400);
   console.error(error);
   return jsonError("Unexpected server error", 500);
 }

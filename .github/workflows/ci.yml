@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [improve/security-performance]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Typecheck, tests, build and dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npm run db:generate
+
+      - name: Syntax-check standalone Admin and shared payment service
+        run: |
+          node --check admin-server/server.js
+          node --check admin-server/request-security.js
+          node --check admin-server/image-file-validation.js
+          node --check src/lib/security-throttle.js
+          node --check src/lib/document-file-validation.js
+          node --check src/lib/document-malware-scan.js
+          node --check src/lib/private-document-storage.js
+          node --check scripts/migrate-document-storage.js
+          node --check scripts/public-launch-preflight.js
+          node --check src/lib/payment-transition.js
+
+      - name: TypeScript check
+        run: npx tsc --noEmit -p tsconfig.ci.json
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Verify production build
+        env:
+          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_SECRET: build-only-placeholder-not-for-runtime
+          DATABASE_URL: postgresql://postgres:build-only@127.0.0.1:5432/eduva?schema=public
+        run: npm run build
+
+      - name: Audit all dependencies (including build tooling)
+        run: npm audit --audit-level=moderate

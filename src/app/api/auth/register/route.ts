@@ -1,20 +1,13 @@
 import bcrypt from "bcryptjs";
-import { z } from "zod";
+import { registerSchema } from "@/lib/registration";
 import { prisma } from "@/lib/db";
+import { rateLimitOperation } from "@/lib/security-throttle";
 import { handleRouteError, HttpError, jsonOk, readJson } from "@/lib/api";
-
-const registerSchema = z.object({
-  name: z.string().min(2),
-  email: z.string().email(),
-  password: z.string().min(6),
-  grade: z.string().optional(),
-  province: z.string().optional(),
-  role: z.enum(["STUDENT", "TEACHER"]).default("STUDENT")
-});
 
 export async function POST(request: Request) {
   try {
     const payload = registerSchema.parse(await readJson<unknown>(request));
+    await rateLimitOperation(prisma, "register", payload.email, request.headers);
     const existing = await prisma.user.findUnique({ where: { email: payload.email } });
     if (existing) throw new HttpError(409, "Email already exists");
 
@@ -24,7 +17,7 @@ export async function POST(request: Request) {
         name: payload.name,
         email: payload.email,
         passwordHash,
-        role: payload.role,
+        role: "STUDENT",
         profile: { create: { grade: payload.grade, province: payload.province, source: "register" } }
       },
       select: { id: true, email: true, name: true, role: true }
