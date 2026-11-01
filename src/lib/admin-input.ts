@@ -94,6 +94,17 @@ export function parseAdminInput(resource: string, input: unknown, mode: Mode): R
   if (!Object.prototype.hasOwnProperty.call(schemas, resource)) {
     throw new Error("Unknown admin resource");
   }
+  // Payment amounts, ownership, plan and references are immutable once
+  // created. A status change MUST run through the atomic VIP service.
+  if (resource === "payments") {
+    if (mode === "update") {
+      return z.object({ status: z.enum(["PENDING", "PAID", "FAILED"]) }).strict().parse(input);
+    }
+    const created = schemas.payments.partial().strict().parse(input);
+    z.object({ status: z.literal("PENDING").optional() })
+      .parse({ status: created.status });
+    return created;
+  }
   const selected = schemas[resource as Resource];
   if (resource === "users") {
     const userSchema = schemas.users;
