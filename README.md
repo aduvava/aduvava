@@ -70,3 +70,7 @@ git pull --ff-only origin main && bash .devcontainer/setup-preview.sh && bash .d
 ```
 
 The repaired lockfile includes complete optional dependency metadata for Linux and other platforms. Setup installs development and optional dependencies explicitly. Startup retries setup when Next.js is missing and reports a server exit immediately.
+
+### Public deployment security gates
+
+Run `npx prisma migrate deploy` (including the SecurityThrottle migration) before serving traffic. Apply HTTPS, private-file rules and upload size limits at every reverse proxy/CDN. Enable `SECURITY_TRUST_PROXY_IP_HEADERS` only behind a proxy that strips untrusted forwarding headers; the application otherwise uses account/global throttle buckets. Configure `ADMIN_PUBLIC_ORIGIN` for the standalone Admin service and keep port 4000 private. Validate uploaded files with antivirus; structural signatures and ZIP limits do not detect every threat. Back up and restore-test PostgreSQL and uploads before launch.
