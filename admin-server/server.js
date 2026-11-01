@@ -9,6 +9,7 @@ const { transitionManualPayment } = require("../src/lib/payment-transition.js");
 const { trustedPostOrigin, cookieSecuritySuffix } = require("./request-security");
 const { rateLimitOperation, TooManyRequestsError } = require("../src/lib/security-throttle.js");
 const { validateDocumentBuffer } = require("../src/lib/document-file-validation.js");
+const { validateMotivationImageBuffer } = require("./image-file-validation.js");
 
 loadEnv(path.join(__dirname, "..", ".env"));
 
@@ -356,12 +357,12 @@ async function readBodyBuffer(req) {
   const multipart = String(req.headers["content-type"] || "").includes("multipart/form-data");
   const limit = multipart ? 18 * 1024 * 1024 : 1024 * 1024;
   const declared = Number(req.headers["content-length"]);
-  if (Number.isFinite(declared) && declared > limit) throw new Error("Request body exceeds size limit");
+  if (Number.isFinite(declared) && declared > limit) throw Object.assign(new Error("Request body exceeds size limit"), { statusCode: 413 });
   let total = 0;
   const chunks = [];
   for await (const chunk of req) {
     total += chunk.length;
-    if (total > limit) throw new Error("Request body exceeds size limit");
+    if (total > limit) throw Object.assign(new Error("Request body exceeds size limit"), { statusCode: 413 });
     chunks.push(chunk);
   }
   return Buffer.concat(chunks, total);
@@ -2274,7 +2275,7 @@ async function uploadMotivationImage(req, res) {
     const { fields, files } = await readMultipartForm(req);
     const file = files.get("image");
     if (!file) throw new Error("Cần chọn file ảnh.");
-    const { extension } = safeMotivationImage(file.filename);
+    const { extension } = validateMotivationImageBuffer(file.buffer, file.filename);
     const title = String(fields.get("title") || "").trim();
     if (!title) throw new Error("Cần nhập tên ảnh.");
     const alt = String(fields.get("alt") || title).trim();
@@ -2722,7 +2723,8 @@ async function router(req, res) {
 const server = http.createServer((req, res) => {
   router(req, res).catch((error) => {
     console.error(error);
-    sendHtml(res, `<pre>${escapeHtml(error.stack || error.message)}</pre>`, 500);
+    if (!res.headersSent) sendText(res, error.statusCode === 413 ? "Request body too large" : "Internal server error", error.statusCode === 413 ? 413 : 500);
+    else res.end();
   });
 });
 
