@@ -176,7 +176,9 @@ async function run() {
     const makeForm = (bytes: Uint8Array) => {
       const form = new FormData();
       for (const [key, value] of Object.entries(metadata)) form.set(key, value);
-      form.set("file", new Blob([new Uint8Array(bytes)], { type: "application/pdf" }), "test.pdf");
+      const owned = new Uint8Array(bytes.byteLength);
+      owned.set(bytes);
+      form.set("file", new Blob([owned.buffer as ArrayBuffer], { type: "application/pdf" }), "test.pdf");
       return form;
     };
     const rejectedFile = await request("/api/documents", {
