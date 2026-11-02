@@ -1,4 +1,7 @@
 FROM node:22-bookworm-slim AS build
+# Prisma 5 needs OpenSSL 3 available before npm ci / prisma generate.
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -10,6 +13,9 @@ ENV NEXTAUTH_URL=${NEXTAUTH_URL} DATABASE_URL=${DATABASE_URL} NEXTAUTH_SECRET=${
 RUN npx prisma generate && npm run build
 
 FROM node:22-bookworm-slim AS runtime
+# Prisma migration/schema engine and app client need libssl at runtime too.
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app/node_modules ./node_modules
