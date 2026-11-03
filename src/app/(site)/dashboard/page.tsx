@@ -2,10 +2,18 @@ import { redirect } from "next/navigation";
 import { StudentDashboard } from "@/components/student-dashboard";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { isStudentOnboardingComplete } from "@/lib/onboarding";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?callbackUrl=/dashboard");
+  if (user.role === "STUDENT") {
+    const profile = await prisma.studentProfile.findUnique({
+      where: { userId: user.id },
+      select: { grade: true, school: true, province: true },
+    });
+    if (!isStudentOnboardingComplete(profile)) redirect("/onboarding?callbackUrl=/dashboard");
+  }
 
   const [inProgressAttempt, attempts, account, subjects] = await Promise.all([
     prisma.attempt.findFirst({
