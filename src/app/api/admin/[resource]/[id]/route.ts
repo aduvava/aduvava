@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 import { parseAdminInput } from "@/lib/admin-input";
 import { validateOfficialNationalExam } from "@/lib/official-exam-publication";
 import { transitionManualPayment } from "@/lib/payment-transition";
@@ -47,7 +48,7 @@ async function updateResource(resource: string, id: string, body: Record<string,
         }
         return tx.exam.update({
           where: { id },
-          data: { ...body, examStructure: structure ?? undefined } as never,
+          data: { ...body, examStructure: structure ?? Prisma.DbNull } as never,
         });
       }, { isolationLevel: "Serializable" });
     case "questions": {
