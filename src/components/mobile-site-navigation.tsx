@@ -26,15 +26,16 @@ function mobileLabel(label: string) {
 }
 
 function mobileIcon(href: string, label: string): LucideIcon {
+  // Use labels first because guest links deliberately redirect through /login.
   if (label === "Môn học") return BookOpen;
-  if (href.startsWith("/exams")) return ClipboardList;
-  if (href.startsWith("/documents")) return FileText;
-  if (href.startsWith("/dich-vu")) return ShoppingBag;
-  if (href.startsWith("/leaderboard")) return Trophy;
-  if (href.startsWith("/classes") || href.includes("tab=classes")) return Users;
-  if (href.startsWith("/vip")) return Crown;
-  if (href.startsWith("/admin")) return Shield;
-  if (href.startsWith("/login")) return LogIn;
+  if (label === "Đề thi") return ClipboardList;
+  if (label === "Tài liệu") return FileText;
+  if (label === "Cửa hàng") return ShoppingBag;
+  if (label === "Bảng xếp hạng") return Trophy;
+  if (label === "Lớp học" || label === "Quản lí lớp") return Users;
+  if (label === "VIP") return Crown;
+  if (label === "Quản trị") return Shield;
+  if (label === "Đăng nhập") return LogIn;
   if (href.startsWith("/teacher")) return GraduationCap;
   return House;
 }
