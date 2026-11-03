@@ -414,7 +414,7 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
                 );
               })}
 
-              <div className="sticky bottom-4 z-20 flex justify-center">
+              <div className="sticky bottom-[calc(7.5rem+env(safe-area-inset-bottom))] z-20 flex justify-center lg:bottom-4">
                 <button onClick={() => setConfirmOpen(true)} className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-7 py-3 font-black text-white shadow-lg shadow-orange-200 transition hover:bg-orange-600">
                   <Send className="h-5 w-5" /> Nộp bài
                 </button>
@@ -604,7 +604,7 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
               );
             })}
 
-            <div className="sticky bottom-4 z-20 flex justify-center">
+            <div className="sticky bottom-[calc(7.5rem+env(safe-area-inset-bottom))] z-20 flex justify-center lg:bottom-4">
               <button onClick={() => setConfirmOpen(true)} className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-7 py-3 font-black text-white shadow-lg shadow-orange-200 transition hover:bg-orange-600">
                 <Send className="h-5 w-5" /> {submitting ? "Đang nộp..." : "Nộp bài"}
               </button>
