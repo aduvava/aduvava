@@ -1,27 +1,11 @@
-import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { prisma } from "@/lib/db";
-import { handleRouteError, HttpError, jsonOk, readJson, requireUser } from "@/lib/api";
+import { handleRouteError, HttpError, jsonOk, requireUser } from "@/lib/api";
+import { rateLimitOperation } from "@/lib/security-throttle";
+import { readLimitedJson } from "@/lib/limited-json";
+import { createExamSchema } from "@/lib/exam-create-input";
 import { getNationalExamRule, getNationalQuestionCount } from "@/lib/national-exam-rules";
-
-const questionSchema = z.object({
-  prompt: z.string().trim().min(3),
-  options: z.array(z.string().trim().min(1)).min(2).max(6),
-  correctIndex: z.number().int().min(0),
-  explanation: z.string().trim().optional(),
-});
-
-const createExamSchema = z.object({
-  title: z.string().trim().min(3).max(160),
-  subjectId: z.string().min(1),
-  educationLevel: z.enum(["THCS", "THPT", "EXAM_10", "THPTQG"]),
-  durationMinutes: z.number().int().min(5).max(300),
-  questions: z.array(questionSchema).min(1).max(100),
-  shareMode: z.enum(["PUBLIC", "PASSWORD", "RESTRICTED"]).default("PUBLIC"),
-  sharePassword: z.string().trim().optional(),
-  allowedEmails: z.array(z.string().trim().email()).default([]),
-});
 
 function slugify(value: string) {
   return value
@@ -37,14 +21,16 @@ function slugify(value: string) {
 export async function POST(request: Request) {
   try {
     const user = await requireUser();
-    const payload = createExamSchema.parse(await readJson<unknown>(request));
+    // Apply the persistent account/IP/global throttle before parsing potentially large input.
+    await rateLimitOperation(prisma, "exam-create", user.id, request.headers);
+    const payload = createExamSchema.parse(await readLimitedJson(request, 1024 * 1024));
     const subject = await prisma.subject.findUnique({ where: { id: payload.subjectId } });
     if (!subject) throw new HttpError(404, "Không tìm thấy môn học.");
     const nationalRule = payload.educationLevel === "THPTQG" ? getNationalExamRule(subject.slug) : undefined;
     if (payload.educationLevel === "THPTQG" && !nationalRule) {
       throw new HttpError(400, "Môn học chưa có cấu trúc THPTQG được quy định.");
     }
-    if (payload.shareMode === "PASSWORD" && !payload.sharePassword) {
+    if (payload.shareMode === "PASSWORD" && (!payload.sharePassword || Buffer.byteLength(payload.sharePassword, "utf8") > 72 || payload.sharePassword.length < 8)) {
       throw new HttpError(400, "Vui lòng nhập mật khẩu cho đề thi.");
     }
     if (nationalRule && payload.questions.length !== getNationalQuestionCount(nationalRule)) {
