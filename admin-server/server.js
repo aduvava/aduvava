@@ -5,6 +5,8 @@ const path = require("path");
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
 const { createCsv } = require("./csv-export");
+const { parseAdminExamQuestions } = require("./exam-question-import");
+const nationalExamTemplates = require("../src/data/national-exam-templates.json");
 const { transitionManualPayment } = require("../src/lib/payment-transition.js");
 const { trustedPostOrigin, cookieSecuritySuffix } = require("./request-security");
 const { rateLimitOperation, TooManyRequestsError } = require("../src/lib/security-throttle.js");
@@ -357,7 +359,8 @@ async function readBody(req) {
 async function readBodyBuffer(req) {
   // Reject oversized requests as data arrives, not after buffering them.
   const multipart = String(req.headers["content-type"] || "").includes("multipart/form-data");
-  const limit = multipart ? 18 * 1024 * 1024 : 1024 * 1024;
+  const examImport = /^\/exams\/(?:create|preview)(?:\?|$)/.test(req.url || "");
+  const limit = multipart ? 18 * 1024 * 1024 : examImport ? 8 * 1024 * 1024 : 1024 * 1024;
   const declared = Number(req.headers["content-length"]);
   if (Number.isFinite(declared) && declared > limit) throw Object.assign(new Error("Request body exceeds size limit"), { statusCode: 413 });
   let total = 0;
@@ -2520,58 +2523,75 @@ async function createExam(req, res) {
   }
 
   const importSource = String(form.get("bulkQuestions") || "").trim();
-  let parsedQuestions = [];
+  let parsed;
   try {
-    if (!importSource) throw new Error("Vui lòng tải file hoặc dán nội dung import để tạo đề.");
-    parsedQuestions = parseQuestionsFromImport(importSource);
+    parsed = parseAdminExamQuestions(
+      importSource,
+      { educationLevel, subjectSlug: subject.slug, durationMinutes },
+      normalizeQuestionInput,
+      parseQuestionsFromImport,
+    );
   } catch (error) {
     redirect(res, `/exams?notice=${encodeURIComponent(error?.message || "Không đọc được cấu trúc đề thi")}`);
     return;
   }
-
-  if (!parsedQuestions.length) {
-    redirect(res, `/exams?notice=${encodeURIComponent("Đề thi cần ít nhất 1 câu hỏi")}`);
-    return;
-  }
-  if (parsedQuestions.length > 100) {
-    redirect(res, `/exams?notice=${encodeURIComponent("Mỗi lần tạo tối đa 100 câu hỏi")}`);
-    return;
-  }
-
-  const questions = parsedQuestions.map(toQuestionCreate);
+  const questions = parsed.questions;
 
   const stamp = Date.now().toString(36).toUpperCase();
   const random = crypto.randomBytes(2).toString("hex").toUpperCase();
   const code = `ADM-${subject.slug.toUpperCase().replace(/[^A-Z0-9]+/g, "-")}-${stamp}-${random}`;
   const slug = `${slugify(title)}-${stamp.toLowerCase()}-${random.toLowerCase()}`;
 
-  const exam = await prisma.exam.create({
-    data: {
-      code,
-      slug,
-      title,
-      description: description || `Đề ${subject.name} được tạo từ Ava Admin theo luồng ${grade || educationLevel}.`,
-      family: subject.family,
-      type,
-      accessLevel,
-      year,
-      durationMinutes,
-      educationLevel,
-      examStructure: {
-        source: "admin-server",
-        grade,
-        contentMode,
-        contentModeLabel: examContentModeLabel(contentMode),
-        questionSource: "file-import",
-        formulaSyntax: "latex-dollar",
-        questionCount: questions.length,
-        flowLabel: studyFlows.find((flow) => flow.id === educationLevel)?.label ?? educationLevel,
+  // Keep every imported question/answer together and avoid one enormous
+  // nested SQL statement when admin imports thousands of questions.
+  const exam = await prisma.$transaction(async (tx) => {
+    const created = await tx.exam.create({
+      data: {
+        code,
+        slug,
+        title,
+        description: description || `Đề ${subject.name} được tạo từ Ava Admin theo luồng ${grade || educationLevel}.`,
+        family: subject.family,
+        type,
+        accessLevel,
+        year,
+        durationMinutes,
+        educationLevel,
+        examStructure: {
+          ...(parsed.rule || {}),
+          source: "admin-server",
+          grade,
+          contentMode,
+          contentModeLabel: examContentModeLabel(contentMode),
+          questionSource: "file-import",
+          formulaSyntax: "latex-dollar",
+          questionCount: questions.length,
+          flowLabel: studyFlows.find((flow) => flow.id === educationLevel)?.label ?? educationLevel,
+        },
+        targetScore: Number.isFinite(targetScore) ? targetScore : 8,
+        subjectId: subject.id,
       },
-      targetScore: Number.isFinite(targetScore) ? targetScore : 8,
-      subjectId: subject.id,
-      questions: { create: questions },
-    },
-  });
+    });
+    for (let start = 0; start < questions.length; start += 100) {
+      const chunk = questions.slice(start, start + 100).map((question) => ({
+        ...question, id: crypto.randomUUID(),
+      }));
+      await tx.question.createMany({
+        data: chunk.map((question) => ({
+          id: question.id, examId: created.id, position: question.position,
+          type: question.type, prompt: question.prompt, points: question.points,
+          correctText: question.correctText, explanation: question.explanation,
+        })),
+      });
+      const answerOptions = chunk.flatMap((question) => question.answerOptions.map((option) => ({
+        ...option, questionId: question.id,
+      })));
+      for (let offset = 0; offset < answerOptions.length; offset += 500) {
+        await tx.answerOption.createMany({ data: answerOptions.slice(offset, offset + 500) });
+      }
+    }
+    return created;
+  }, { maxWait: 10000, timeout: 120000 });
 
   redirect(res, `/exams?notice=${encodeURIComponent(`Đã tạo đề "${exam.title}" cho môn ${subject.name}`)}#tao-de-theo-mon`);
 }
@@ -2594,16 +2614,16 @@ async function previewExamImport(req, res) {
   const form = await readForm(req);
   const importSource = String(form.get("bulkQuestions") || "").trim();
   try {
-    const questions = importSource ? parseQuestionsFromImport(importSource) : [];
-    sendJson(res, {
-      ok: true,
-      questions: questions.map((question) => ({
-        prompt: question.prompt,
-        answers: question.answers,
-        correct: question.correct,
-        explanation: question.explanation,
-      })),
-    });
+    if (!importSource) return sendJson(res, { ok: true, questions: [] });
+    const subjectId = String(form.get("subjectId") || "");
+    const educationLevel = String(form.get("educationLevel") || "THCS");
+    const durationMinutes = Number(form.get("durationMinutes") || 30);
+    const subject = await prisma.subject.findUnique({ where: { id: subjectId }, select: { slug: true } });
+    if (!subject) throw new Error("Hãy chọn môn học hợp lệ.");
+    const parsed = parseAdminExamQuestions(importSource, {
+      educationLevel, subjectSlug: subject.slug, durationMinutes,
+    }, normalizeQuestionInput, parseQuestionsFromImport);
+    sendJson(res, { ok: true, questions: parsed.preview });
   } catch (error) {
     sendJson(res, { ok: false, error: error?.message || "Không đọc được nội dung import." }, 400);
   }
