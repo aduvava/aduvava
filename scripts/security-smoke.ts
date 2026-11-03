@@ -390,6 +390,31 @@ async function run() {
     }, studentAuth.jar);
     await assertStatus(hugePayload, 413, "large exam request must be blocked");
 
+    console.log("SMOKE: creating more than 100 personal questions preserves answer options");
+    const flexibleExamResult = await postJson("/api/exams/create", {
+      title: "Long personal practice exam", subjectId, educationLevel: "THPTQG",
+      durationMinutes: 35,
+      questions: Array.from({ length: 151 }, (_, index) => ({
+        prompt: "Câu hỏi luyện tập số " + (index + 1),
+        options: ["Phương án A", "Phương án B"],
+        correctIndex: 0,
+      })),
+    }, studentAuth.jar);
+    await assertStatus(flexibleExamResult, 201, "personal THPTQG practice may exceed 100 questions");
+    const flexibleExamData = await flexibleExamResult.json() as { exam: { id: string } };
+    const flexibleExam = await prisma.exam.findUniqueOrThrow({
+      where: { id: flexibleExamData.exam.id },
+      include: { _count: { select: { questions: true } } },
+    });
+    assert.equal(flexibleExam._count.questions, 151, "bulk insert must persist every question");
+    assert.equal(flexibleExam.durationMinutes, 35, "personal exam time is user-defined");
+    assert.equal(flexibleExam.examStructure, null, "personal THPTQG practice must not claim official structure");
+    const storedOptions = await prisma.answerOption.count({
+      where: { question: { examId: flexibleExam.id } },
+    });
+    assert.equal(storedOptions, 302, "bulk insert must keep all answer choices");
+    await prisma.exam.delete({ where: { id: flexibleExam.id } });
+
     const adminRead = await request("/api/admin/payments", {}, adminAuth.jar);
     await assertStatus(adminRead, 200, "admin list payments");
     const body = await adminRead.json() as { items: Array<{ user: Record<string, unknown> }> };
