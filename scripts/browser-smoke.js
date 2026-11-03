@@ -51,7 +51,15 @@ async function main() {
     await page.goto(base + "/dashboard");
     await page.waitForURL(/\/onboarding(?:\?|$)/, { timeout: 15000 });
     await page.locator('input[name="school"]').fill("THPT Nguyễn Trãi");
+    const profileResponsePromise = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === "/api/profile" && response.request().method() === "POST",
+      { timeout: 15000 },
+    );
     await page.getByRole("button", { name: /HOÀN TẤT.*TIẾP TỤC/ }).click();
+    const profileResponse = await profileResponsePromise;
+    const postedProfile = profileResponse.request().postDataJSON();
+    assert.equal(postedProfile.school, "THPT Nguyễn Trãi", "browser must post the entered school");
+    assert.equal(profileResponse.status(), 200, "onboarding API must save profile successfully");
     await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15000 });
     const savedProfile = await prisma.studentProfile.findUniqueOrThrow({ where: { userId: account.id } });
     assert.equal(savedProfile.school, "THPT Nguyễn Trãi", "onboarding must persist the school before redirect");
