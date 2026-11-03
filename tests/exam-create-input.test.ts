@@ -22,6 +22,12 @@ describe("user exam input bounds", () => {
     assert.equal(createExamSchema.safeParse({ ...valid, questions: [{ ...question, explanation: "x".repeat(2001) }] }).success, false);
   });
 
+  it("accepts a bounded inline diagram without accepting oversized prose", () => {
+    const safeData = "data:image/png;base64," + "A".repeat(300_000);
+    const question = { ...valid.questions[0], prompt: `Xem hình ![hình](${safeData}) rồi tính đáp án` };
+    assert.equal(createExamSchema.safeParse({ ...valid, questions: [question] }).success, true);
+    assert.equal(createExamSchema.safeParse({ ...valid, questions: [{ ...question, prompt: "V".repeat(2501) }] }).success, false);
+  });
   it("rejects too many invited users and unexpected fields", () => {
     assert.equal(createExamSchema.safeParse({ ...valid, allowedEmails: Array.from({ length: 101 }, (_, i) => `a${i}@example.test`) }).success, false);
     assert.equal(createExamSchema.safeParse({ ...valid, role: "ADMIN" }).success, false);
