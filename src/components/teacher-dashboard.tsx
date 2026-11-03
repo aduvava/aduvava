@@ -525,12 +525,12 @@ export function TeacherDashboard({ initialTab, teacherName, stats, report, exams
         </div>
       ) : null}
 
-      {toast ? <div className="fixed bottom-7 left-1/2 z-[80] -translate-x-1/2 rounded-full bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-xl">{toast}</div> : null}
+      {toast ? <div className="fixed bottom-[calc(7rem+env(safe-area-inset-bottom))] left-1/2 z-[80] lg:bottom-7 -translate-x-1/2 rounded-full bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-xl">{toast}</div> : null}
       <button
         type="button"
         onClick={() => notify("Đã mở hỗ trợ dành cho giáo viên.")}
         aria-label="Hỗ trợ"
-        className="fixed bottom-6 right-5 z-50 grid h-16 w-16 place-items-center rounded-full bg-orange-500 text-white shadow-[0_14px_35px_rgba(249,115,22,0.38)]"
+        className="fixed bottom-[calc(7.5rem+env(safe-area-inset-bottom))] right-5 z-50 lg:bottom-6 grid h-16 w-16 place-items-center rounded-full bg-orange-500 text-white shadow-[0_14px_35px_rgba(249,115,22,0.38)]"
       >
         <MessageCircleMore className="h-7 w-7" />
       </button>
