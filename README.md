@@ -93,7 +93,7 @@ The exam deadline is calculated from the immutable attempt start time and exam d
 
 User exam creation is limited to **30 requests/hour per account**, **120/hour per trusted client IP** (when properly configured), and **3000/hour globally**; the JSON request body is capped at 1 MiB. Question and invitation fields are also bounded. The existing `SecurityThrottle` migration must already be installed. Exam-sharing edits revoke all previously acquired grants and restore **only** emails explicitly invited in that edit; rotating a password invalidates existing password unlocks. Previously started attempts and results are denied after the user loses sharing permission.
 
-External Markdown image URLs are not fetched; attach images to a trusted same-origin path instead of using external image hosts or base64 images. Production CSP, HSTS, frame protection, nosniff and referrer restrictions are applied by the student app and standalone Admin. If an external CDN/reverse proxy replaces response headers, preserve or strengthen these policies there.
+External Markdown image URLs are not fetched; use trusted same-origin image paths, or inline PNG/JPEG/WebP/GIF raster images smaller than 250KB (the creator enforces this limit). SVG, external trackers and unbounded data URLs are blocked. Production CSP, HSTS, frame protection, nosniff and referrer restrictions are applied by the student app and standalone Admin. If an external CDN/reverse proxy replaces response headers, preserve or strengthen these policies there.
 
 **Zero-data-loss rolling deployment (Docker Compose):**
 
