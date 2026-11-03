@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { PaymentTransitionError } from "@/lib/payment-transition";
 import { TooManyRequestsError } from "@/lib/security-throttle";
 import { DocumentScanError } from "@/lib/document-malware-scan";
+import { InvalidJsonBodyError, RequestBodyTooLargeError } from "@/lib/limited-json";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
@@ -57,7 +58,7 @@ export function handleRouteError(error: unknown) {
       headers: { "Retry-After": String(error.retryAfterSeconds), "Cache-Control": "no-store" },
     });
   }
-  if (error instanceof HttpError || error instanceof PaymentTransitionError || error instanceof DocumentScanError) return jsonError(error.message, error.status);
+  if (error instanceof HttpError || error instanceof PaymentTransitionError || error instanceof DocumentScanError || error instanceof InvalidJsonBodyError || error instanceof RequestBodyTooLargeError) return jsonError(error.message, error.status);
   if (error instanceof ZodError) return jsonError("Invalid request payload", 400);
   console.error(error);
   return jsonError("Unexpected server error", 500);
