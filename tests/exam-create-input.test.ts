@@ -1,0 +1,30 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import { createExamSchema } from "../src/lib/exam-create-input";
+
+const valid = {
+  title: "Đề thi thử Toán",
+  subjectId: "subject123",
+  educationLevel: "THPT",
+  durationMinutes: 45,
+  questions: [{ prompt: "Một cộng một bằng mấy?", options: ["Một", "Hai"], correctIndex: 1 }],
+};
+
+describe("user exam input bounds", () => {
+  it("accepts ordinary exam creation", () => {
+    assert.equal(createExamSchema.safeParse(valid).success, true);
+  });
+
+  it("rejects unbounded question content", () => {
+    const question = valid.questions[0];
+    assert.equal(createExamSchema.safeParse({ ...valid, questions: [{ ...question, prompt: "x".repeat(2501) }] }).success, false);
+    assert.equal(createExamSchema.safeParse({ ...valid, questions: [{ ...question, options: ["A".repeat(601), "B"] }] }).success, false);
+    assert.equal(createExamSchema.safeParse({ ...valid, questions: [{ ...question, explanation: "x".repeat(2001) }] }).success, false);
+  });
+
+  it("rejects too many invited users and unexpected fields", () => {
+    assert.equal(createExamSchema.safeParse({ ...valid, allowedEmails: Array.from({ length: 101 }, (_, i) => `a${i}@example.test`) }).success, false);
+    assert.equal(createExamSchema.safeParse({ ...valid, role: "ADMIN" }).success, false);
+    assert.equal(createExamSchema.safeParse({ ...valid, questions: [{ ...valid.questions[0], isCorrect: true }] }).success, false);
+  });
+});
