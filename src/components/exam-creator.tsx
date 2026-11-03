@@ -139,6 +139,9 @@ function downloadBlob(blob: Blob, fileName: string) {
   URL.revokeObjectURL(url);
 }
 
+const INLINE_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
+const MAX_INLINE_UPLOAD_BYTES = 250_000;
+
 function fileToDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -359,8 +362,12 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
     }
 
     if (file.type.startsWith("image/")) {
-      if (file.size > 1_500_000) {
-        setMessage("Ảnh nên nhỏ hơn 1.5MB để lưu vào đề thi. Hãy nén ảnh hoặc dùng link ảnh.");
+      if (!INLINE_IMAGE_TYPES.has(file.type)) {
+        setMessage("Chỉ hỗ trợ PNG, JPEG, WebP hoặc GIF. Không hỗ trợ SVG.");
+        return;
+      }
+      if (file.size > MAX_INLINE_UPLOAD_BYTES) {
+        setMessage("Ảnh nhúng cần nhỏ hơn 250KB. Hãy nén ảnh trước khi tải lên.");
         return;
       }
       const dataUrl = await fileToDataUrl(file);
@@ -377,12 +384,12 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
 
   async function handleQuestionImage(file?: File) {
     if (!file || !imageTarget) return;
-    if (!file.type.startsWith("image/")) {
-      setMessage("Vui lòng chọn tệp ảnh.");
+    if (!INLINE_IMAGE_TYPES.has(file.type)) {
+      setMessage("Chỉ hỗ trợ ảnh PNG, JPEG, WebP hoặc GIF. Không hỗ trợ SVG.");
       return;
     }
-    if (file.size > 1_500_000) {
-      setMessage("Ảnh nên nhỏ hơn 1.5MB để lưu vào đề thi. Hãy nén ảnh hoặc dùng link ảnh.");
+    if (file.size > MAX_INLINE_UPLOAD_BYTES) {
+      setMessage("Ảnh nhúng cần nhỏ hơn 250KB. Hãy nén ảnh trước khi tải lên.");
       return;
     }
 
@@ -646,7 +653,7 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h2 className="text-lg font-black text-slate-800">Nhập đề từ file</h2>
-                <p className="mt-1 text-sm text-slate-500">Excel dùng các cột: question, image, A, B, C, D, correct, explanation. Cột image nhận link ảnh hoặc data:image.</p>
+                <p className="mt-1 text-sm text-slate-500">Excel dùng các cột: question, image, A, B, C, D, correct, explanation. Cột image chỉ nhận đường dẫn ảnh cùng website hoặc data:image PNG/JPEG/WebP/GIF dưới 250KB.</p>
               </div>
               {templateButtons}
             </div>
@@ -666,7 +673,7 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-lg font-black text-slate-800">Dán nội dung đề thi</h2>
-                <p className="mt-1 text-sm text-slate-500">Dùng $...$ cho công thức trong dòng, $$...$$ cho công thức tách dòng, và Ảnh: URL cho hình minh họa.</p>
+                <p className="mt-1 text-sm text-slate-500">Dùng $...$ cho công thức trong dòng, $...$ cho công thức tách dòng, và Ảnh: đường dẫn cùng website cho hình minh họa.</p>
               </div>
               <div className="flex flex-wrap gap-3">
                 {templateButtons}
