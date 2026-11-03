@@ -68,8 +68,7 @@ export function MobileSiteNavigation({
     : [
         { href: "/", label: "Trang chủ" },
         { href: loginFor("/dashboard#mon-hoc"), label: "Môn học" },
-        ...nav.filter((item) => ["Đề thi", "Tài liệu", "Cửa hàng", "Lớp học"].includes(item.label))
-          .map((item) => ({ ...item, href: loginFor(item.href) })),
+        ...nav.map((item) => ({ ...item, href: loginFor(item.href) })),
         { href: "/login?callbackUrl=/dashboard", label: "Đăng nhập" },
       ];
 
