@@ -53,15 +53,17 @@ async function main() {
     await page.locator('input[name="school"]').fill("THPT Nguyễn Trãi");
     await page.getByRole("button", { name: /HOÀN TẤT.*TIẾP TỤC/ }).click();
     await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15000 });
+    const savedProfile = await prisma.studentProfile.findUniqueOrThrow({ where: { userId: account.id } });
+    assert.equal(savedProfile.school, "THPT Nguyễn Trãi", "onboarding must persist the school before redirect");
+    assert.ok(savedProfile.grade && savedProfile.province, "onboarding must persist grade and province");
 
     const sessionResult = await page.request.get(base + "/api/auth/session");
     assert.equal(sessionResult.status(), 200);
     const session = await sessionResult.json();
     assert.equal(session.user?.email, email);
 
-    await page.goto(base + "/dashboard");
-    await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15000 });
-    assert.equal(new URL(page.url()).pathname, "/dashboard");
+    await page.goto(base + "/dashboard", { waitUntil: "domcontentloaded" });
+    assert.equal(new URL(page.url()).pathname, "/dashboard", "completed students should not be sent back to onboarding");
 
     await page.goto(base + "/teacher");
     await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15000 });
