@@ -61,12 +61,12 @@ export async function SiteHeader() {
   if (!session?.user) {
     return (
       <header className="fixed inset-x-0 top-0 z-[70] border-b border-orange-100/80 bg-white/95 shadow-sm backdrop-blur-xl">
-        <div className="mx-auto flex h-[76px] max-w-[1440px] items-center justify-between px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-[64px] max-w-[1440px] items-center justify-between px-4 sm:px-6 lg:h-[76px] lg:px-8">
           <Link href="/" className="flex items-center gap-2">
-            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-orange-50 p-1 shadow-lg shadow-orange-200">
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-orange-50 p-1 shadow-lg shadow-orange-200 sm:h-12 sm:w-12 sm:rounded-2xl">
               <MascotAvatar />
             </span>
-            <span className="text-2xl font-black tracking-tight text-orange-500">Ava</span>
+            <span className="text-lg font-black tracking-tight text-orange-500 sm:text-2xl">Ava</span>
           </Link>
 
           <nav className="intro-page-nav hidden items-center gap-5 text-sm font-bold text-slate-600">
@@ -111,12 +111,12 @@ export async function SiteHeader() {
 
   return (
     <header className="fixed inset-x-0 top-0 z-[70] border-b border-orange-100/80 bg-white/95 shadow-sm backdrop-blur-xl">
-      <div className="mx-auto flex h-[76px] max-w-[1440px] items-center justify-between gap-2 px-4 sm:gap-5 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-[64px] max-w-[1440px] items-center justify-between gap-2 px-4 sm:gap-5 sm:px-6 lg:h-[76px] lg:px-8">
         <Link href={homeHref} title="Về trang chủ" className="flex shrink-0 items-center gap-2">
-          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-orange-50 p-1 shadow-md shadow-orange-200">
+          <span className="grid h-9 w-9 place-items-center rounded-xl bg-orange-50 p-1 shadow-md shadow-orange-200 sm:h-11 sm:w-11 sm:rounded-2xl">
             <MascotAvatar />
           </span>
-          <span className="text-xl font-black tracking-tight text-orange-500">Ava</span>
+          <span className="text-lg font-black tracking-tight text-orange-500 sm:text-xl">Ava</span>
         </Link>
 
         <nav className="intro-page-nav hidden items-center gap-5 text-sm font-bold text-slate-600">
@@ -148,7 +148,7 @@ export async function SiteHeader() {
           <Link
             href="/notifications"
             aria-label="Thông báo"
-            className="relative grid h-10 w-10 place-items-center rounded-full text-slate-500 transition hover:bg-orange-50 hover:text-orange-500"
+            className="relative grid h-9 w-9 place-items-center rounded-full text-slate-500 transition hover:bg-orange-50 hover:text-orange-500 sm:h-10 sm:w-10"
           >
             <Bell className="h-5 w-5" />
             {account?._count.notifications ? (
