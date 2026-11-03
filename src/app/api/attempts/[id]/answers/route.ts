@@ -32,7 +32,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       if (isAttemptExpired(attempt)) {
         throw new HttpError(409, "Hết giờ làm bài. Hãy nộp bài để chấm các đáp án đã lưu.");
       }
-      if (!(await canAccessExam(user.id, attempt.exam))) {
+      if (!(await canAccessExam(user.id, attempt.exam, tx))) {
         throw new HttpError(403, "Bạn không còn quyền truy cập đề thi này.");
       }
 
