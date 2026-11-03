@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk, requireUser } from "@/lib/api";
 import { calculateExamExp, getVietnamDayRange } from "@/lib/exp-system";
 import { scoreExam, type ScoringQuestion } from "@/lib/scoring";
+import { canAccessExam } from "@/lib/access";
 
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -28,6 +29,10 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     if (attempt.status === "SUBMITTED") {
       return jsonOk({ attemptId: attempt.id, resultId: attempt.id, score: attempt.score, maxScore: attempt.maxScore });
     }
+    if (attempt.status !== "IN_PROGRESS") throw new HttpError(409, "Bài thi đã kết thúc.");
+    if (!(await canAccessExam(user.id, attempt.exam))) throw new HttpError(403, "Bạn không còn quyền truy cập đề thi này.");
+    // Submission may happen after the deadline to grade answers already saved.
+    // Answer writes are separately rejected at the server-side deadline.
 
     const questions = attempt.exam.questions.map((question) => ({
       id: question.id,
@@ -89,7 +94,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     }));
     const weakTopics = topicScores.filter((item) => item.ratio < 0.6);
     const now = new Date();
-    const durationSeconds = Math.max(0, Math.round((now.getTime() - attempt.startedAt.getTime()) / 1000));
+    const elapsed = Math.max(0, Math.round((now.getTime() - attempt.startedAt.getTime()) / 1000));
+    const durationSeconds = Math.min(elapsed, attempt.exam.durationMinutes * 60 + attempt.extraTimeSeconds);
     const feedback =
       result.maxScore && result.score / result.maxScore >= 0.8
         ? "Bạn đang kiểm soát tốt đề này. Ưu tiên luyện tốc độ và giảm lỗi sai nhỏ."
