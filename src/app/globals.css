@@ -69,9 +69,11 @@ body {
   }
 }
 
-.site-layout:has(.student-login-page) > header > div {
-  justify-content: flex-start;
-  gap: 3rem;
+@media (min-width: 640px) {
+  .site-layout:has(.student-login-page) > header > div {
+    justify-content: flex-start;
+    gap: 3rem;
+  }
 }
 
 ::selection {
