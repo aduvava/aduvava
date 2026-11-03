@@ -1,14 +1,11 @@
 import katex from "katex";
 import { clsx } from "clsx";
+import { isSafeRichImageUrl } from "@/lib/rich-image-security";
 
 type RichPart =
   | { type: "text"; value: string }
   | { type: "image"; alt: string; src: string }
   | { type: "math"; value: string; display: boolean };
-
-function isRenderableImageUrl(url: string) {
-  return /^(https?:\/\/|data:image\/|\/)/i.test(url.trim());
-}
 
 function renderMath(value: string, displayMode: boolean) {
   try {
@@ -35,7 +32,7 @@ function parseRichContent(value: string) {
 
     if (match[2]) {
       const src = match[2].trim();
-      if (isRenderableImageUrl(src)) parts.push({ type: "image", alt: match[1] || "Hình minh họa", src });
+      if (isSafeRichImageUrl(src)) parts.push({ type: "image", alt: match[1] || "Hình minh họa", src });
       else parts.push({ type: "text", value: match[0] });
     } else if (match[3]) {
       parts.push({ type: "math", value: match[3].trim(), display: true });
@@ -64,6 +61,7 @@ export function RichContent({ value, className = "", imageClassName = "" }: { va
               src={part.src}
               alt={part.alt}
               loading="lazy"
+              referrerPolicy="no-referrer"
               className={clsx("mt-2 max-h-[360px] max-w-full rounded-2xl border border-slate-200 bg-slate-50 object-contain", imageClassName)}
             />
           );
