@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { Card } from "@/components/ui";
 import { LoginForm } from "@/components/forms/login-form";
 import { getCurrentUser } from "@/lib/auth";
+import { safePostLoginPath } from "@/lib/onboarding";
 
 function getSafeCallbackUrl(value: string | undefined, fallback: string) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return fallback;
@@ -68,9 +69,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const user = await getCurrentUser();
   const copy = getLoginCopy(params.role);
   const previewCredentials = getPreviewCredentials(copy.accountRole);
+  const googleEnabled = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 
   if (user && !params.role) {
-    if (user.role === "STUDENT") redirect("/onboarding");
+    if (user.role === "STUDENT") redirect("/auth/continue?callbackUrl=" + encodeURIComponent(safePostLoginPath(params.callbackUrl)));
     const fallback = user.role === "ADMIN" ? "/admin" : "/teacher";
     redirect(getSafeCallbackUrl(params.callbackUrl, fallback));
   }
@@ -85,11 +87,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             Tài khoản thử nghiệm của Codespace này: <code className="font-bold">{previewCredentials.email}</code> / <code className="font-bold">{previewCredentials.password}</code>
           </p>
         ) : (
-          <p className="mt-3 text-sm text-slate-600">Đăng nhập bằng email và mật khẩu của tài khoản bạn đã đăng ký.</p>
+          <p className="mt-3 text-sm text-slate-600">Chọn Google để đăng nhập trước, sau đó bổ sung thông tin học tập khi sử dụng lần đầu. Bạn cũng có thể đăng nhập bằng email và mật khẩu.</p>
         )}
         <div className="mt-6">
           <Suspense fallback={<p>Đang tải form...</p>}>
-            <LoginForm />
+            <LoginForm googleEnabled={googleEnabled} />
           </Suspense>
         </div>
         {params.role !== "admin" ? (
