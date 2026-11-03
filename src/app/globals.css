@@ -31,7 +31,20 @@ body {
 }
 
 .site-main {
-  padding-top: 76px;
+  padding-top: 64px;
+}
+
+/* Reserve space so fixed mobile tabs never cover the final card or footer. */
+@media (max-width: 1023px) {
+  .site-layout {
+    padding-bottom: calc(116px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (min-width: 480px) and (max-width: 1023px) {
+  .site-layout {
+    padding-bottom: calc(70px + env(safe-area-inset-bottom));
+  }
 }
 
 .site-layout:has(.hide-site-header) > header > div {
@@ -39,6 +52,10 @@ body {
 }
 
 @media (min-width: 1024px) {
+  .site-main {
+    padding-top: 76px;
+  }
+
   body {
     zoom: 0.95;
   }

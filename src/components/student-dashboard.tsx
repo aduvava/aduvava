@@ -198,8 +198,33 @@ const subjectVisuals = {
   "Công nghệ Công nghiệp": { icon: Cog, className: "from-orange-100 to-amber-50 text-orange-600" },
 } satisfies Record<string, SubjectVisual>;
 
-function getItemVisual(item: string): SubjectVisual {
+function getItemVisual(item: string, slug: string): SubjectVisual {
   if (item in subjectVisuals) return subjectVisuals[item as keyof typeof subjectVisuals];
+
+  // Subject names in the database may use different case, accents or spelling.
+  // Reuse the existing illustrations rather than dropping back to plain icons.
+  const normalized = (item + " " + slug)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/đ/g, "d");
+
+  const aliases: [RegExp, keyof typeof subjectVisuals][] = [
+    [/toan/, "Toán"],
+    [/ngu[ -]?van|van[ -]?hoc/, "Ngữ Văn"],
+    [/tieng[ -]?anh|english/, "Tiếng Anh"],
+    [/lich[ -]?su/, "Lịch Sử"],
+    [/dia[ -]?ly/, "Địa Lý"],
+    [/vat[ -]?ly|vat[ -]?li/, "Vật Lý"],
+    [/hoa[ -]?hoc/, "Hóa Học"],
+    [/sinh[ -]?hoc|sinh[ -]?vat/, "Sinh Học"],
+    [/khoa[ -]?hoc[ -]?tu[ -]?nhien|khtn/, "KHTN (Sinh Học)"],
+    [/kinh[ -]?te|phap[ -]?luat|giao[ -]?duc[ -]?cong[ -]?dan|gdcd/, "KT&PL"],
+    [/cong[ -]?nghe/, "Công Nghệ"],
+  ];
+  const match = aliases.find(([pattern]) => pattern.test(normalized));
+  if (match) return subjectVisuals[match[1]];
+
   return { icon: GraduationCap, imageSrc: undefined, className: "from-orange-100 to-amber-50 text-orange-600" };
 }
 
@@ -274,7 +299,7 @@ function ChatSupport() {
   return (
     <>
       {open ? (
-        <div className="fixed bottom-24 right-4 z-50 w-[calc(100vw-2rem)] max-w-sm overflow-hidden rounded-3xl border border-orange-100 bg-white shadow-[0_24px_70px_rgba(72,44,20,0.2)] sm:right-6">
+        <div className="fixed bottom-[calc(11rem+env(safe-area-inset-bottom))] right-4 z-50 lg:bottom-24 w-[calc(100vw-2rem)] max-w-sm overflow-hidden rounded-3xl border border-orange-100 bg-white shadow-[0_24px_70px_rgba(72,44,20,0.2)] sm:right-6">
           <div className="flex items-center justify-between bg-orange-500 px-5 py-4 text-white">
             <div className="flex items-center gap-3">
               <span className="h-10 w-10 overflow-hidden rounded-full border-2 border-white/70 bg-white">
@@ -302,7 +327,7 @@ function ChatSupport() {
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-label="Mở chat hỗ trợ"
-        className="fixed bottom-6 right-4 z-50 grid h-16 w-16 place-items-center overflow-hidden rounded-full border-4 border-orange-500 bg-white text-white shadow-[0_12px_30px_rgba(249,115,22,0.4)] transition hover:-translate-y-1 sm:right-6"
+        className="fixed bottom-[calc(7.5rem+env(safe-area-inset-bottom))] right-4 z-50 lg:bottom-6 grid h-16 w-16 place-items-center overflow-hidden rounded-full border-4 border-orange-500 bg-white text-white shadow-[0_12px_30px_rgba(249,115,22,0.4)] transition hover:-translate-y-1 sm:right-6"
       >
         {open ? <span className="grid h-full w-full place-items-center bg-orange-500"><X className="h-6 w-6" /></span> : <MascotAvatar />}
       </button>
@@ -421,10 +446,10 @@ export function StudentDashboard({
           <StreakCard learningStreak={learningStreak} weekActivity={weekActivity} />
         </div>
 
-        <section className="-mx-4 mt-6 bg-[#fffdf0] px-4 py-6 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <section id="mon-hoc" className="-mx-4 mt-6 scroll-mt-20 bg-[#fffdf0] px-4 py-6 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
           <div className="mx-auto grid max-w-[1180px] items-start gap-5 lg:grid-cols-[minmax(0,760px)_minmax(320px,360px)]">
             <div>
-          <div className="flex justify-center gap-3 overflow-x-auto pb-2">
+          <div className="grid grid-cols-2 gap-2 pb-2 sm:flex sm:justify-center sm:gap-3 sm:overflow-x-auto">
             {studyGroups.map((group) => {
               const active = group.id === activeGroup;
               return (
@@ -456,9 +481,9 @@ export function StudentDashboard({
               </button>
             ))}
           </div>
-          <div className="mx-auto mt-5 grid max-w-[690px] grid-cols-2 justify-items-center gap-3 sm:grid-cols-3">
+          <div className="mx-auto mt-5 grid max-w-[690px] grid-cols-2 justify-items-center gap-2 sm:grid-cols-3 sm:gap-3">
             {subjects.map((subject) => {
-              const visual = getItemVisual(subject.name);
+              const visual = getItemVisual(subject.name, subject.slug);
               const ItemIcon = visual.icon;
               const active = activeSubject === subject.slug;
 
@@ -468,7 +493,7 @@ export function StudentDashboard({
                   href={`/subjects/${subject.slug}?level=${encodeURIComponent(activeGroup)}&grade=${encodeURIComponent(activeClass)}`}
                   onClick={() => setActiveSubject(subject.slug)}
                   className={clsx(
-                    "group flex min-h-[124px] w-full max-w-[165px] flex-col items-center justify-center rounded-[1.35rem] border bg-white px-3 py-3.5 text-center shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md",
+                    "group flex min-h-[112px] w-full max-w-[165px] flex-col items-center justify-center rounded-xl border bg-white px-2 py-2.5 text-center shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md sm:min-h-[124px] sm:rounded-[1.35rem] sm:px-3 sm:py-3.5",
                     active
                       ? "border-blue-400 ring-4 ring-blue-100"
                       : "border-white hover:border-orange-100",
@@ -476,7 +501,7 @@ export function StudentDashboard({
                 >
                   <span
                     className={clsx(
-                      "grid h-[58px] w-[58px] place-items-center overflow-hidden rounded-[1rem] bg-gradient-to-br transition-transform duration-200 group-hover:scale-105",
+                      "grid h-[52px] w-[52px] place-items-center overflow-hidden rounded-xl bg-gradient-to-br transition-transform duration-200 group-hover:scale-105 sm:h-[58px] sm:w-[58px] sm:rounded-[1rem]",
                       visual.className,
                     )}
                   >

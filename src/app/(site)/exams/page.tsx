@@ -47,34 +47,34 @@ export default async function ExamsHubPage() {
   const workflow = isTeacher ? teacherWorkflow : studentWorkflow;
 
   return (
-    <main className="min-h-[calc(100vh-76px)] bg-[#fffdf6] px-4 py-10 text-slate-900 sm:px-6">
+    <main className="min-h-[calc(100vh-64px)] bg-[#fffdf6] px-4 py-6 text-slate-900 sm:px-6 sm:py-10">
       <div className="mx-auto max-w-6xl">
         <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500">
           Không gian đề thi
         </p>
-        <h1 className="mt-3 text-4xl font-black leading-tight sm:text-6xl">
+        <h1 className="mt-2 text-2xl font-black leading-tight sm:mt-3 sm:text-5xl lg:text-6xl">
           Tạo và quản lý đề thi
         </h1>
-        <div className="mx-auto mt-8 grid max-w-4xl gap-5 md:grid-cols-2">
+        <div className="mx-auto mt-5 grid max-w-4xl gap-3 sm:mt-8 sm:gap-5 md:grid-cols-2">
           <Link
             href="/exams/create"
-            className="group rounded-[1.5rem] border border-orange-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+            className="group rounded-2xl border border-orange-100 bg-white p-4 shadow-sm sm:rounded-[1.5rem] sm:p-6 transition hover:-translate-y-1 hover:shadow-lg"
           >
             <span className="grid h-12 w-12 place-items-center rounded-xl bg-orange-500 text-white shadow-lg shadow-orange-200">
               <FilePlus2 className="h-6 w-6" />
             </span>
-            <h2 className="mt-5 text-xl font-black">Tạo đề thi mới</h2>
+            <h2 className="mt-3 text-lg font-black sm:mt-5 sm:text-xl">Tạo đề thi mới</h2>
             <p className="mt-2 max-w-md text-sm font-semibold leading-6 text-slate-500">
               Soạn đề thủ công hoặc tạo nhanh từ ngân hàng câu hỏi, cấu hình thời gian, đáp án và quyền truy cập.
             </p>
-            <span className="mt-5 inline-flex items-center gap-2 text-sm font-black text-orange-600">
+            <span className="mt-3 inline-flex items-center gap-2 text-sm font-black sm:mt-5 text-orange-600">
               Bắt đầu tạo đề <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
             </span>
           </Link>
 
           <Link
             href="/exams/my"
-            className="group rounded-[1.5rem] border border-blue-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+            className="group rounded-2xl border border-blue-100 bg-white p-4 shadow-sm sm:rounded-[1.5rem] sm:p-6 transition hover:-translate-y-1 hover:shadow-lg"
           >
             <span className="grid h-12 w-12 place-items-center rounded-xl bg-blue-500 text-white shadow-lg shadow-blue-100">
               <Archive className="h-6 w-6" />
@@ -89,9 +89,9 @@ export default async function ExamsHubPage() {
           </Link>
         </div>
 
-        <section className="mt-8 grid gap-4 md:grid-cols-3">
+        <section className="mt-6 grid gap-3 sm:mt-8 sm:gap-4 md:grid-cols-3">
           {quickStats.map(({ label, value, note, icon: Icon, color }) => (
-            <article key={label} className="rounded-[1.75rem] border border-orange-100 bg-white p-5 shadow-sm">
+            <article key={label} className="rounded-2xl border border-orange-100 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
               <span className={`grid h-12 w-12 place-items-center rounded-2xl ${color}`}>
                 <Icon className="h-6 w-6" />
               </span>
@@ -102,7 +102,7 @@ export default async function ExamsHubPage() {
           ))}
         </section>
 
-        <section className="mt-8 grid gap-6 rounded-[2rem] border border-orange-100 bg-white p-6 shadow-sm lg:grid-cols-[0.85fr_1.15fr]">
+        <section className="mt-6 grid gap-4 rounded-2xl border border-orange-100 bg-white p-4 shadow-sm sm:mt-8 sm:gap-6 sm:rounded-[2rem] sm:p-6 lg:grid-cols-[0.85fr_1.15fr]">
           <div className="rounded-[1.5rem] bg-slate-950 p-6 text-white">
             <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/10 text-orange-200">
               {isTeacher ? <ShieldCheck className="h-6 w-6" /> : <Trophy className="h-6 w-6" />}

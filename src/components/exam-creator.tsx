@@ -491,21 +491,21 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
 
   if (!mode) {
     return (
-      <div className="min-h-[calc(100vh-76px)] bg-[#fffdf8]">
+      <div className="min-h-[calc(100vh-64px)] bg-[#fffdf8]">
         <div className="border-b border-orange-100 bg-white">
-          <div className="mx-auto flex max-w-7xl items-center gap-5 px-4 py-7 sm:px-6">
+          <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-4 sm:gap-5 sm:px-6 sm:py-7">
             <Link href={backHref} className="grid h-11 w-11 place-items-center rounded-full text-slate-500 hover:bg-slate-100">
               <ArrowLeft className="h-6 w-6" />
             </Link>
             <div>
-              <h1 className="text-3xl font-black text-slate-900">Tạo đề thi mới</h1>
+              <h1 className="text-xl font-black text-slate-900 sm:text-3xl">Tạo đề thi mới</h1>
               <p className="mt-2 text-sm font-semibold text-slate-500">
                 Hỗ trợ TXT, Excel, CSV, công thức LaTeX và ảnh trong câu hỏi cho học sinh lẫn giáo viên.
               </p>
             </div>
           </div>
         </div>
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-14 sm:px-6 lg:grid-cols-3">
+        <div className="mx-auto grid max-w-7xl gap-3 px-4 py-5 sm:gap-6 sm:px-6 sm:py-10 lg:grid-cols-3">
           {modes.map((item) => {
             const Icon = item.icon;
             return (
@@ -513,13 +513,15 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
                 key={item.id}
                 type="button"
                 onClick={() => chooseMode(item.id)}
-                className="group min-h-80 rounded-[3rem] border border-slate-100 bg-white p-10 text-left shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-orange-100 hover:shadow-lg"
+                className="group flex min-h-[112px] items-start gap-4 rounded-2xl border border-slate-100 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-orange-100 hover:shadow-lg sm:block sm:min-h-64 sm:rounded-[2rem] sm:p-7 lg:min-h-80 lg:p-10"
               >
-                <span className={clsx("grid h-20 w-20 place-items-center rounded-2xl text-white shadow-lg", item.color)}>
-                  <Icon className="h-10 w-10" strokeWidth={1.8} />
+                <span className={clsx("grid h-14 w-14 shrink-0 place-items-center rounded-xl text-white shadow-lg sm:h-20 sm:w-20 sm:rounded-2xl", item.color)}>
+                  <Icon className="h-7 w-7 sm:h-10 sm:w-10" strokeWidth={1.8} />
                 </span>
-                <h2 className="mt-9 text-2xl font-black text-slate-900">{item.title}</h2>
-                <p className="mt-3 max-w-xs text-base leading-7 text-slate-500">{item.description}</p>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-lg font-black text-slate-900 sm:mt-7 sm:text-2xl lg:mt-9">{item.title}</h2>
+                  <p className="mt-1 max-w-xs text-sm leading-5 text-slate-500 sm:mt-3 sm:text-base sm:leading-7">{item.description}</p>
+                </div>
               </button>
             );
           })}
@@ -529,7 +531,7 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
   }
 
   return (
-    <div className="min-h-[calc(100vh-76px)] bg-[#fffdf8] pb-16">
+    <div className="min-h-[calc(100vh-64px)] bg-[#fffdf8] pb-16">
       <input ref={imageInput} type="file" accept="image/*" className="hidden" onChange={(event) => void handleQuestionImage(event.target.files?.[0])} />
 
       <div className="border-b border-orange-100 bg-white">
