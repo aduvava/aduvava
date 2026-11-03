@@ -308,7 +308,8 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
                 <FormattedContent value={readingText} />
               </div>
               <div className="mt-4 rounded-2xl bg-blue-50 p-3 text-sm leading-6 text-blue-800">
-                Nửa trái được cuộn độc lập để bạn luôn đối chiếu ngữ liệu khi làm phần Đọc hiểu và Làm văn.
+                <span className="lg:hidden">Bạn có thể kéo lên để đọc lại ngữ liệu khi đang làm bài.</span>
+                <span className="hidden lg:inline">Nửa trái được cuộn độc lập để bạn luôn đối chiếu ngữ liệu khi làm phần Đọc hiểu và Làm văn.</span>
               </div>
             </div>
           </aside>
@@ -342,7 +343,7 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
                     </div>
 
                     {question.type === "SINGLE_CHOICE" ? (
-                      <div className="mx-auto mt-5 grid w-fit max-w-full gap-3 sm:grid-cols-2">
+                      <div className="mx-auto mt-5 grid w-full min-w-0 gap-3 sm:grid-cols-2">
                         {question.answerOptions.map((option) => {
                           const selected = value === option.id;
                           const hiddenByHelper = hiddenOptionIds.has(option.id);
@@ -353,7 +354,7 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
                               disabled={hiddenByHelper}
                               onClick={() => void save(question.id, option.id)}
                               className={clsx(
-                                "flex min-h-20 min-w-[18rem] max-w-full items-center gap-4 rounded-xl border-2 px-5 py-3 text-left transition",
+                                "flex min-h-20 w-full min-w-0 items-center gap-3 sm:gap-4 rounded-xl border-2 px-5 py-3 text-left transition",
                                 hiddenByHelper && "cursor-not-allowed border-slate-100 bg-slate-50 opacity-35",
                                 selected ? "border-orange-500 bg-orange-50" : "border-slate-200 hover:border-orange-200",
                               )}
@@ -462,6 +463,40 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
         </div>
       </div>
       {helperBar}
+      <details className="mx-4 mt-3 rounded-2xl border border-orange-100 bg-orange-50/80 lg:hidden">
+        <summary className="flex min-h-12 cursor-pointer items-center justify-between gap-3 px-4 py-3 text-sm font-black text-slate-800">
+          <span>Chuyển nhanh câu hỏi</span>
+          <span className="shrink-0 text-orange-600">{answeredCount}/{questions.length} đã làm</span>
+        </summary>
+        <nav aria-label="Chọn câu hỏi" className="grid grid-cols-5 gap-2 border-t border-orange-100 p-3 min-[400px]:grid-cols-6">
+          {questions.map((question, questionIndex) => {
+            const answered = isAnswered(question, answers[question.id]);
+            return (
+              <button
+                key={question.id}
+                type="button"
+                aria-label={"Đến câu " + (questionIndex + 1) + (answered ? ", đã làm" : ", chưa làm")}
+                onClick={(event) => {
+                  setIndex(questionIndex);
+                  event.currentTarget.closest("details")?.removeAttribute("open");
+                  window.requestAnimationFrame(() => {
+                    document.getElementById("question-" + question.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  });
+                }}
+                className={clsx(
+                  "relative min-h-11 rounded-xl border text-sm font-black transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500",
+                  questionIndex === index && "border-2 border-slate-900 bg-white text-slate-900",
+                  questionIndex !== index && answered && "border-orange-500 bg-orange-500 text-white",
+                  questionIndex !== index && !answered && "border-slate-300 bg-white text-slate-700",
+                )}
+              >
+                {questionIndex + 1}
+                {marked.has(question.id) ? <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-amber-400 ring-2 ring-white" /> : null}
+              </button>
+            );
+          })}
+        </nav>
+      </details>
 
       <div className="grid min-h-[calc(100vh-145px)] lg:grid-cols-[minmax(0,1fr)_380px]">
         <main className="px-4 py-6 lg:px-8 xl:px-12">
@@ -473,7 +508,7 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
                 <article
                   key={question.id}
                   id={`question-${question.id}`}
-                  className="scroll-mt-36 rounded-[1.75rem] border border-orange-100 bg-white p-4 shadow-sm sm:p-5"
+                  className="scroll-mt-48 min-w-0 rounded-[1.75rem] border border-orange-100 bg-white p-4 shadow-sm sm:scroll-mt-36 sm:p-5"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
@@ -498,7 +533,7 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
                   </div>
 
                   {question.type === "SINGLE_CHOICE" ? (
-                    <div className="mx-auto mt-6 grid w-fit max-w-full gap-3 sm:grid-cols-2">
+                    <div className="mx-auto mt-6 grid w-full min-w-0 gap-3 sm:grid-cols-2">
                       {question.answerOptions.map((option) => {
                         const selected = value === option.id;
                         const hiddenByHelper = hiddenOptionIds.has(option.id);
@@ -509,7 +544,7 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
                             disabled={hiddenByHelper}
                             onClick={() => void save(question.id, option.id)}
                             className={clsx(
-                              "flex min-h-20 min-w-[18rem] max-w-full items-center gap-4 rounded-xl border-2 px-5 py-3 text-left transition",
+                              "flex min-h-20 w-full min-w-0 items-center gap-3 sm:gap-4 rounded-xl border-2 px-5 py-3 text-left transition",
                               hiddenByHelper && "cursor-not-allowed border-slate-100 bg-slate-50 opacity-35",
                               selected ? "border-orange-500 bg-orange-50" : "border-slate-200 hover:border-orange-200",
                             )}
@@ -576,7 +611,7 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
           </div>
         </main>
 
-        <aside className="border-l border-slate-200 bg-slate-50/70 p-5 lg:sticky lg:top-[145px] lg:h-[calc(100vh-145px)] lg:overflow-y-auto">
+        <aside className="hidden border-l border-slate-200 bg-slate-50/70 p-5 lg:sticky lg:top-[145px] lg:block lg:h-[calc(100vh-145px)] lg:overflow-y-auto">
           <h2 className="text-lg font-black text-slate-900">Bảng điều hướng</h2>
           <div className="mt-3 flex flex-wrap gap-x-3 gap-y-2 text-xs font-semibold text-slate-500">
             <span className="flex items-center gap-2"><i className="h-4 w-4 rounded bg-orange-500" />Đã làm</span>
