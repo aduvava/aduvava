@@ -44,6 +44,14 @@ function validateProductionConfiguration(env, root = process.cwd()) {
   return errors;
 }
 
+// PostgreSQL regclass has an OID that Prisma's raw-query decoder cannot
+// deserialize directly. Casting to text keeps the preflight read-only and
+// makes the return type safe for Prisma, including when the table is missing.
+async function hasSecurityThrottleTable(db) {
+  const rows = await db.$queryRaw`SELECT to_regclass('public."SecurityThrottle"')::text AS table_name`;
+  return Boolean(rows?.[0]?.table_name);
+}
+
 async function runPreflight(env = process.env, deps = {}) {
   const errors = validateProductionConfiguration(env);
   if (errors.length) return { ok: false, errors };
@@ -51,8 +59,9 @@ async function runPreflight(env = process.env, deps = {}) {
   const ownsDb = !deps.db;
   try {
     try {
-      const result = await db.$queryRaw`SELECT to_regclass('"SecurityThrottle"') AS table_name`;
-      if (!result?.[0]?.table_name) errors.push("SecurityThrottle migration has not been applied");
+      if (!(await hasSecurityThrottleTable(db))) {
+        errors.push("SecurityThrottle migration has not been applied");
+      }
     } catch {
       errors.push("Unable to verify PostgreSQL connectivity and SecurityThrottle migration");
     }
@@ -102,4 +111,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { validateProductionConfiguration, runPreflight };
+module.exports = { validateProductionConfiguration, hasSecurityThrottleTable, runPreflight };
