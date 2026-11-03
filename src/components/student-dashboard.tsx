@@ -299,7 +299,7 @@ function ChatSupport() {
   return (
     <>
       {open ? (
-        <div className="fixed bottom-24 right-4 z-50 w-[calc(100vw-2rem)] max-w-sm overflow-hidden rounded-3xl border border-orange-100 bg-white shadow-[0_24px_70px_rgba(72,44,20,0.2)] sm:right-6">
+        <div className="fixed bottom-[calc(11rem+env(safe-area-inset-bottom))] right-4 z-50 lg:bottom-24 w-[calc(100vw-2rem)] max-w-sm overflow-hidden rounded-3xl border border-orange-100 bg-white shadow-[0_24px_70px_rgba(72,44,20,0.2)] sm:right-6">
           <div className="flex items-center justify-between bg-orange-500 px-5 py-4 text-white">
             <div className="flex items-center gap-3">
               <span className="h-10 w-10 overflow-hidden rounded-full border-2 border-white/70 bg-white">
@@ -327,7 +327,7 @@ function ChatSupport() {
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-label="Mở chat hỗ trợ"
-        className="fixed bottom-6 right-4 z-50 grid h-16 w-16 place-items-center overflow-hidden rounded-full border-4 border-orange-500 bg-white text-white shadow-[0_12px_30px_rgba(249,115,22,0.4)] transition hover:-translate-y-1 sm:right-6"
+        className="fixed bottom-[calc(7.5rem+env(safe-area-inset-bottom))] right-4 z-50 lg:bottom-6 grid h-16 w-16 place-items-center overflow-hidden rounded-full border-4 border-orange-500 bg-white text-white shadow-[0_12px_30px_rgba(249,115,22,0.4)] transition hover:-translate-y-1 sm:right-6"
       >
         {open ? <span className="grid h-full w-full place-items-center bg-orange-500"><X className="h-6 w-6" /></span> : <MascotAvatar />}
       </button>
