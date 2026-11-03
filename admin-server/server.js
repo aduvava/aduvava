@@ -2725,6 +2725,28 @@ async function router(req, res) {
 }
 
 const server = http.createServer((req, res) => {
+  // Separate standalone Admin port: do not rely on Next.js response headers.
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Content-Security-Policy", [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    "img-src 'self' data: blob:",
+    "connect-src 'self'",
+    "frame-src 'self' blob:",
+  ].join("; "));
+  if (process.env.NODE_ENV === "production" && process.env.ADMIN_PUBLIC_ORIGIN?.startsWith("https://")) {
+    res.setHeader("Strict-Transport-Security", "max-age=31536000");
+  }
   router(req, res).catch((error) => {
     console.error(error);
     if (!res.headersSent) sendText(res, error.statusCode === 413 ? "Request body too large" : "Internal server error", error.statusCode === 413 ? 413 : 500);
