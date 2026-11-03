@@ -17,7 +17,6 @@ html {
 
 body {
   margin: 0;
-  zoom: 0.95;
   font-family: var(--font-slowedu), Arial, sans-serif;
   background: #f1f5f9;
   color: var(--foreground);
@@ -39,17 +38,35 @@ body {
   justify-content: space-between;
 }
 
-.site-layout:has(.hide-site-header) .intro-page-nav {
-  display: flex;
+@media (min-width: 1024px) {
+  body {
+    zoom: 0.95;
+  }
+
+  .site-layout:has(.hide-site-header) .intro-page-nav {
+    display: flex;
+  }
 }
 
 .site-layout:has(.hide-site-header) > header > div > nav:not(.intro-page-nav),
-.site-layout:has(.hide-site-header) > header > div > div {
+.site-layout:has(.hide-site-header) > header > div > .desktop-header-actions {
   display: none;
 }
 
-.site-layout:has(.student-login-page) > header > div > :last-child {
+.site-layout:has(.student-login-page) > header > div > .desktop-header-actions {
   display: none;
+}
+
+@media (max-width: 639px) {
+  .site-layout:has(.student-login-page) > header > div {
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  /* Avoid automatic zoom when focusing form fields on iPhone. */
+  input, textarea, select {
+    font-size: 16px;
+  }
 }
 
 .site-layout:has(.student-login-page) > header > div {
