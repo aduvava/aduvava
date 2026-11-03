@@ -1,10 +1,11 @@
 import { z } from "zod";
+import { fitsExamRichField } from "@/lib/rich-image-security";
 
 const questionSchema = z.object({
-  prompt: z.string().trim().min(3).max(2500),
-  options: z.array(z.string().trim().min(1).max(600)).min(2).max(6),
+  prompt: z.string().trim().min(3).refine((value) => fitsExamRichField(value, 2500), "Nội dung câu hỏi quá dài hoặc ảnh vượt giới hạn"),
+  options: z.array(z.string().trim().min(1).refine((value) => fitsExamRichField(value, 600), "Phương án quá dài hoặc ảnh vượt giới hạn")).min(2).max(6),
   correctIndex: z.number().int().min(0).max(5),
-  explanation: z.string().trim().max(2000).optional(),
+  explanation: z.string().trim().refine((value) => fitsExamRichField(value, 2000), "Lời giải quá dài hoặc ảnh vượt giới hạn").optional(),
 }).strict();
 
 export const createExamSchema = z.object({
