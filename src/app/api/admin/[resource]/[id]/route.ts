@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { parseAdminInput } from "@/lib/admin-input";
+import { validateOfficialNationalExam } from "@/lib/official-exam-publication";
 import { transitionManualPayment } from "@/lib/payment-transition";
 import { handleRouteError, HttpError, jsonOk, readJson, requireAdmin } from "@/lib/api";
 
@@ -8,8 +9,55 @@ async function updateResource(resource: string, id: string, body: Record<string,
     case "subjects":
       return prisma.subject.update({ where: { id }, data: body as never });
     case "exams":
-      return prisma.exam.update({ where: { id }, data: body as never });
+      return prisma.$transaction(async (tx) => {
+        const current = await tx.exam.findUnique({
+          where: { id },
+          include: {
+            subject: { select: { slug: true } },
+            questions: {
+              select: {
+                position: true, type: true, points: true, prompt: true, correctText: true,
+                answerOptions: { select: { isCorrect: true } },
+              },
+            },
+          },
+        });
+        if (!current) throw new HttpError(404, "Không tìm thấy đề thi.");
+        const nextLevel = body.educationLevel === undefined
+          ? current.educationLevel : body.educationLevel as string | null;
+        const nextPublished = body.isPublished === undefined
+          ? current.isPublished : body.isPublished === true;
+        const nextSubjectId = typeof body.subjectId === "string" ? body.subjectId : current.subjectId;
+        const nextSubject = nextSubjectId === current.subjectId
+          ? current.subject
+          : await tx.subject.findUnique({ where: { id: nextSubjectId }, select: { slug: true } });
+        if (!nextSubject) throw new HttpError(404, "Không tìm thấy môn học.");
+        let structure = null;
+        if (current.ownerId === null && nextPublished && nextLevel === "THPTQG") {
+          try {
+            structure = validateOfficialNationalExam({
+              educationLevel: nextLevel,
+              subjectSlug: nextSubject.slug,
+              durationMinutes: typeof body.durationMinutes === "number" ? body.durationMinutes : current.durationMinutes,
+              questions: current.questions,
+            });
+          } catch (error) {
+            throw new HttpError(400, error instanceof Error ? error.message : "Cấu trúc đề THPTQG không hợp lệ.");
+          }
+        }
+        return tx.exam.update({
+          where: { id },
+          data: { ...body, examStructure: structure ?? undefined } as never,
+        });
+      }, { isolationLevel: "Serializable" });
     case "questions": {
+      const existing = await prisma.question.findUnique({ where: { id }, select: { examId: true } });
+      if (!existing) throw new HttpError(404, "Không tìm thấy câu hỏi.");
+      const examIds = Array.from(new Set([existing.examId, typeof body.examId === "string" ? body.examId : existing.examId]));
+      const exams = await prisma.exam.findMany({ where: { id: { in: examIds } }, select: { ownerId: true, educationLevel: true, isPublished: true } });
+      if (exams.some((exam) => exam.ownerId === null && exam.educationLevel === "THPTQG" && exam.isPublished)) {
+        throw new HttpError(409, "Hãy chuyển đề THPTQG về bản nháp trước khi sửa hoặc chuyển câu hỏi.");
+      }
       const { answerOptions, ...question } = body;
       if (Array.isArray(answerOptions)) {
         await prisma.answerOption.deleteMany({ where: { questionId: id } });
@@ -76,8 +124,15 @@ async function deleteResource(resource: string, id: string) {
       return prisma.subject.delete({ where: { id } });
     case "exams":
       return prisma.exam.delete({ where: { id } });
-    case "questions":
+    case "questions": {
+      const question = await prisma.question.findUnique({
+        where: { id }, select: { exam: { select: { ownerId: true, educationLevel: true, isPublished: true } } },
+      });
+      if (question?.exam.ownerId === null && question.exam.educationLevel === "THPTQG" && question.exam.isPublished) {
+        throw new HttpError(409, "Hãy chuyển đề THPTQG về bản nháp trước khi xóa câu hỏi.");
+      }
       return prisma.question.delete({ where: { id } });
+    }
     case "blogs":
       return prisma.blogPost.delete({ where: { id } });
     case "users":
