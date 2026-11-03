@@ -15,6 +15,19 @@ describe("user exam input bounds", () => {
     assert.equal(createExamSchema.safeParse(valid).success, true);
   });
 
+  it("allows more than 100 personal questions, including THPTQG practice", () => {
+    const questions = Array.from({ length: 251 }, () => ({ ...valid.questions[0] }));
+    assert.equal(createExamSchema.safeParse({ ...valid, questions }).success, true);
+    assert.equal(createExamSchema.safeParse({
+      ...valid, educationLevel: "THPTQG", durationMinutes: 25,
+      questions: [valid.questions[0]],
+    }).success, true);
+  });
+
+  it("still rejects an empty exam", () => {
+    assert.equal(createExamSchema.safeParse({ ...valid, questions: [] }).success, false);
+  });
+
   it("rejects unbounded question content", () => {
     const question = valid.questions[0];
     assert.equal(createExamSchema.safeParse({ ...valid, questions: [{ ...question, prompt: "x".repeat(2501) }] }).success, false);
