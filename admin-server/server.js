@@ -5,6 +5,8 @@ const path = require("path");
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
 const { createCsv } = require("./csv-export");
+const { parseAdminExamQuestions } = require("./exam-question-import");
+const nationalExamTemplates = require("../src/data/national-exam-templates.json");
 const { transitionManualPayment } = require("../src/lib/payment-transition.js");
 const { trustedPostOrigin, cookieSecuritySuffix } = require("./request-security");
 const { rateLimitOperation, TooManyRequestsError } = require("../src/lib/security-throttle.js");
@@ -44,7 +46,7 @@ const studyFlows = [
     id: "THPT",
     label: "Trung học phổ thông",
     grades: ["Lớp 10", "Lớp 11", "Lớp 12"],
-    subjects: ["Toán", "Ngữ Văn", "Tiếng Anh", "Lịch Sử", "Địa Lý", "Vật Lý", "Hóa Học", "Sinh Học", "Công Nghệ", "Tin Học", "KT&PL"],
+    subjects: ["Toán", "Ngữ Văn", "Tiếng Anh", "Lịch Sử", "Địa Lý", "Vật Lý", "Hóa Học", "Sinh Học", "Công Nghệ", "Công nghệ Nông nghiệp", "Công nghệ Công nghiệp", "Tin Học", "KT&PL"],
   },
   {
     id: "EXAM_10",
@@ -357,7 +359,8 @@ async function readBody(req) {
 async function readBodyBuffer(req) {
   // Reject oversized requests as data arrives, not after buffering them.
   const multipart = String(req.headers["content-type"] || "").includes("multipart/form-data");
-  const limit = multipart ? 18 * 1024 * 1024 : 1024 * 1024;
+  const examImport = /^\/exams\/(?:create|preview)(?:\?|$)/.test(req.url || "");
+  const limit = multipart ? 18 * 1024 * 1024 : examImport ? 8 * 1024 * 1024 : 1024 * 1024;
   const declared = Number(req.headers["content-length"]);
   if (Number.isFinite(declared) && declared > limit) throw Object.assign(new Error("Request body exceeds size limit"), { statusCode: 413 });
   let total = 0;
@@ -1239,7 +1242,7 @@ async function exportUsersCsv(res) {
 
 function examCreateForm(subjects) {
   const subjectOptions = subjects.map((subject) => {
-    return `<option value="${escapeHtml(subject.id)}" data-name="${escapeHtml(normalizeText(subject.name))}">${escapeHtml(subject.name)}</option>`;
+    return `<option value="${escapeHtml(subject.id)}" data-name="${escapeHtml(normalizeText(subject.name))}" data-slug="${escapeHtml(subject.slug)}">${escapeHtml(subject.name)}</option>`;
   }).join("");
   const flowJson = JSON.stringify(studyFlows.map((flow) => ({
     id: flow.id,
@@ -1284,6 +1287,7 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
     ],
   }, null, 2);
   const templateJson = JSON.stringify({ txt: textTemplate, csv: csvTemplate, json: jsonTemplate }).replace(/</g, "\\u003c");
+  const nationalRulesJson = JSON.stringify(nationalExamTemplates).replace(/</g, "\\u003c");
 
   return `<section id="tao-de-theo-mon" class="card">
     <div class="topbar" style="margin-bottom:16px">
@@ -1349,10 +1353,12 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
         </div>
         <div class="template-actions">
           <button type="button" data-template="txt">Mẫu TXT</button>
+          <button type="button" data-template="national">Mẫu THPTQG JSON theo môn</button>
           <button type="button" data-template="csv">Mẫu CSV</button>
           <button type="button" data-template="json">Mẫu JSON</button>
           <button type="button" id="clearImport">Xóa import</button>
         </div>
+        <div id="nationalExamHint" class="mini-note">Chỉ đề THPTQG chính thức phải đúng cấu trúc môn học. Đề các cấp khác tùy ý số câu, loại câu và thời lượng.</div>
         <label style="margin-top:12px">Nội dung import
           <textarea class="bulk-textarea" name="bulkQuestions" id="bulkQuestions" required placeholder="Dán nội dung file vào đây hoặc chọn file phía trên. Admin chỉ tạo đề bằng import, không nhập từng câu thủ công."></textarea>
         </label>
@@ -1372,6 +1378,7 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
       (() => {
         const flows = ${flowJson};
         const templates = ${templateJson};
+        const nationalRules = ${nationalRulesJson};
         const level = document.getElementById("examEducationLevel");
         const grade = document.getElementById("examGrade");
         const subject = document.getElementById("examSubject");
@@ -1382,6 +1389,8 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
         const contentModeInput = document.getElementById("examContentMode");
         const examTypeInput = document.getElementById("examType");
         const contentModeNote = document.getElementById("contentModeNote");
+        const nationalExamHint = document.getElementById("nationalExamHint");
+        const durationInput = document.querySelector('input[name="durationMinutes"]');
         const modeNotes = {
           topics: "Tạo bộ câu hỏi luyện tập theo chuyên đề của môn học đã chọn.",
           exams: "Tạo đề theo kì thi, kiểm tra giữa kì/cuối kì hoặc đề thi thử.",
@@ -1488,7 +1497,7 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
             const card = document.createElement("article");
             card.className = "preview-question";
             const title = document.createElement("h3");
-            title.textContent = "Câu " + (index + 1);
+            title.textContent = "Câu " + (index + 1) + (question.type ? " · " + question.type : "");
             card.appendChild(title);
             addRichText(card, question.prompt);
             const options = document.createElement("div");
@@ -1514,6 +1523,9 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
         async function refreshPreview() {
           const body = new URLSearchParams();
           body.set("bulkQuestions", bulk.value);
+          body.set("subjectId", subject.value);
+          body.set("educationLevel", level.value);
+          body.set("durationMinutes", durationInput.value);
           try {
             const response = await fetch("/exams/preview", {
               method: "POST",
@@ -1546,6 +1558,52 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
           textarea.selectionEnd = next;
           textarea.focus();
         }
+        function currentNationalRule() {
+          if (level.value !== "THPTQG") return null;
+          const slug = subject.selectedOptions[0]?.dataset.slug || "";
+          return nationalRules[slug] || null;
+        }
+        function syncNationalRule() {
+          const rule = currentNationalRule();
+          durationInput.readOnly = level.value === "THPTQG";
+          if (level.value !== "THPTQG") {
+            nationalExamHint.textContent = "Các đề ngoài THPTQG: admin tự chọn số câu, thời lượng và dạng câu.";
+          } else if (!rule) {
+            nationalExamHint.textContent = "Môn này chưa có mẫu THPTQG chính thức. Hãy chọn môn có cấu trúc được định nghĩa.";
+            durationInput.readOnly = false;
+          } else {
+            durationInput.value = String(rule.durationMinutes);
+            const count = rule.parts.reduce((total, part) => total + part.count, 0);
+            nationalExamHint.textContent = "THPTQG bắt buộc: " + count + " câu · " + rule.durationMinutes + " phút. " +
+              rule.parts.filter((part) => part.count).map((part) => part.label + ": " + part.count).join(" · ") +
+              ". Môn có Đúng/Sai hoặc Trả lời ngắn cần nhập JSON theo mẫu.";
+          }
+        }
+        function nationalJsonTemplate() {
+          const rule = currentNationalRule();
+          if (!rule) return "";
+          const questions = [];
+          for (const part of rule.parts) {
+            for (let index = 0; index < part.count; index++) {
+              const n = questions.length + 1;
+              if (part.questionType === "SINGLE_CHOICE") {
+                questions.push({ type: "SINGLE_CHOICE", prompt: "Nội dung câu " + n, options: ["Phương án A", "Phương án B", "Phương án C", "Phương án D"], correct: "A" });
+              } else if (part.questionType === "TRUE_FALSE_SET") {
+                questions.push({ type: "TRUE_FALSE_SET", prompt: "Nội dung câu " + n, statements: [
+                  { content: "Mệnh đề a", isCorrect: true },
+                  { content: "Mệnh đề b", isCorrect: false },
+                  { content: "Mệnh đề c", isCorrect: true },
+                  { content: "Mệnh đề d", isCorrect: false },
+                ] });
+              } else if (part.questionType === "SHORT_ANSWER") {
+                questions.push({ type: "SHORT_ANSWER", prompt: "Nội dung câu " + n, correctText: "Đáp án ngắn" });
+              } else {
+                questions.push({ type: "ESSAY", prompt: "Nội dung tự luận câu " + n });
+              }
+            }
+          }
+          return JSON.stringify({ questions }, null, 2);
+        }
         function syncFlow() {
           const flow = flows.find((item) => item.id === level.value) || flows[0];
           grade.innerHTML = flow.grades.map((item) => '<option value="' + item.replaceAll('"', '&quot;') + '">' + item + '</option>').join('');
@@ -1562,6 +1620,7 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
             firstVisible = subject.options[0]?.value || "";
           }
           if (!subject.value || subject.selectedOptions[0]?.disabled) subject.value = firstVisible;
+          syncNationalRule();
         }
         document.querySelectorAll(".formula-chip").forEach((chip) => {
           const raw = chip.textContent || "";
@@ -1580,10 +1639,12 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
             contentModeNote.textContent = modeNotes[contentModeInput.value] || modeNotes.topics;
           });
         });
-        level.addEventListener("change", syncFlow);
+        level.addEventListener("change", () => { syncFlow(); schedulePreview(); });
+        subject.addEventListener("change", () => { syncNationalRule(); schedulePreview(); });
+        durationInput.addEventListener("change", schedulePreview);
         document.querySelectorAll("[data-template]").forEach((button) => {
           button.addEventListener("click", () => {
-            bulk.value = templates[button.dataset.template] || "";
+            bulk.value = button.dataset.template === "national" ? nationalJsonTemplate() : templates[button.dataset.template] || "";
             bulk.focus();
             schedulePreview();
           });
@@ -2520,58 +2581,75 @@ async function createExam(req, res) {
   }
 
   const importSource = String(form.get("bulkQuestions") || "").trim();
-  let parsedQuestions = [];
+  let parsed;
   try {
-    if (!importSource) throw new Error("Vui lòng tải file hoặc dán nội dung import để tạo đề.");
-    parsedQuestions = parseQuestionsFromImport(importSource);
+    parsed = parseAdminExamQuestions(
+      importSource,
+      { educationLevel, subjectSlug: subject.slug, durationMinutes },
+      normalizeQuestionInput,
+      parseQuestionsFromImport,
+    );
   } catch (error) {
     redirect(res, `/exams?notice=${encodeURIComponent(error?.message || "Không đọc được cấu trúc đề thi")}`);
     return;
   }
-
-  if (!parsedQuestions.length) {
-    redirect(res, `/exams?notice=${encodeURIComponent("Đề thi cần ít nhất 1 câu hỏi")}`);
-    return;
-  }
-  if (parsedQuestions.length > 100) {
-    redirect(res, `/exams?notice=${encodeURIComponent("Mỗi lần tạo tối đa 100 câu hỏi")}`);
-    return;
-  }
-
-  const questions = parsedQuestions.map(toQuestionCreate);
+  const questions = parsed.questions;
 
   const stamp = Date.now().toString(36).toUpperCase();
   const random = crypto.randomBytes(2).toString("hex").toUpperCase();
   const code = `ADM-${subject.slug.toUpperCase().replace(/[^A-Z0-9]+/g, "-")}-${stamp}-${random}`;
   const slug = `${slugify(title)}-${stamp.toLowerCase()}-${random.toLowerCase()}`;
 
-  const exam = await prisma.exam.create({
-    data: {
-      code,
-      slug,
-      title,
-      description: description || `Đề ${subject.name} được tạo từ Ava Admin theo luồng ${grade || educationLevel}.`,
-      family: subject.family,
-      type,
-      accessLevel,
-      year,
-      durationMinutes,
-      educationLevel,
-      examStructure: {
-        source: "admin-server",
-        grade,
-        contentMode,
-        contentModeLabel: examContentModeLabel(contentMode),
-        questionSource: "file-import",
-        formulaSyntax: "latex-dollar",
-        questionCount: questions.length,
-        flowLabel: studyFlows.find((flow) => flow.id === educationLevel)?.label ?? educationLevel,
+  // Keep every imported question/answer together and avoid one enormous
+  // nested SQL statement when admin imports thousands of questions.
+  const exam = await prisma.$transaction(async (tx) => {
+    const created = await tx.exam.create({
+      data: {
+        code,
+        slug,
+        title,
+        description: description || `Đề ${subject.name} được tạo từ Ava Admin theo luồng ${grade || educationLevel}.`,
+        family: subject.family,
+        type,
+        accessLevel,
+        year,
+        durationMinutes,
+        educationLevel,
+        examStructure: {
+          ...(parsed.rule || {}),
+          source: "admin-server",
+          grade,
+          contentMode,
+          contentModeLabel: examContentModeLabel(contentMode),
+          questionSource: "file-import",
+          formulaSyntax: "latex-dollar",
+          questionCount: questions.length,
+          flowLabel: studyFlows.find((flow) => flow.id === educationLevel)?.label ?? educationLevel,
+        },
+        targetScore: Number.isFinite(targetScore) ? targetScore : 8,
+        subjectId: subject.id,
       },
-      targetScore: Number.isFinite(targetScore) ? targetScore : 8,
-      subjectId: subject.id,
-      questions: { create: questions },
-    },
-  });
+    });
+    for (let start = 0; start < questions.length; start += 100) {
+      const chunk = questions.slice(start, start + 100).map((question) => ({
+        ...question, id: crypto.randomUUID(),
+      }));
+      await tx.question.createMany({
+        data: chunk.map((question) => ({
+          id: question.id, examId: created.id, position: question.position,
+          type: question.type, prompt: question.prompt, points: question.points,
+          correctText: question.correctText, explanation: question.explanation,
+        })),
+      });
+      const answerOptions = chunk.flatMap((question) => question.answerOptions.map((option) => ({
+        ...option, questionId: question.id,
+      })));
+      for (let offset = 0; offset < answerOptions.length; offset += 500) {
+        await tx.answerOption.createMany({ data: answerOptions.slice(offset, offset + 500) });
+      }
+    }
+    return created;
+  }, { maxWait: 10000, timeout: 120000 });
 
   redirect(res, `/exams?notice=${encodeURIComponent(`Đã tạo đề "${exam.title}" cho môn ${subject.name}`)}#tao-de-theo-mon`);
 }
@@ -2594,16 +2672,16 @@ async function previewExamImport(req, res) {
   const form = await readForm(req);
   const importSource = String(form.get("bulkQuestions") || "").trim();
   try {
-    const questions = importSource ? parseQuestionsFromImport(importSource) : [];
-    sendJson(res, {
-      ok: true,
-      questions: questions.map((question) => ({
-        prompt: question.prompt,
-        answers: question.answers,
-        correct: question.correct,
-        explanation: question.explanation,
-      })),
-    });
+    if (!importSource) return sendJson(res, { ok: true, questions: [] });
+    const subjectId = String(form.get("subjectId") || "");
+    const educationLevel = String(form.get("educationLevel") || "THCS");
+    const durationMinutes = Number(form.get("durationMinutes") || 30);
+    const subject = await prisma.subject.findUnique({ where: { id: subjectId }, select: { slug: true } });
+    if (!subject) throw new Error("Hãy chọn môn học hợp lệ.");
+    const parsed = parseAdminExamQuestions(importSource, {
+      educationLevel, subjectSlug: subject.slug, durationMinutes,
+    }, normalizeQuestionInput, parseQuestionsFromImport);
+    sendJson(res, { ok: true, questions: parsed.preview });
   } catch (error) {
     sendJson(res, { ok: false, error: error?.message || "Không đọc được nội dung import." }, 400);
   }

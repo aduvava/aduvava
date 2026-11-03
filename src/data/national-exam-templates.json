@@ -1,0 +1,288 @@
+{
+  "toan": {
+    "durationMinutes": 90,
+    "parts": [
+      {
+        "key": "part1",
+        "label": "Phần I: Nhiều lựa chọn",
+        "questionType": "SINGLE_CHOICE",
+        "count": 12,
+        "pointsPerQuestion": 0.25
+      },
+      {
+        "key": "part2",
+        "label": "Phần II: Đúng/Sai",
+        "questionType": "TRUE_FALSE_SET",
+        "count": 4,
+        "pointsPerQuestion": 1
+      },
+      {
+        "key": "part3",
+        "label": "Phần III: Trả lời ngắn",
+        "questionType": "SHORT_ANSWER",
+        "count": 6,
+        "pointsPerQuestion": 0.5
+      }
+    ]
+  },
+  "vat-ly": {
+    "durationMinutes": 50,
+    "parts": [
+      {
+        "key": "part1",
+        "label": "Phần I: Nhiều lựa chọn",
+        "questionType": "SINGLE_CHOICE",
+        "count": 18,
+        "pointsPerQuestion": 0.25
+      },
+      {
+        "key": "part2",
+        "label": "Phần II: Đúng/Sai",
+        "questionType": "TRUE_FALSE_SET",
+        "count": 4,
+        "pointsPerQuestion": 1
+      },
+      {
+        "key": "part3",
+        "label": "Phần III: Trả lời ngắn",
+        "questionType": "SHORT_ANSWER",
+        "count": 6,
+        "pointsPerQuestion": 0.25
+      }
+    ]
+  },
+  "hoa-hoc": {
+    "durationMinutes": 50,
+    "parts": [
+      {
+        "key": "part1",
+        "label": "Phần I: Nhiều lựa chọn",
+        "questionType": "SINGLE_CHOICE",
+        "count": 18,
+        "pointsPerQuestion": 0.25
+      },
+      {
+        "key": "part2",
+        "label": "Phần II: Đúng/Sai",
+        "questionType": "TRUE_FALSE_SET",
+        "count": 4,
+        "pointsPerQuestion": 1
+      },
+      {
+        "key": "part3",
+        "label": "Phần III: Trả lời ngắn",
+        "questionType": "SHORT_ANSWER",
+        "count": 6,
+        "pointsPerQuestion": 0.25
+      }
+    ]
+  },
+  "sinh-hoc": {
+    "durationMinutes": 50,
+    "parts": [
+      {
+        "key": "part1",
+        "label": "Phần I: Nhiều lựa chọn",
+        "questionType": "SINGLE_CHOICE",
+        "count": 18,
+        "pointsPerQuestion": 0.25
+      },
+      {
+        "key": "part2",
+        "label": "Phần II: Đúng/Sai",
+        "questionType": "TRUE_FALSE_SET",
+        "count": 4,
+        "pointsPerQuestion": 1
+      },
+      {
+        "key": "part3",
+        "label": "Phần III: Trả lời ngắn",
+        "questionType": "SHORT_ANSWER",
+        "count": 6,
+        "pointsPerQuestion": 0.25
+      }
+    ]
+  },
+  "dia-ly": {
+    "durationMinutes": 50,
+    "parts": [
+      {
+        "key": "part1",
+        "label": "Phần I: Nhiều lựa chọn",
+        "questionType": "SINGLE_CHOICE",
+        "count": 18,
+        "pointsPerQuestion": 0.25
+      },
+      {
+        "key": "part2",
+        "label": "Phần II: Đúng/Sai",
+        "questionType": "TRUE_FALSE_SET",
+        "count": 4,
+        "pointsPerQuestion": 1
+      },
+      {
+        "key": "part3",
+        "label": "Phần III: Trả lời ngắn",
+        "questionType": "SHORT_ANSWER",
+        "count": 6,
+        "pointsPerQuestion": 0.25
+      }
+    ]
+  },
+  "lich-su": {
+    "durationMinutes": 50,
+    "parts": [
+      {
+        "key": "part1",
+        "label": "Phần I: Nhiều lựa chọn",
+        "questionType": "SINGLE_CHOICE",
+        "count": 24,
+        "pointsPerQuestion": 0.25
+      },
+      {
+        "key": "part2",
+        "label": "Phần II: Đúng/Sai",
+        "questionType": "TRUE_FALSE_SET",
+        "count": 4,
+        "pointsPerQuestion": 1
+      },
+      {
+        "key": "part3",
+        "label": "Phần III: Trả lời ngắn",
+        "questionType": "SHORT_ANSWER",
+        "count": 0,
+        "pointsPerQuestion": 0.25
+      }
+    ]
+  },
+  "kt-va-phap-luat": {
+    "durationMinutes": 50,
+    "parts": [
+      {
+        "key": "part1",
+        "label": "Phần I: Nhiều lựa chọn",
+        "questionType": "SINGLE_CHOICE",
+        "count": 24,
+        "pointsPerQuestion": 0.25
+      },
+      {
+        "key": "part2",
+        "label": "Phần II: Đúng/Sai",
+        "questionType": "TRUE_FALSE_SET",
+        "count": 4,
+        "pointsPerQuestion": 1
+      },
+      {
+        "key": "part3",
+        "label": "Phần III: Trả lời ngắn",
+        "questionType": "SHORT_ANSWER",
+        "count": 0,
+        "pointsPerQuestion": 0.25
+      }
+    ]
+  },
+  "cong-nghe-cong-nghiep": {
+    "durationMinutes": 50,
+    "parts": [
+      {
+        "key": "part1",
+        "label": "Phần I: Nhiều lựa chọn",
+        "questionType": "SINGLE_CHOICE",
+        "count": 24,
+        "pointsPerQuestion": 0.25
+      },
+      {
+        "key": "part2",
+        "label": "Phần II: Đúng/Sai",
+        "questionType": "TRUE_FALSE_SET",
+        "count": 4,
+        "pointsPerQuestion": 1
+      },
+      {
+        "key": "part3",
+        "label": "Phần III: Trả lời ngắn",
+        "questionType": "SHORT_ANSWER",
+        "count": 0,
+        "pointsPerQuestion": 0.25
+      }
+    ]
+  },
+  "cong-nghe-nong-nghiep": {
+    "durationMinutes": 50,
+    "parts": [
+      {
+        "key": "part1",
+        "label": "Phần I: Nhiều lựa chọn",
+        "questionType": "SINGLE_CHOICE",
+        "count": 24,
+        "pointsPerQuestion": 0.25
+      },
+      {
+        "key": "part2",
+        "label": "Phần II: Đúng/Sai",
+        "questionType": "TRUE_FALSE_SET",
+        "count": 4,
+        "pointsPerQuestion": 1
+      },
+      {
+        "key": "part3",
+        "label": "Phần III: Trả lời ngắn",
+        "questionType": "SHORT_ANSWER",
+        "count": 0,
+        "pointsPerQuestion": 0.25
+      }
+    ]
+  },
+  "tieng-anh": {
+    "durationMinutes": 50,
+    "parts": [
+      {
+        "key": "part1",
+        "label": "Phần I: Nhiều lựa chọn",
+        "questionType": "SINGLE_CHOICE",
+        "count": 40,
+        "pointsPerQuestion": 0.25
+      },
+      {
+        "key": "part2",
+        "label": "Phần II: Đúng/Sai",
+        "questionType": "TRUE_FALSE_SET",
+        "count": 0,
+        "pointsPerQuestion": 1
+      },
+      {
+        "key": "part3",
+        "label": "Phần III: Trả lời ngắn",
+        "questionType": "SHORT_ANSWER",
+        "count": 0,
+        "pointsPerQuestion": 0.25
+      }
+    ]
+  },
+  "ngu-van": {
+    "durationMinutes": 120,
+    "parts": [
+      {
+        "key": "part1",
+        "label": "Phần I: Đọc hiểu",
+        "questionType": "ESSAY",
+        "count": 1,
+        "pointsPerQuestion": 4
+      },
+      {
+        "key": "part2",
+        "label": "Phần II: Viết",
+        "questionType": "ESSAY",
+        "count": 1,
+        "pointsPerQuestion": 6
+      },
+      {
+        "key": "part3",
+        "label": "Phần III",
+        "questionType": "SHORT_ANSWER",
+        "count": 0,
+        "pointsPerQuestion": 0
+      }
+    ]
+  }
+}

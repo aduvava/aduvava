@@ -281,6 +281,11 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
   const [allowedEmails, setAllowedEmails] = useState("");
   const [rawText, setRawText] = useState(txtTemplate);
   const [questions, setQuestions] = useState<DraftQuestion[]>([]);
+  const [questionsPage, setQuestionsPage] = useState(1);
+  const QUESTIONS_PER_PAGE = 30;
+  const questionPages = Math.max(1, Math.ceil(questions.length / QUESTIONS_PER_PAGE));
+  const visiblePage = Math.min(questionsPage, questionPages);
+  const firstVisibleQuestion = (visiblePage - 1) * QUESTIONS_PER_PAGE;
   const [fileName, setFileName] = useState("");
   const [imageTarget, setImageTarget] = useState<ImageTarget | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -291,26 +296,24 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
   const nationalRule = educationLevel === "THPTQG" && selectedSubject ? getNationalExamRule(selectedSubject.slug) : undefined;
 
   function chooseEducationLevel(level: EducationLevel) {
+    // Personal practice exams may target THPTQG topics without mimicking a
+    // full official paper. Do not lock time or question count.
     setEducationLevel(level);
-    if (level === "THPTQG" && selectedSubject) {
-      const rule = getNationalExamRule(selectedSubject.slug);
-      if (rule) setDurationMinutes(rule.durationMinutes);
-    }
   }
 
   function chooseSubject(id: string) {
     setSubjectId(id);
-    const subject = subjects.find((item) => item.id === id);
-    if (educationLevel === "THPTQG" && subject) {
-      const rule = getNationalExamRule(subject.slug);
-      if (rule) setDurationMinutes(rule.durationMinutes);
-    }
   }
 
   function chooseMode(nextMode: Mode) {
     setMode(nextMode);
     setMessage(null);
     if (nextMode === "manual" && !questions.length) setQuestions([newQuestion()]);
+  }
+
+  function addQuestion() {
+    setQuestions((current) => [...current, newQuestion()]);
+    setQuestionsPage(Math.floor(questions.length / QUESTIONS_PER_PAGE) + 1);
   }
 
   function updateQuestion(id: string, patch: Partial<DraftQuestion>) {
@@ -329,6 +332,7 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
   function analyzeText() {
     const parsed = parseQuestions(rawText);
     setQuestions(parsed);
+    setQuestionsPage(1);
     setMessage(parsed.length ? `Đã phân tích ${parsed.length} câu hỏi.` : "Không nhận diện được câu hỏi. Hãy dùng đúng mẫu TXT.");
   }
 
@@ -341,6 +345,7 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
     if (lowerName.endsWith(".txt")) {
       const parsed = parseQuestions(await file.text());
       setQuestions(parsed);
+      setQuestionsPage(1);
       setMessage(parsed.length ? `Đã trích xuất ${parsed.length} câu hỏi từ ${file.name}.` : "Không nhận diện được câu hỏi trong tệp TXT.");
       return;
     }
@@ -354,6 +359,7 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
       try {
         const parsed = await parseSpreadsheetFile(file);
         setQuestions(parsed);
+        setQuestionsPage(1);
         setMessage(parsed.length ? `Đã nhập ${parsed.length} câu hỏi từ ${file.name}.` : "Excel cần có các cột question, A, B, C, D, correct.");
       } catch {
         setMessage("Không đọc được file Excel. Hãy tải file mẫu rồi điền theo đúng cột.");
@@ -371,6 +377,7 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
         return;
       }
       const dataUrl = await fileToDataUrl(file);
+      setQuestionsPage(1);
       setQuestions([{
         ...newQuestion(`Quan sát hình và trả lời câu hỏi.\n![${file.name}](${dataUrl})`),
       }]);
@@ -571,7 +578,7 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
           </label>
           <label className="text-sm font-bold text-slate-700">
             Thời gian (phút)
-            <input type="number" min={5} max={300} disabled={Boolean(nationalRule)} value={nationalRule?.durationMinutes ?? durationMinutes} onChange={(event) => setDurationMinutes(Number(event.target.value))} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-orange-400 disabled:bg-slate-100 disabled:text-slate-500" />
+            <input type="number" min={5} max={300} value={durationMinutes} onChange={(event) => setDurationMinutes(Number(event.target.value))} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-orange-400 disabled:bg-slate-100 disabled:text-slate-500" />
           </label>
         </section>
 
@@ -635,7 +642,8 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
           <section className="mt-4 rounded-[2rem] border border-blue-100 bg-blue-50/60 p-5">
             {nationalRule ? (
               <>
-                <p className="font-black text-blue-800">Cấu trúc THPTQG bắt buộc · {nationalRule.durationMinutes} phút · {getNationalQuestionCount(nationalRule)} câu</p>
+                <p className="font-black text-blue-800">Cấu trúc THPTQG tham khảo · {nationalRule.durationMinutes} phút · {getNationalQuestionCount(nationalRule)} câu</p>
+                 <p className="mt-2 text-sm font-semibold text-blue-700">Đây là đề luyện tập do bạn tự tạo: số câu, nội dung và thời gian đều do bạn quyết định. Chỉ đề THPTQG chính thức do admin công bố mới bắt buộc đúng cấu trúc.</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {nationalRule.parts.filter((part) => part.count > 0).map((part) => (
                     <span key={part.key} className="rounded-full bg-white px-4 py-2 text-xs font-bold text-blue-700 shadow-sm">
@@ -645,7 +653,7 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
                 </div>
               </>
             ) : (
-              <p className="font-bold text-amber-700">Môn này chưa có cấu trúc THPTQG trong bảng quy định.</p>
+              <p className="font-bold text-blue-700">Bạn có thể tạo đề luyện tập tùy số câu và thời gian cho môn học này.</p>
             )}
           </section>
         ) : null}
@@ -688,25 +696,32 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
           </section>
         ) : null}
 
-        <section className="mt-6">
+        <section id="question-list" className="mt-6 scroll-mt-20">
           <div className="flex items-center justify-between gap-4">
             <div>
               <h2 className="text-2xl font-black text-slate-900">Danh sách câu hỏi</h2>
               <p className="mt-1 text-sm text-slate-500">
                 {questions.length} câu hỏi
-                {nationalRule ? ` / yêu cầu ${getNationalQuestionCount(nationalRule)} câu theo cấu trúc THPTQG.` : ", có thể chỉnh sửa trước khi lưu."}
+                {" · Tự chọn số câu, không bắt buộc theo cấu trúc đề chính thức."}
               </p>
             </div>
-            <button type="button" onClick={() => setQuestions((current) => [...current, newQuestion()])} className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white px-4 py-2.5 text-sm font-extrabold text-orange-600">
+            <button type="button" onClick={addQuestion} className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white px-4 py-2.5 text-sm font-extrabold text-orange-600">
               <Plus className="h-4 w-4" /> Thêm câu
             </button>
           </div>
 
+          {questionPages > 1 ? (
+            <nav aria-label="Trang danh sách câu hỏi" className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-orange-50 p-3 text-xs font-bold text-slate-700 sm:text-sm">
+              <button type="button" disabled={visiblePage === 1} onClick={() => setQuestionsPage(visiblePage - 1)} className="rounded-lg bg-white px-3 py-2 text-orange-600 disabled:opacity-40">Trang trước</button>
+              <span>Trang {visiblePage}/{questionPages} · Hiển thị tối đa {QUESTIONS_PER_PAGE} câu</span>
+              <button type="button" disabled={visiblePage === questionPages} onClick={() => setQuestionsPage(visiblePage + 1)} className="rounded-lg bg-white px-3 py-2 text-orange-600 disabled:opacity-40">Trang sau</button>
+            </nav>
+          ) : null}
           <div className="mt-5 space-y-5">
-            {questions.map((question, questionIndex) => (
+            {questions.slice(firstVisibleQuestion, firstVisibleQuestion + QUESTIONS_PER_PAGE).map((question, localIndex) => (
               <article key={question.id} className="rounded-[2rem] border border-slate-100 bg-white p-5 shadow-sm sm:p-6">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-black text-slate-800">Câu {questionIndex + 1}</h3>
+                  <h3 className="font-black text-slate-800">Câu {firstVisibleQuestion + localIndex + 1}</h3>
                   <button type="button" onClick={() => setQuestions((current) => current.filter((item) => item.id !== question.id))} className="grid h-9 w-9 place-items-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500">
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -750,9 +765,16 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
             ))}
             {!questions.length ? <div className="rounded-[2rem] border-2 border-dashed border-slate-200 p-10 text-center text-sm text-slate-500">Chưa có câu hỏi. Hãy phân tích nội dung, nhập file hoặc thêm câu thủ công.</div> : null}
           </div>
+          {questionPages > 1 ? (
+            <div className="mt-4 flex justify-center gap-4 text-sm font-bold text-orange-600">
+              <button type="button" disabled={visiblePage === 1} onClick={() => { setQuestionsPage(visiblePage - 1); document.getElementById("question-list")?.scrollIntoView({ block: "start" }); }} className="rounded-xl border border-orange-200 px-4 py-2 disabled:opacity-40">← Trước</button>
+              <span className="self-center">{visiblePage}/{questionPages}</span>
+              <button type="button" disabled={visiblePage === questionPages} onClick={() => { setQuestionsPage(visiblePage + 1); document.getElementById("question-list")?.scrollIntoView({ block: "start" }); }} className="rounded-xl border border-orange-200 px-4 py-2 disabled:opacity-40">Sau →</button>
+            </div>
+          ) : null}
         </section>
 
-        <div className="sticky bottom-4 mt-8 flex items-center justify-between gap-4 rounded-2xl border border-orange-100 bg-white/95 p-4 shadow-lg backdrop-blur">
+        <div className="sticky bottom-[calc(7.5rem+env(safe-area-inset-bottom))] mt-8 flex items-center justify-between gap-4 rounded-2xl lg:bottom-4 border border-orange-100 bg-white/95 p-4 shadow-lg backdrop-blur">
           <p className={clsx("text-sm font-semibold", message?.includes("Không") || message?.includes("Vui lòng") ? "text-red-500" : "text-slate-500")}>{message}</p>
           <button type="button" onClick={saveExam} disabled={saving} className="inline-flex shrink-0 items-center gap-2 rounded-full bg-orange-500 px-6 py-3 text-sm font-extrabold text-white shadow-md shadow-orange-200 disabled:opacity-60">
             {saving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
