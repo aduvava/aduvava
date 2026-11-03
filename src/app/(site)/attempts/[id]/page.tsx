@@ -3,7 +3,8 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { ExamRunner } from "@/components/exam-runner";
 import { canAccessExam } from "@/lib/access";
-import { remainingAttemptSeconds } from "@/lib/attempt-timing";
+import { isAttemptExpired, remainingAttemptSeconds } from "@/lib/attempt-timing";
+import { ExpiredAttemptSubmit } from "@/components/expired-attempt-submit";
 
 export default async function AttemptPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -28,6 +29,7 @@ export default async function AttemptPage({ params }: { params: Promise<{ id: st
   if (attempt.status === "SUBMITTED") redirect(`/results/${attempt.id}`);
   // Revoking exam sharing must also revoke access to an already-open attempt.
   if (!(await canAccessExam(user.id, attempt.exam))) notFound();
+  if (isAttemptExpired(attempt)) return <ExpiredAttemptSubmit attemptId={attempt.id} />;
 
   const questions = attempt.exam.questions.map((question) => ({
     id: question.id,
