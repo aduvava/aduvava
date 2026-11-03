@@ -86,7 +86,7 @@ export function MobileSiteNavigation({
   return (
     <nav
       aria-label="Điều hướng chính trên điện thoại"
-      className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-[95] border-t border-orange-100 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_24px_rgba(15,23,42,0.08)] backdrop-blur-xl lg:hidden"
+      className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-[60] border-t border-orange-100 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_24px_rgba(15,23,42,0.08)] backdrop-blur-xl lg:hidden"
     >
       <div className={"mx-auto grid max-w-xl gap-0.5 px-1.5 py-1.5 " + gridColumns}>
         {links.map((item) => {
