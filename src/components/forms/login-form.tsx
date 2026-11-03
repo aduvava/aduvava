@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
+import { GoogleSignInButton } from "@/components/forms/google-signin-button";
+import { safePostLoginPath } from "@/lib/onboarding";
 
 type LoginRole = "STUDENT" | "TEACHER" | "ADMIN";
 
@@ -20,7 +22,7 @@ function getRole(searchRole: string | null): LoginRole {
 function getDestination(role: LoginRole) {
   if (role === "ADMIN") return "/admin";
   if (role === "TEACHER") return "/teacher";
-  return "/onboarding";
+  return "/dashboard";
 }
 
 function getRoleLabel(role: LoginRole) {
@@ -29,7 +31,7 @@ function getRoleLabel(role: LoginRole) {
   return "học sinh";
 }
 
-export function LoginForm() {
+export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
   const [message, setMessage] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const role = getRole(searchParams.get("role"));
@@ -44,13 +46,35 @@ export function LoginForm() {
     });
 
     const destination = getDestination(role);
-    const callbackUrl = role === "STUDENT" ? destination : getSafeCallbackUrl(searchParams.get("callbackUrl"), destination);
-    if (result?.ok) window.location.assign(callbackUrl);
+    const callbackUrl = safePostLoginPath(searchParams.get("callbackUrl"), destination);
+    if (result?.ok) {
+      window.location.assign(role === "STUDENT"
+        ? "/auth/continue?callbackUrl=" + encodeURIComponent(callbackUrl)
+        : getSafeCallbackUrl(searchParams.get("callbackUrl"), destination));
+    }
     else setMessage(`Email, mật khẩu hoặc vai trò ${getRoleLabel(role)} không đúng.`);
   }
 
+  const googleCallbackUrl = safePostLoginPath(searchParams.get("callbackUrl"), "/dashboard");
+  const providerError = searchParams.get("error") === "OAuthAccountNotLinked"
+    ? "Email này đã có tài khoản bằng mật khẩu. Hãy đăng nhập bằng email/mật khẩu; Eduva không tự ghép hai tài khoản để bảo vệ bạn."
+    : searchParams.get("error")
+      ? "Không thể đăng nhập bằng Google. Vui lòng thử lại hoặc dùng email/mật khẩu."
+      : null;
+
   return (
-    <form action={submit} className="grid gap-4">
+    <div className="grid gap-4">
+      {role !== "ADMIN" ? (
+        <>
+          <GoogleSignInButton enabled={googleEnabled} callbackUrl={googleCallbackUrl} label="Đăng nhập bằng Google" />
+          {role === "TEACHER" ? <p className="text-xs text-slate-500">Tài khoản Google mới có quyền học sinh; quyền giáo viên do quản trị viên cấp.</p> : null}
+          <div className="flex items-center gap-3 text-xs font-semibold text-slate-400">
+            <span className="h-px flex-1 bg-slate-200" /> hoặc đăng nhập bằng email <span className="h-px flex-1 bg-slate-200" />
+          </div>
+        </>
+      ) : null}
+      {providerError ? <p role="alert" className="rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-800">{providerError}</p> : null}
+      <form action={submit} className="grid gap-4">
       <input name="email" type="email" required placeholder="Email" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100" />
       <input name="password" type="password" required placeholder="Mật khẩu" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100" />
       <button
@@ -61,6 +85,7 @@ export function LoginForm() {
         ĐĂNG NHẬP
       </button>
       {message ? <p role="status" className="text-sm font-semibold text-slate-700">{message}</p> : null}
-    </form>
+      </form>
+    </div>
   );
 }
