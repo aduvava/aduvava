@@ -84,6 +84,7 @@ async function rateLimitOperation(db, operation, subject, headers) {
     "admin-login": { account: [8, 900], ip: [60, 900] },
     register: { account: [5, 3600], ip: [25, 3600], global: [2000, 3600] },
     "exam-password": { account: [12, 900], ip: [100, 900] },
+    "exam-create": { account: [30, 3600], ip: [120, 3600], global: [3000, 3600] },
     contact: { account: [4, 3600], ip: [15, 3600], global: [1200, 3600] },
     upload: { account: [15, 3600], ip: [50, 3600] },
     checkout: { account: [8, 3600], ip: [40, 3600] },
