@@ -238,7 +238,7 @@ function ChatButton() {
   return (
     <>
       {open ? (
-        <div className="fixed bottom-24 right-5 z-50 w-[calc(100vw-2.5rem)] max-w-sm rounded-3xl border border-orange-100 bg-white p-5 shadow-2xl">
+        <div className="fixed bottom-[calc(11rem+env(safe-area-inset-bottom))] right-5 z-50 lg:bottom-24 w-[calc(100vw-2.5rem)] max-w-sm rounded-3xl border border-orange-100 bg-white p-5 shadow-2xl">
           <div className="flex items-center justify-between">
             <div>
               <p className="font-black text-slate-900">Hỗ trợ Ava</p>
@@ -262,7 +262,7 @@ function ChatButton() {
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-label="Mở hỗ trợ"
-        className="fixed bottom-6 right-5 z-50 grid h-16 w-16 place-items-center overflow-hidden rounded-full border-4 border-orange-500 bg-white text-white shadow-[0_14px_35px_rgba(249,115,22,0.38)] transition hover:-translate-y-1"
+        className="fixed bottom-[calc(7.5rem+env(safe-area-inset-bottom))] right-5 z-50 lg:bottom-6 grid h-16 w-16 place-items-center overflow-hidden rounded-full border-4 border-orange-500 bg-white text-white shadow-[0_14px_35px_rgba(249,115,22,0.38)] transition hover:-translate-y-1"
       >
         {open ? <span className="grid h-full w-full place-items-center bg-orange-500"><X className="h-7 w-7" /></span> : <MascotAvatar />}
       </button>
