@@ -370,6 +370,14 @@ async function run() {
     assert.equal(finalizedAttempt.status, "SUBMITTED");
     assert.ok(finalizedAttempt.durationSeconds <= 30 * 60,
       "server must cap duration at the authorized exam time");
+    await assertStatus(await request(`/api/results/${privateAttemptId}`, {}, studentAuth.jar),
+      200, "invited student may review their submitted result");
+    const revokedResults = await postJson(`/api/exams/${privateExam.id}/sharing`,
+      { shareMode: "RESTRICTED", accessEmails: [] }, adminAuth.jar, "PATCH");
+    await assertStatus(revokedResults, 200, "owner revokes completed result access");
+    await assertStatus(await request(`/api/results/${privateAttemptId}`, {}, studentAuth.jar),
+      403, "previously completed student cannot leak answer keys after revocation");
+
 
     console.log("SMOKE: creation route enforces byte bounds");
     const hugePayload = await postJson("/api/exams/create", {
