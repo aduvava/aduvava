@@ -34,7 +34,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       });
       if (!attempt) throw new HttpError(404, "Không tìm thấy bài làm đang mở.");
       if (isAttemptExpired(attempt)) throw new HttpError(409, "Hết giờ làm bài, không thể sử dụng trợ giúp.");
-      if (!(await canAccessExam(user.id, attempt.exam))) {
+      if (!(await canAccessExam(user.id, attempt.exam, tx))) {
         throw new HttpError(403, "Bạn không còn quyền truy cập đề thi này.");
       }
 
