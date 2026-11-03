@@ -291,20 +291,13 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
   const nationalRule = educationLevel === "THPTQG" && selectedSubject ? getNationalExamRule(selectedSubject.slug) : undefined;
 
   function chooseEducationLevel(level: EducationLevel) {
+    // Personal practice exams may target THPTQG topics without mimicking a
+    // full official paper. Do not lock time or question count.
     setEducationLevel(level);
-    if (level === "THPTQG" && selectedSubject) {
-      const rule = getNationalExamRule(selectedSubject.slug);
-      if (rule) setDurationMinutes(rule.durationMinutes);
-    }
   }
 
   function chooseSubject(id: string) {
     setSubjectId(id);
-    const subject = subjects.find((item) => item.id === id);
-    if (educationLevel === "THPTQG" && subject) {
-      const rule = getNationalExamRule(subject.slug);
-      if (rule) setDurationMinutes(rule.durationMinutes);
-    }
   }
 
   function chooseMode(nextMode: Mode) {
@@ -571,7 +564,7 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
           </label>
           <label className="text-sm font-bold text-slate-700">
             Thời gian (phút)
-            <input type="number" min={5} max={300} disabled={Boolean(nationalRule)} value={nationalRule?.durationMinutes ?? durationMinutes} onChange={(event) => setDurationMinutes(Number(event.target.value))} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-orange-400 disabled:bg-slate-100 disabled:text-slate-500" />
+            <input type="number" min={5} max={300} value={durationMinutes} onChange={(event) => setDurationMinutes(Number(event.target.value))} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-orange-400 disabled:bg-slate-100 disabled:text-slate-500" />
           </label>
         </section>
 
@@ -635,7 +628,8 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
           <section className="mt-4 rounded-[2rem] border border-blue-100 bg-blue-50/60 p-5">
             {nationalRule ? (
               <>
-                <p className="font-black text-blue-800">Cấu trúc THPTQG bắt buộc · {nationalRule.durationMinutes} phút · {getNationalQuestionCount(nationalRule)} câu</p>
+                <p className="font-black text-blue-800">Cấu trúc THPTQG tham khảo · {nationalRule.durationMinutes} phút · {getNationalQuestionCount(nationalRule)} câu</p>
+                 <p className="mt-2 text-sm font-semibold text-blue-700">Đây là đề luyện tập do bạn tự tạo: số câu, nội dung và thời gian đều do bạn quyết định. Chỉ đề THPTQG chính thức do admin công bố mới bắt buộc đúng cấu trúc.</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {nationalRule.parts.filter((part) => part.count > 0).map((part) => (
                     <span key={part.key} className="rounded-full bg-white px-4 py-2 text-xs font-bold text-blue-700 shadow-sm">
@@ -645,7 +639,7 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
                 </div>
               </>
             ) : (
-              <p className="font-bold text-amber-700">Môn này chưa có cấu trúc THPTQG trong bảng quy định.</p>
+              <p className="font-bold text-blue-700">Bạn có thể tạo đề luyện tập tùy số câu và thời gian cho môn học này.</p>
             )}
           </section>
         ) : null}
@@ -694,7 +688,7 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
               <h2 className="text-2xl font-black text-slate-900">Danh sách câu hỏi</h2>
               <p className="mt-1 text-sm text-slate-500">
                 {questions.length} câu hỏi
-                {nationalRule ? ` / yêu cầu ${getNationalQuestionCount(nationalRule)} câu theo cấu trúc THPTQG.` : ", có thể chỉnh sửa trước khi lưu."}
+                {" · Tự chọn số câu, không bắt buộc theo cấu trúc đề chính thức."}
               </p>
             </div>
             <button type="button" onClick={() => setQuestions((current) => [...current, newQuestion()])} className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white px-4 py-2.5 text-sm font-extrabold text-orange-600">
@@ -752,7 +746,7 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
           </div>
         </section>
 
-        <div className="sticky bottom-4 mt-8 flex items-center justify-between gap-4 rounded-2xl border border-orange-100 bg-white/95 p-4 shadow-lg backdrop-blur">
+        <div className="sticky bottom-[calc(7.5rem+env(safe-area-inset-bottom))] mt-8 flex items-center justify-between gap-4 rounded-2xl lg:bottom-4 border border-orange-100 bg-white/95 p-4 shadow-lg backdrop-blur">
           <p className={clsx("text-sm font-semibold", message?.includes("Không") || message?.includes("Vui lòng") ? "text-red-500" : "text-slate-500")}>{message}</p>
           <button type="button" onClick={saveExam} disabled={saving} className="inline-flex shrink-0 items-center gap-2 rounded-full bg-orange-500 px-6 py-3 text-sm font-extrabold text-white shadow-md shadow-orange-200 disabled:opacity-60">
             {saving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
