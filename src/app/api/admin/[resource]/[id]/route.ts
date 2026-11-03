@@ -33,7 +33,7 @@ async function updateResource(resource: string, id: string, body: Record<string,
           ? current.subject
           : await tx.subject.findUnique({ where: { id: nextSubjectId }, select: { slug: true } });
         if (!nextSubject) throw new HttpError(404, "Không tìm thấy môn học.");
-        let structure = null;
+        let structure: unknown | undefined;
         if (current.ownerId === null && nextPublished && nextLevel === "THPTQG") {
           try {
             structure = validateOfficialNationalExam({
@@ -46,9 +46,16 @@ async function updateResource(resource: string, id: string, body: Record<string,
             throw new HttpError(400, error instanceof Error ? error.message : "Cấu trúc đề THPTQG không hợp lệ.");
           }
         }
+        // Preserve metadata on ordinary admin exams. Only official
+        // THPTQG transitions should replace/clear the official structure.
+        if (structure === undefined &&
+            current.ownerId === null &&
+            (current.educationLevel === "THPTQG" || nextLevel === "THPTQG")) {
+          structure = Prisma.DbNull;
+        }
         return tx.exam.update({
           where: { id },
-          data: { ...body, examStructure: structure ?? Prisma.DbNull } as never,
+          data: (structure === undefined ? body : { ...body, examStructure: structure }) as never,
         });
       }, { isolationLevel: "Serializable" });
     case "questions": {
