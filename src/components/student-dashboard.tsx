@@ -206,8 +206,8 @@ function getItemVisual(item: string, slug: string): SubjectVisual {
   const normalized = (item + " " + slug)
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
-    .toLowerCase();
+    .toLowerCase()
+    .replace(/đ/g, "d");
 
   const aliases: [RegExp, keyof typeof subjectVisuals][] = [
     [/toan/, "Toán"],
