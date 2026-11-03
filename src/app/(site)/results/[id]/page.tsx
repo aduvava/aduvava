@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, BookOpen, CheckCircle2, Gem, XCircle } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { canAccessExam } from "@/lib/access";
 import { getQuestionPartLabel } from "@/lib/national-exam-rules";
 import { RichContent as FormattedContent } from "@/components/rich-content";
 
@@ -46,6 +47,7 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
 
   if (!attempt) notFound();
   if (attempt.status !== "SUBMITTED") redirect(`/attempts/${attempt.id}`);
+  if (!(await canAccessExam(user.id, attempt.exam))) notFound();
 
   const expTransaction = await prisma.walletTransaction.findUnique({
     where: { reference: `attempt-exp-${attempt.id}` },

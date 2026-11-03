@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 
-export async function hasActiveSubscription(userId: string) {
-  const count = await prisma.subscription.count({
+type AccessDb = Pick<Prisma.TransactionClient, "subscription" | "user" | "examAccessGrant">;
+
+export async function hasActiveSubscription(userId: string, db: AccessDb = prisma) {
+  const count = await db.subscription.count({
     where: {
       userId,
       status: "ACTIVE",
@@ -13,9 +16,9 @@ export async function hasActiveSubscription(userId: string) {
   return count > 0;
 }
 
-export async function canAccessExam(userId: string, exam: { accessLevel: "FREE" | "PRO" }) {
+export async function canAccessExam(userId: string, exam: { accessLevel: "FREE" | "PRO" }, db: AccessDb = prisma) {
   if (exam.accessLevel !== "FREE") {
-    const active = await hasActiveSubscription(userId);
+    const active = await hasActiveSubscription(userId, db);
     if (!active) return false;
   }
 
@@ -30,8 +33,8 @@ export async function canAccessExam(userId: string, exam: { accessLevel: "FREE" 
   if (sharedExam.shareMode === "PUBLIC") return true;
   if (!sharedExam.id) return false;
 
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
-  const grant = await prisma.examAccessGrant.findFirst({
+  const user = await db.user.findUnique({ where: { id: userId }, select: { email: true } });
+  const grant = await db.examAccessGrant.findFirst({
     where: {
       examId: sharedExam.id,
       OR: [

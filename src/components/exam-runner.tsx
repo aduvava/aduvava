@@ -138,7 +138,7 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
       setSecondsLeft((value) => {
         if (value <= 1) {
           window.clearInterval(timer);
-          void submit();
+          void submit(true);
           return 0;
         }
         return value - 1;
@@ -214,12 +214,13 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
     setHelperStatus(data.message ?? `Đã dùng ${helper.name}.`);
   }
 
-  async function submit() {
+  async function submit(timeExpired = false) {
     if (submitting) return;
     setSubmitting(true);
-    setStatus("Đang nộp bài...");
+    setStatus(timeExpired ? "Đã hết giờ. Chỉ chấm các câu đã lưu trước hạn." : "Đang nộp bài...");
     const dirtyIds = Array.from(dirtyRef.current);
-    if (dirtyIds.length) {
+    // Never block final scoring on drafts the server correctly refuses after expiry.
+    if (!timeExpired && dirtyIds.length) {
       try {
         await Promise.all(dirtyIds.map((questionId) => persistAnswer(questionId, answersRef.current[questionId], true)));
       } catch {

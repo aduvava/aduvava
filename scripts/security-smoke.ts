@@ -103,6 +103,19 @@ async function run() {
   const createdDocumentIds: string[] = [];
   const contactEmail = `smoke-contact-${nonce}@example.test`;
   try {
+    console.log("SMOKE: security headers are present on production student and Admin responses");
+    const publicHome = await request("/");
+    await assertStatus(publicHome, 200, "public home");
+    assert.equal(publicHome.headers.get("x-content-type-options"), "nosniff");
+    assert.equal(publicHome.headers.get("x-frame-options"), "DENY");
+    assert.ok(publicHome.headers.get("content-security-policy")?.includes("frame-ancestors 'none'"));
+    assert.equal(publicHome.headers.get("referrer-policy"), "no-referrer");
+    const adminLoginPage = await adminRequest("/login");
+    await assertStatus(adminLoginPage, 200, "standalone admin login");
+    assert.equal(adminLoginPage.headers.get("x-frame-options"), "DENY");
+    assert.equal(adminLoginPage.headers.get("x-content-type-options"), "nosniff");
+    assert.ok(adminLoginPage.headers.get("content-security-policy")?.includes("object-src 'none'"));
+
     console.log("SMOKE: public registration and auth with isolated PostgreSQL");
     const bad = await postJson("/api/auth/register", {
       name: "Tester", email: studentEmail, password, role: "TEACHER",
@@ -287,6 +300,92 @@ async function run() {
     assert.ok(!JSON.stringify(grantedBody).includes('"isCorrect"'));
     const ownerPrivate = await request(`/api/exams/${privateExam.id}`, {}, adminAuth.jar);
     await assertStatus(ownerPrivate, 200, "exam owner access");
+
+    console.log("SMOKE: sharing reset revokes userId-only and password-derived grants");
+    const resetSharing = await postJson(`/api/exams/${privateExam.id}/sharing`,
+      { shareMode: "RESTRICTED", accessEmails: [] }, adminAuth.jar, "PATCH");
+    await assertStatus(resetSharing, 200, "owner revokes all sharing grants");
+    assert.equal(await prisma.examAccessGrant.count({ where: { examId: privateExam.id } }), 0);
+    await assertStatus(await request(`/api/exams/${privateExam.id}`, {}, studentAuth.jar),
+      403, "revoked student cannot load private exam");
+
+    const firstPassword = await postJson(`/api/exams/${privateExam.id}/sharing`,
+      { shareMode: "PASSWORD", password: "Old-Security-Pass!123" }, adminAuth.jar, "PATCH");
+    await assertStatus(firstPassword, 200, "owner enables a password");
+    const unlocked = await postJson(`/api/exams/${privateExam.id}/access`,
+      { password: "Old-Security-Pass!123" }, studentAuth.jar);
+    await assertStatus(unlocked, 200, "student unlocks with current password");
+
+    const started = await postJson("/api/attempts", { examId: privateExam.id }, studentAuth.jar);
+    await assertStatus(started, 201, "start privately shared exam");
+    const privateAttemptId = (await started.json() as { attemptId: string }).attemptId;
+    const privateQuestion = await prisma.question.findFirstOrThrow({
+      where: { examId: privateExam.id },
+      select: { id: true },
+    });
+    await assertStatus(await postJson(`/api/attempts/${privateAttemptId}/answers`,
+      { questionId: privateQuestion.id, value: "A" }, studentAuth.jar, "PATCH"),
+      200, "saved answer before deadline");
+
+    const changedPassword = await postJson(`/api/exams/${privateExam.id}/sharing`,
+      { shareMode: "PASSWORD", password: "New-Security-Pass!456" }, adminAuth.jar, "PATCH");
+    await assertStatus(changedPassword, 200, "owner rotates exam password");
+    assert.equal(await prisma.examAccessGrant.count({ where: { examId: privateExam.id } }), 0,
+      "password changes must revoke old access grants");
+    await assertStatus(await postJson(`/api/exams/${privateExam.id}/access`,
+      { password: "Old-Security-Pass!123" }, studentAuth.jar),
+      403, "old password must not work");
+    await assertStatus(await postJson(`/api/attempts/${privateAttemptId}/answers`,
+      { questionId: privateQuestion.id, value: "B" }, studentAuth.jar, "PATCH"),
+      403, "revoked student cannot continue an active attempt");
+
+    const invited = await postJson(`/api/exams/${privateExam.id}/sharing`,
+      { shareMode: "RESTRICTED", accessEmails: [studentEmail] }, adminAuth.jar, "PATCH");
+    await assertStatus(invited, 200, "owner explicitly re-invites a student");
+    await assertStatus(await request(`/api/exams/${privateExam.id}`, {}, studentAuth.jar),
+      200, "re-invited student regains exam access");
+
+    console.log("SMOKE: server deadline blocks saved answers and helper use");
+    await prisma.attempt.update({
+      where: { id: privateAttemptId },
+      data: { startedAt: new Date(Date.now() - 31 * 60_000) },
+    });
+    await assertStatus(await postJson(`/api/attempts/${privateAttemptId}/answers`,
+      { questionId: privateQuestion.id, value: "A" }, studentAuth.jar, "PATCH"),
+      409, "expired attempt cannot save new answers");
+    const expiredExamScreen = await request(`/attempts/${privateAttemptId}`, {}, studentAuth.jar);
+    await assertStatus(expiredExamScreen, 200, "expired exam shows only submission screen");
+    const expiredMarkup = await expiredExamScreen.text();
+    assert.ok(expiredMarkup.includes("Đã hết giờ làm bài"));
+    assert.ok(!expiredMarkup.includes("Private question?"),
+      "server must not send private question bodies when an attempt has expired");
+
+    await assertStatus(await postJson(`/api/attempts/${privateAttemptId}/helpers`,
+      { itemId: "fake-helper-id" }, studentAuth.jar),
+      409, "expired attempt cannot use a helper");
+    const lateSubmission = await postJson(`/api/attempts/${privateAttemptId}/submit`,
+      {}, studentAuth.jar);
+    await assertStatus(lateSubmission, 200, "late submit grades only previously saved answers");
+    const finalizedAttempt = await prisma.attempt.findUniqueOrThrow({ where: { id: privateAttemptId } });
+    assert.equal(finalizedAttempt.status, "SUBMITTED");
+    assert.ok(finalizedAttempt.durationSeconds <= 30 * 60,
+      "server must cap duration at the authorized exam time");
+    await assertStatus(await request(`/api/results/${privateAttemptId}`, {}, studentAuth.jar),
+      200, "invited student may review their submitted result");
+    const revokedResults = await postJson(`/api/exams/${privateExam.id}/sharing`,
+      { shareMode: "RESTRICTED", accessEmails: [] }, adminAuth.jar, "PATCH");
+    await assertStatus(revokedResults, 200, "owner revokes completed result access");
+    await assertStatus(await request(`/api/results/${privateAttemptId}`, {}, studentAuth.jar),
+      403, "previously completed student cannot leak answer keys after revocation");
+
+
+    console.log("SMOKE: creation route enforces byte bounds");
+    const hugePayload = await postJson("/api/exams/create", {
+      title: "Oversized exam", subjectId, educationLevel: "THCS", durationMinutes: 45,
+      questions: [{ prompt: "x".repeat(1_100_000), options: ["A", "B"], correctIndex: 0 }],
+    }, studentAuth.jar);
+    await assertStatus(hugePayload, 413, "large exam request must be blocked");
+
     const adminRead = await request("/api/admin/payments", {}, adminAuth.jar);
     await assertStatus(adminRead, 200, "admin list payments");
     const body = await adminRead.json() as { items: Array<{ user: Record<string, unknown> }> };

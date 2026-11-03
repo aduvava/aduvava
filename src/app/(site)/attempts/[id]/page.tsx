@@ -2,6 +2,9 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { ExamRunner } from "@/components/exam-runner";
+import { canAccessExam } from "@/lib/access";
+import { isAttemptExpired, remainingAttemptSeconds } from "@/lib/attempt-timing";
+import { ExpiredAttemptSubmit } from "@/components/expired-attempt-submit";
 
 export default async function AttemptPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -24,6 +27,9 @@ export default async function AttemptPage({ params }: { params: Promise<{ id: st
 
   if (!attempt) notFound();
   if (attempt.status === "SUBMITTED") redirect(`/results/${attempt.id}`);
+  // Revoking exam sharing must also revoke access to an already-open attempt.
+  if (!(await canAccessExam(user.id, attempt.exam))) notFound();
+  if (isAttemptExpired(attempt)) return <ExpiredAttemptSubmit attemptId={attempt.id} />;
 
   const questions = attempt.exam.questions.map((question) => ({
     id: question.id,
@@ -78,7 +84,7 @@ export default async function AttemptPage({ params }: { params: Promise<{ id: st
       examDescription={attempt.exam.description}
       subjectSlug={attempt.exam.subject.slug}
       subjectName={attempt.exam.subject.name}
-      initialSeconds={Math.max(0, attempt.exam.durationMinutes * 60 - Math.floor((Date.now() - attempt.startedAt.getTime()) / 1000))}
+      initialSeconds={remainingAttemptSeconds(attempt)}
       questions={questions}
       initialAnswers={attempt.answers.map((answer) => ({ questionId: answer.questionId, value: answer.value }))}
       submitEffect={typeof submitEffectMetadata?.effect === "string" ? submitEffectMetadata.effect : null}
