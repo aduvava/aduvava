@@ -37,8 +37,21 @@ async function createResource(resource: string, body: Record<string, unknown>) {
     case "subjects":
       return prisma.subject.create({ data: body as never });
     case "exams":
+      // Admin enters questions in the separate question editor, so a national
+      // exam must start unpublished and be checked on publication.
+      if (body.educationLevel === "THPTQG" && body.isPublished !== false) {
+        throw new HttpError(400, "Hãy tạo đề THPTQG ở trạng thái nháp (isPublished: false), nhập đủ câu theo cấu trúc rồi mới xuất bản.");
+      }
       return prisma.exam.create({ data: body as never });
     case "questions": {
+      const examId = String(body.examId ?? "");
+      const target = await prisma.exam.findUnique({
+        where: { id: examId },
+        select: { ownerId: true, educationLevel: true, isPublished: true },
+      });
+      if (target?.ownerId === null && target.educationLevel === "THPTQG" && target.isPublished) {
+        throw new HttpError(409, "Hãy chuyển đề THPTQG về bản nháp trước khi chỉnh sửa câu hỏi.");
+      }
       const { answerOptions, ...question } = body;
       return prisma.question.create({
         data: {
