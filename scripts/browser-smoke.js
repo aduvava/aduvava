@@ -73,6 +73,16 @@ async function main() {
     await page.goto(base + "/dashboard", { waitUntil: "domcontentloaded" });
     assert.equal(new URL(page.url()).pathname, "/dashboard", "completed students should not be sent back to onboarding");
 
+    // Authenticated users can reach the restored grade/subject selector from the bottom bar.
+    await page.setViewportSize({ width: 390, height: 844 });
+    const studentTabs = page.getByRole("navigation", { name: "Điều hướng chính trên điện thoại" });
+    await studentTabs.getByRole("link", { name: "Môn học" }).click();
+    await page.waitForURL(/#mon-hoc$/);
+    await page.getByRole("button", { name: "Trung học phổ thông" }).click();
+    await page.getByRole("button", { name: "Lớp 12" }).click();
+    assert.equal(await page.locator("#mon-hoc").count(), 1, "grade and subject section should remain on dashboard");
+    await page.setViewportSize({ width: 1280, height: 800 });
+
     await page.goto(base + "/teacher");
     await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15000 });
     await page.goto(base + "/admin");
@@ -81,21 +91,25 @@ async function main() {
 
     const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true });
     const mobilePage = await mobile.newPage();
-    // Check the landing page at narrow mobile widths and exercise the real drawer.
-    for (const width of [320, 390]) {
+    // On narrow Android-sized screens every primary destination is visible in bottom tabs.
+    for (const width of [320, 390, 420]) {
       await mobilePage.setViewportSize({ width, height: 844 });
       await mobilePage.goto(base, { waitUntil: "domcontentloaded" });
       await mobilePage.getByRole("heading", { name: /Luyện Đề Thông Minh/i }).waitFor();
       const documentWidth = await mobilePage.evaluate(() => document.documentElement.scrollWidth);
       assert.ok(documentWidth <= width + 1, "mobile landing overflows at " + width + "px");
+      const tabs = mobilePage.getByRole("navigation", { name: "Điều hướng chính trên điện thoại" });
+      for (const label of ["Trang chủ", "Môn học", "Đề thi", "Tài liệu", "Cửa hàng", "Lớp học", "Đăng nhập"]) {
+        await tabs.getByRole("link", { name: label, exact: true }).waitFor();
+      }
+      const rectangle = await tabs.boundingBox();
+      assert.ok(rectangle && Math.abs(rectangle.y + rectangle.height - 844) <= 2,
+        "mobile navigation must stay fixed to the bottom at " + width + "px");
+      assert.equal(await mobilePage.getByRole("button", { name: "Mở menu điều hướng" }).count(), 0);
     }
-    await mobilePage.getByRole("button", { name: "Mở menu điều hướng" }).click();
-    const drawer = mobilePage.getByRole("dialog", { name: "Menu điều hướng" });
-    await drawer.getByRole("link", { name: "Đề thi" }).waitFor();
-    assert.equal(await mobilePage.evaluate(() => document.body.style.overflow), "hidden");
-    await mobilePage.keyboard.press("Escape");
-    await drawer.waitFor({ state: "hidden" });
-    assert.equal(await mobilePage.evaluate(() => document.body.style.overflow), "");
+    const examLink = await mobilePage.getByRole("navigation", { name: "Điều hướng chính trên điện thoại" })
+      .getByRole("link", { name: "Đề thi" }).getAttribute("href");
+    assert.match(examLink, /callbackUrl=%2Fexams/, "guest exam tab must retain login redirect");
 
     await mobilePage.goto(base + "/login?role=student");
     await mobilePage.getByRole("heading", { name: "Đăng nhập Học sinh" }).waitFor({ timeout: 20000 });
@@ -104,7 +118,7 @@ async function main() {
     assert.equal(await mobilePage.getByRole("button", { name: "Đăng nhập bằng Google" }).count(), 1);
     await mobile.close();
 
-    console.log("Chromium smoke passed: home, login guard, registration, session, RBAC, mobile layout and drawer, mobile login.");
+    console.log("Chromium smoke passed: home, login guard, registration, session, RBAC, mobile bottom tabs and grade subjects, mobile login.");
   } finally {
     await browser.close();
     await prisma.user.deleteMany({ where: { email } });
