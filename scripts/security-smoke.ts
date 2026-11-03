@@ -383,10 +383,10 @@ async function run() {
       403, "previously completed student cannot leak answer keys after revocation");
 
 
-    console.log("SMOKE: creation route enforces byte bounds");
+    console.log("SMOKE: creation route enforces the updated 8-MiB byte bound");
     const hugePayload = await postJson("/api/exams/create", {
       title: "Oversized exam", subjectId, educationLevel: "THCS", durationMinutes: 45,
-      questions: [{ prompt: "x".repeat(1_100_000), options: ["A", "B"], correctIndex: 0 }],
+      questions: [{ prompt: "x".repeat(8 * 1024 * 1024 + 1024), options: ["A", "B"], correctIndex: 0 }],
     }, studentAuth.jar);
     await assertStatus(hugePayload, 413, "large exam request must be blocked");
 
