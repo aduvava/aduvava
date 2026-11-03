@@ -90,8 +90,8 @@ export default async function HomePage() {
               <Sparkles className="h-4 w-4" />
               Nền tảng học tập Ava
             </span>
-            <h1 className="mt-7 max-w-5xl text-5xl font-black leading-[1.08] tracking-tight text-slate-950 sm:text-6xl lg:text-7xl">
-              <span className="block whitespace-nowrap">Luyện Đề Thông Minh</span>
+            <h1 className="mt-7 max-w-5xl text-4xl font-black leading-[1.12] tracking-tight text-slate-950 sm:text-5xl md:text-6xl lg:text-7xl">
+              <span className="block">Luyện Đề Thông Minh</span>
               <span className="mt-3 block text-orange-500">Tự Tin Vượt Ải Cùng Ava</span>
             </h1>
             <p className="mt-6 max-w-2xl text-lg font-medium leading-8 text-slate-600">
@@ -110,14 +110,14 @@ export default async function HomePage() {
               </Link>
             </div>
 
-            <div className="mt-8 grid max-w-2xl grid-cols-3 gap-3">
+            <div className="mt-8 grid max-w-2xl grid-cols-3 gap-2 sm:gap-3">
               {[
                 [examCount.toLocaleString("vi-VN"), "đề luyện"],
                 [subjectCount.toLocaleString("vi-VN"), "môn học"],
                 [studentCount.toLocaleString("vi-VN"), "học viên"],
               ].map(([value, label]) => (
-                <div key={label} className="rounded-2xl border border-orange-100 bg-white/80 px-4 py-4 shadow-sm">
-                  <p className="text-2xl font-black text-orange-500">{value}</p>
+                <div key={label} className="min-w-0 rounded-2xl border border-orange-100 bg-white/80 px-2 py-4 shadow-sm sm:px-4">
+                  <p className="text-xl font-black text-orange-500 sm:text-2xl">{value}</p>
                   <p className="mt-1 text-xs font-bold text-slate-500">{label}</p>
                 </div>
               ))}
