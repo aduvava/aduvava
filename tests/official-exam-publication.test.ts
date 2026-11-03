@@ -6,9 +6,10 @@ function mathTemplate(): OfficialExamQuestion[] {
   return Array.from({ length: 22 }, (_, index) => {
     const isChoice = index < 12;
     const isTrueFalse = index >= 12 && index < 16;
+    const type: OfficialExamQuestion["type"] = isChoice ? "SINGLE_CHOICE" : isTrueFalse ? "TRUE_FALSE_SET" : "SHORT_ANSWER";
     return {
       position: index + 1,
-      type: isChoice ? "SINGLE_CHOICE" : isTrueFalse ? "TRUE_FALSE_SET" : "SHORT_ANSWER",
+      type,
       points: isChoice ? 0.25 : isTrueFalse ? 1 : 0.5,
       prompt: `Câu hỏi số ${index + 1}`,
       correctText: isChoice || isTrueFalse ? null : "42",
