@@ -46,7 +46,7 @@ const studyFlows = [
     id: "THPT",
     label: "Trung học phổ thông",
     grades: ["Lớp 10", "Lớp 11", "Lớp 12"],
-    subjects: ["Toán", "Ngữ Văn", "Tiếng Anh", "Lịch Sử", "Địa Lý", "Vật Lý", "Hóa Học", "Sinh Học", "Công Nghệ", "Tin Học", "KT&PL"],
+    subjects: ["Toán", "Ngữ Văn", "Tiếng Anh", "Lịch Sử", "Địa Lý", "Vật Lý", "Hóa Học", "Sinh Học", "Công Nghệ", "Công nghệ Nông nghiệp", "Công nghệ Công nghiệp", "Tin Học", "KT&PL"],
   },
   {
     id: "EXAM_10",
@@ -1242,7 +1242,7 @@ async function exportUsersCsv(res) {
 
 function examCreateForm(subjects) {
   const subjectOptions = subjects.map((subject) => {
-    return `<option value="${escapeHtml(subject.id)}" data-name="${escapeHtml(normalizeText(subject.name))}">${escapeHtml(subject.name)}</option>`;
+    return `<option value="${escapeHtml(subject.id)}" data-name="${escapeHtml(normalizeText(subject.name))}" data-slug="${escapeHtml(subject.slug)}">${escapeHtml(subject.name)}</option>`;
   }).join("");
   const flowJson = JSON.stringify(studyFlows.map((flow) => ({
     id: flow.id,
@@ -1287,6 +1287,7 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
     ],
   }, null, 2);
   const templateJson = JSON.stringify({ txt: textTemplate, csv: csvTemplate, json: jsonTemplate }).replace(/</g, "\\u003c");
+  const nationalRulesJson = JSON.stringify(nationalExamTemplates).replace(/</g, "\\u003c");
 
   return `<section id="tao-de-theo-mon" class="card">
     <div class="topbar" style="margin-bottom:16px">
@@ -1352,10 +1353,12 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
         </div>
         <div class="template-actions">
           <button type="button" data-template="txt">Mẫu TXT</button>
+          <button type="button" data-template="national">Mẫu THPTQG JSON theo môn</button>
           <button type="button" data-template="csv">Mẫu CSV</button>
           <button type="button" data-template="json">Mẫu JSON</button>
           <button type="button" id="clearImport">Xóa import</button>
         </div>
+        <div id="nationalExamHint" class="mini-note">Chỉ đề THPTQG chính thức phải đúng cấu trúc môn học. Đề các cấp khác tùy ý số câu, loại câu và thời lượng.</div>
         <label style="margin-top:12px">Nội dung import
           <textarea class="bulk-textarea" name="bulkQuestions" id="bulkQuestions" required placeholder="Dán nội dung file vào đây hoặc chọn file phía trên. Admin chỉ tạo đề bằng import, không nhập từng câu thủ công."></textarea>
         </label>
@@ -1375,6 +1378,7 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
       (() => {
         const flows = ${flowJson};
         const templates = ${templateJson};
+        const nationalRules = ${nationalRulesJson};
         const level = document.getElementById("examEducationLevel");
         const grade = document.getElementById("examGrade");
         const subject = document.getElementById("examSubject");
@@ -1385,6 +1389,8 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
         const contentModeInput = document.getElementById("examContentMode");
         const examTypeInput = document.getElementById("examType");
         const contentModeNote = document.getElementById("contentModeNote");
+        const nationalExamHint = document.getElementById("nationalExamHint");
+        const durationInput = document.querySelector('input[name="durationMinutes"]');
         const modeNotes = {
           topics: "Tạo bộ câu hỏi luyện tập theo chuyên đề của môn học đã chọn.",
           exams: "Tạo đề theo kì thi, kiểm tra giữa kì/cuối kì hoặc đề thi thử.",
@@ -1491,7 +1497,7 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
             const card = document.createElement("article");
             card.className = "preview-question";
             const title = document.createElement("h3");
-            title.textContent = "Câu " + (index + 1);
+            title.textContent = "Câu " + (index + 1) + (question.type ? " · " + question.type : "");
             card.appendChild(title);
             addRichText(card, question.prompt);
             const options = document.createElement("div");
@@ -1517,6 +1523,9 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
         async function refreshPreview() {
           const body = new URLSearchParams();
           body.set("bulkQuestions", bulk.value);
+          body.set("subjectId", subject.value);
+          body.set("educationLevel", level.value);
+          body.set("durationMinutes", durationInput.value);
           try {
             const response = await fetch("/exams/preview", {
               method: "POST",
@@ -1549,6 +1558,52 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
           textarea.selectionEnd = next;
           textarea.focus();
         }
+        function currentNationalRule() {
+          if (level.value !== "THPTQG") return null;
+          const slug = subject.selectedOptions[0]?.dataset.slug || "";
+          return nationalRules[slug] || null;
+        }
+        function syncNationalRule() {
+          const rule = currentNationalRule();
+          durationInput.readOnly = level.value === "THPTQG";
+          if (level.value !== "THPTQG") {
+            nationalExamHint.textContent = "Các đề ngoài THPTQG: admin tự chọn số câu, thời lượng và dạng câu.";
+          } else if (!rule) {
+            nationalExamHint.textContent = "Môn này chưa có mẫu THPTQG chính thức. Hãy chọn môn có cấu trúc được định nghĩa.";
+            durationInput.readOnly = false;
+          } else {
+            durationInput.value = String(rule.durationMinutes);
+            const count = rule.parts.reduce((total, part) => total + part.count, 0);
+            nationalExamHint.textContent = "THPTQG bắt buộc: " + count + " câu · " + rule.durationMinutes + " phút. " +
+              rule.parts.filter((part) => part.count).map((part) => part.label + ": " + part.count).join(" · ") +
+              ". Môn có Đúng/Sai hoặc Trả lời ngắn cần nhập JSON theo mẫu.";
+          }
+        }
+        function nationalJsonTemplate() {
+          const rule = currentNationalRule();
+          if (!rule) return "";
+          const questions = [];
+          for (const part of rule.parts) {
+            for (let index = 0; index < part.count; index++) {
+              const n = questions.length + 1;
+              if (part.questionType === "SINGLE_CHOICE") {
+                questions.push({ type: "SINGLE_CHOICE", prompt: "Nội dung câu " + n, options: ["Phương án A", "Phương án B", "Phương án C", "Phương án D"], correct: "A" });
+              } else if (part.questionType === "TRUE_FALSE_SET") {
+                questions.push({ type: "TRUE_FALSE_SET", prompt: "Nội dung câu " + n, statements: [
+                  { content: "Mệnh đề a", isCorrect: true },
+                  { content: "Mệnh đề b", isCorrect: false },
+                  { content: "Mệnh đề c", isCorrect: true },
+                  { content: "Mệnh đề d", isCorrect: false },
+                ] });
+              } else if (part.questionType === "SHORT_ANSWER") {
+                questions.push({ type: "SHORT_ANSWER", prompt: "Nội dung câu " + n, correctText: "Đáp án ngắn" });
+              } else {
+                questions.push({ type: "ESSAY", prompt: "Nội dung tự luận câu " + n });
+              }
+            }
+          }
+          return JSON.stringify({ questions }, null, 2);
+        }
         function syncFlow() {
           const flow = flows.find((item) => item.id === level.value) || flows[0];
           grade.innerHTML = flow.grades.map((item) => '<option value="' + item.replaceAll('"', '&quot;') + '">' + item + '</option>').join('');
@@ -1565,6 +1620,7 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
             firstVisible = subject.options[0]?.value || "";
           }
           if (!subject.value || subject.selectedOptions[0]?.disabled) subject.value = firstVisible;
+          syncNationalRule();
         }
         document.querySelectorAll(".formula-chip").forEach((chip) => {
           const raw = chip.textContent || "";
@@ -1583,10 +1639,12 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
             contentModeNote.textContent = modeNotes[contentModeInput.value] || modeNotes.topics;
           });
         });
-        level.addEventListener("change", syncFlow);
+        level.addEventListener("change", () => { syncFlow(); schedulePreview(); });
+        subject.addEventListener("change", () => { syncNationalRule(); schedulePreview(); });
+        durationInput.addEventListener("change", schedulePreview);
         document.querySelectorAll("[data-template]").forEach((button) => {
           button.addEventListener("click", () => {
-            bulk.value = templates[button.dataset.template] || "";
+            bulk.value = button.dataset.template === "national" ? nationalJsonTemplate() : templates[button.dataset.template] || "";
             bulk.focus();
             schedulePreview();
           });
