@@ -8,11 +8,6 @@ import { safePostLoginPath } from "@/lib/onboarding";
 
 type LoginRole = "STUDENT" | "TEACHER" | "ADMIN";
 
-function getSafeCallbackUrl(value: string | null, fallback: string) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return fallback;
-  return value;
-}
-
 function getRole(searchRole: string | null): LoginRole {
   if (searchRole === "admin") return "ADMIN";
   if (searchRole === "teacher") return "TEACHER";
@@ -50,7 +45,7 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
     if (result?.ok) {
       window.location.assign(role === "STUDENT"
         ? "/auth/continue?callbackUrl=" + encodeURIComponent(callbackUrl)
-        : getSafeCallbackUrl(searchParams.get("callbackUrl"), destination));
+        : callbackUrl);
     }
     else setMessage(`Email, mật khẩu hoặc vai trò ${getRoleLabel(role)} không đúng.`);
   }
