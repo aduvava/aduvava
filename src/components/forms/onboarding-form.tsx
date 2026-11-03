@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { normalizeProvince, normalizeSchoolGrade, SCHOOL_GRADES, VIETNAM_PROVINCES } from "@/data/profile-options";
 
 type OnboardingFormProps = {
@@ -17,7 +16,6 @@ type OnboardingFormProps = {
 
 export function OnboardingForm({ initialProfile, nextPath = "/dashboard" }: OnboardingFormProps) {
   const [message, setMessage] = useState<string | null>(null);
-  const router = useRouter();
   const initialGrade = normalizeSchoolGrade(initialProfile?.grade);
   const initialProvince = normalizeProvince(initialProfile?.province);
 
@@ -36,8 +34,8 @@ export function OnboardingForm({ initialProfile, nextPath = "/dashboard" }: Onbo
       })
     });
     if (response.ok) {
-      router.replace(nextPath);
-      router.refresh();
+      // Full navigation avoids stale cached server components after the profile update.
+      window.location.assign(nextPath);
     } else {
       const data = await response.json().catch(() => null);
       setMessage(data?.error ?? "Không lưu được hồ sơ. Vui lòng kiểm tra thông tin và thử lại.");
