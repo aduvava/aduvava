@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { ButtonLink } from "@/components/ui";
 import { MascotAvatar } from "@/components/mascot-avatar";
 import { HeaderAccountControls } from "@/components/header-account-controls";
+import { MobileSiteNavigation } from "@/components/mobile-site-navigation";
 
 const studentNav = [
   { href: "/exams", label: "Đề thi" },
@@ -85,7 +86,7 @@ export async function SiteHeader() {
             ))}
           </nav>
 
-          <div className="flex items-center gap-2 text-sm font-extrabold text-slate-600 sm:gap-3">
+          <div className="desktop-header-actions hidden items-center gap-2 text-sm font-extrabold text-slate-600 sm:flex sm:gap-3">
             <Link href="/#gioi-thieu" className="hidden rounded-full px-4 py-2.5 transition hover:bg-orange-50 hover:text-orange-500 sm:inline-flex">
               Giới thiệu
             </Link>
@@ -102,6 +103,7 @@ export async function SiteHeader() {
               Đăng nhập
             </Link>
           </div>
+          <MobileSiteNavigation nav={studentNav} homeHref="/" isAuthenticated={false} />
         </div>
       </header>
     );
@@ -109,7 +111,7 @@ export async function SiteHeader() {
 
   return (
     <header className="fixed inset-x-0 top-0 z-[70] border-b border-orange-100/80 bg-white/95 shadow-sm backdrop-blur-xl">
-      <div className="mx-auto flex h-[76px] max-w-[1440px] items-center justify-between gap-5 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-[76px] max-w-[1440px] items-center justify-between gap-2 px-4 sm:gap-5 sm:px-6 lg:px-8">
         <Link href={homeHref} title="Về trang chủ" className="flex shrink-0 items-center gap-2">
           <span className="grid h-11 w-11 place-items-center rounded-2xl bg-orange-50 p-1 shadow-md shadow-orange-200">
             <MascotAvatar />
@@ -134,7 +136,7 @@ export async function SiteHeader() {
           ))}
         </nav>
 
-        <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
+        <div className="desktop-header-actions flex min-w-0 items-center justify-end gap-1 sm:gap-3">
           <label className="hidden h-10 w-48 items-center gap-2 rounded-full bg-slate-100 px-4 xl:flex 2xl:w-60">
             <Search className="h-4 w-4 shrink-0 text-slate-400" />
             <input
@@ -178,6 +180,7 @@ export async function SiteHeader() {
             }}
           />
         </div>
+        <MobileSiteNavigation nav={nav} homeHref={homeHref} isAuthenticated isAdmin={session.user.role === "ADMIN"} />
       </div>
     </header>
   );
