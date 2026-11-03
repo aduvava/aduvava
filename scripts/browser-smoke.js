@@ -34,6 +34,8 @@ async function main() {
 
     await page.goto(base + "/register");
     await page.getByRole("heading", { name: "Tạo tài khoản học sinh" }).waitFor();
+    // Google is offered first but must be disabled until OAuth credentials exist.
+    assert.equal(await page.getByRole("button", { name: "Đăng ký nhanh bằng Google" }).isDisabled(), true);
     await page.locator('input[name="name"]').fill("Browser Tester");
     await page.locator('input[name="email"]').fill(email);
     await page.locator('input[name="password"]').fill(password);
@@ -44,6 +46,13 @@ async function main() {
 
     const account = await prisma.user.findUniqueOrThrow({ where: { email } });
     assert.equal(account.role, "STUDENT", "browser-created accounts must be STUDENT");
+
+    // Completing the post-authentication profile is required before dashboard access.
+    await page.goto(base + "/dashboard");
+    await page.waitForURL(/\/onboarding(?:\?|$)/, { timeout: 15000 });
+    await page.locator('input[name="school"]').fill("THPT Nguyễn Trãi");
+    await page.getByRole("button", { name: /HOÀN TẤT.*TIẾP TỤC/ }).click();
+    await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15000 });
 
     const sessionResult = await page.request.get(base + "/api/auth/session");
     assert.equal(sessionResult.status(), 200);
@@ -82,6 +91,7 @@ async function main() {
     await mobilePage.getByRole("heading", { name: "Đăng nhập Học sinh" }).waitFor({ timeout: 20000 });
     assert.equal(await mobilePage.locator('input[type="password"]').count(), 1);
     assert.equal(await mobilePage.locator('input[type="email"]').count(), 1);
+    assert.equal(await mobilePage.getByRole("button", { name: "Đăng nhập bằng Google" }).count(), 1);
     await mobile.close();
 
     console.log("Chromium smoke passed: home, login guard, registration, session, RBAC, mobile layout and drawer, mobile login.");
