@@ -27,6 +27,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       : Array.from(new Set(payload.accessEmails.map((email) => email.toLowerCase())));
 
     await prisma.$transaction(async (tx) => {
+      // Lock before reading the existing hash, including concurrent owner edits.
+      const locked = await tx.$queryRaw<{ id: string }[]>`
+        SELECT "id" FROM "Exam" WHERE "id" = ${id} FOR UPDATE
+      `;
+      if (!locked.length) throw new HttpError(404, "Không tìm thấy đề thi.");
       const exam = await tx.exam.findUnique({
         where: { id },
         select: { id: true, ownerId: true, sharePasswordHash: true },
