@@ -353,6 +353,13 @@ async function run() {
     await assertStatus(await postJson(`/api/attempts/${privateAttemptId}/answers`,
       { questionId: privateQuestion.id, value: "A" }, studentAuth.jar, "PATCH"),
       409, "expired attempt cannot save new answers");
+    const expiredExamScreen = await request(`/attempts/${privateAttemptId}`, {}, studentAuth.jar);
+    await assertStatus(expiredExamScreen, 200, "expired exam shows only submission screen");
+    const expiredMarkup = await expiredExamScreen.text();
+    assert.ok(expiredMarkup.includes("Đã hết giờ làm bài"));
+    assert.ok(!expiredMarkup.includes("Private question?"),
+      "server must not send private question bodies when an attempt has expired");
+
     await assertStatus(await postJson(`/api/attempts/${privateAttemptId}/helpers`,
       { itemId: "fake-helper-id" }, studentAuth.jar),
       409, "expired attempt cannot use a helper");
