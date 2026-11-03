@@ -87,6 +87,30 @@ The repaired lockfile includes complete optional dependency metadata for Linux a
 
 ### Public deployment security gates
 
+### Exam/API security hardening (November 2026)
+
+The exam deadline is calculated from the immutable attempt start time and exam duration **on the server**. The additive `Attempt.extraTimeSeconds` column persists any paid extra-time helper, with at most 60 minutes of extension; expired answers and helper activations are rejected. A late submission may still grade answers saved before the deadline, but cannot introduce late answers.
+
+User exam creation is limited to **30 requests/hour per account**, **120/hour per trusted client IP** (when properly configured), and **3000/hour globally**; the JSON request body is capped at 1 MiB. Question and invitation fields are also bounded. The existing `SecurityThrottle` migration must already be installed. Exam-sharing edits revoke all previously acquired grants and restore **only** emails explicitly invited in that edit; rotating a password invalidates existing password unlocks. Previously started attempts and results are denied after the user loses sharing permission.
+
+External Markdown image URLs are not fetched; attach images to a trusted same-origin path instead of using external image hosts or base64 images. Production CSP, HSTS, frame protection, nosniff and referrer restrictions are applied by the student app and standalone Admin. If an external CDN/reverse proxy replaces response headers, preserve or strengthen these policies there.
+
+**Zero-data-loss rolling deployment (Docker Compose):**
+
+```bash
+cd /opt/eduva
+# Verify a fresh database + uploads backup before continuing.
+git pull --ff-only origin main
+docker compose build web admin
+# Additive migration runs BEFORE switching the running application containers.
+docker compose run --rm web npx prisma migrate deploy
+docker compose up -d --no-build web admin
+docker compose exec -T web node scripts/public-launch-preflight.js
+docker compose ps
+```
+
+Do not use `prisma db push --force-reset` or `docker compose down -v` in production. The PostgreSQL migration adds a NOT NULL column with a default; it does not delete existing attempts or documents. Keep the malware scanner running (`docker compose --profile malware-scanning up -d clamav` where needed). After rollout, verify real HTTPS, certs, reverse-proxy upload limits, Nginx header preservation, port 4000 loopback/private access, and OAuth login on the public domain. **Merging into main does not deploy to the VPS automatically.**
+
 Run `npx prisma migrate deploy` (including the SecurityThrottle migration) before serving traffic. Apply HTTPS, private-file rules and upload size limits at every reverse proxy/CDN. Enable `SECURITY_TRUST_PROXY_IP_HEADERS` only behind a proxy that strips untrusted forwarding headers; the application otherwise uses account/global throttle buckets. Configure `ADMIN_PUBLIC_ORIGIN` for the standalone Admin service and keep port 4000 private. Validate uploaded files with antivirus; structural signatures and ZIP limits do not detect every threat. Back up and restore-test PostgreSQL and uploads before launch.
 
 ### Private documents and virus scanning (pre-public hardening)
