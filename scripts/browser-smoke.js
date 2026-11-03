@@ -62,13 +62,29 @@ async function main() {
 
     const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true });
     const mobilePage = await mobile.newPage();
+    // Check the landing page at narrow mobile widths and exercise the real drawer.
+    for (const width of [320, 390]) {
+      await mobilePage.setViewportSize({ width, height: 844 });
+      await mobilePage.goto(base, { waitUntil: "domcontentloaded" });
+      await mobilePage.getByRole("heading", { name: /Luyện Đề Thông Minh/i }).waitFor();
+      const documentWidth = await mobilePage.evaluate(() => document.documentElement.scrollWidth);
+      assert.ok(documentWidth <= width + 1, "mobile landing overflows at " + width + "px");
+    }
+    await mobilePage.getByRole("button", { name: "Mở menu điều hướng" }).click();
+    const drawer = mobilePage.getByRole("dialog", { name: "Menu điều hướng" });
+    await drawer.getByRole("link", { name: "Đề thi" }).waitFor();
+    assert.equal(await mobilePage.evaluate(() => document.body.style.overflow), "hidden");
+    await mobilePage.keyboard.press("Escape");
+    await drawer.waitFor({ state: "hidden" });
+    assert.equal(await mobilePage.evaluate(() => document.body.style.overflow), "");
+
     await mobilePage.goto(base + "/login?role=student");
     await mobilePage.getByRole("heading", { name: "Đăng nhập Học sinh" }).waitFor({ timeout: 20000 });
     assert.equal(await mobilePage.locator('input[type="password"]').count(), 1);
     assert.equal(await mobilePage.locator('input[type="email"]').count(), 1);
     await mobile.close();
 
-    console.log("Chromium smoke passed: home, login guard, browser registration, session, RBAC, mobile login.");
+    console.log("Chromium smoke passed: home, login guard, registration, session, RBAC, mobile layout and drawer, mobile login.");
   } finally {
     await browser.close();
     await prisma.user.deleteMany({ where: { email } });
