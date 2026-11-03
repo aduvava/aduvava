@@ -18,6 +18,20 @@ The seed step is optional. `npm run db:seed` provisions only the admin account f
 
 Google login is optional. To enable it, configure the OAuth client ID and secret in `.env`, set the JavaScript origin to the site URL, and add `<NEXTAUTH_URL>/api/auth/callback/google` as an authorized redirect URI.
 
+## Google sign-in (student onboarding)
+
+Eduva already supports the Google OAuth provider in NextAuth. On both `/login` and `/register`, learners can choose Google before entering any academic details. Once Google verifies their account, Eduva collects their grade, school and province on `/onboarding` and saves them on the existing student profile. Returning students whose profile is complete go straight to their requested page. Goals/aspirations are optional. New OAuth users always start with the `STUDENT` role; only admins can promote users.
+
+For the public HTTPS domain:
+
+1. In **Google Cloud Console**, configure the OAuth consent screen and create a **Web application** OAuth client. Configure the authorized JavaScript origin as your site's actual HTTPS origin, e.g. `https://educhi.xyz`.
+2. Add the **exact** Google redirect URI `https://educhi.xyz/api/auth/callback/google` (replace the hostname if your production domain differs).
+3. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in the server's private `.env` file; ensure `NEXTAUTH_URL=https://educhi.xyz` and a strong `NEXTAUTH_SECRET`. Never commit the client secret or expose it via `NEXT_PUBLIC_`.
+4. Restart/redeploy the web service so the new environment is loaded. Test with a **new Google account** and then with the same returning account, both on mobile and desktop.
+5. If Google shows `OAuthAccountNotLinked`, that email already has an Eduva account registered by another login method. **Do not enable automatic email-based account linking**; sign in with the existing method until a verified account-linking flow is implemented.
+
+Without both Google environment variables, the Google button remains visible but disabled with an explanatory message. The GitHub build and browser CI tests cannot validate a live Google consent flow; an authorized browser test with real OAuth credentials is still required before declaring production Google sign-in operational.
+
 ## Local setup
 
 1. Install Node.js 20.9 or newer (Node.js 22 recommended).
