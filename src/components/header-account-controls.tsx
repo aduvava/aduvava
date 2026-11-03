@@ -142,7 +142,7 @@ export function HeaderAccountControls({ initialExp, vipDaysLeft, user }: HeaderA
           onClick={() => setMenuOpen((value) => !value)}
           aria-label="Mở menu tài khoản"
           aria-expanded={menuOpen}
-          className="grid h-11 w-11 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-xs font-black text-white ring-2 ring-orange-100 transition hover:ring-orange-300"
+          className="grid h-9 w-9 place-items-center overflow-hidden rounded-full bg-gradient-to-br sm:h-11 sm:w-11 from-orange-400 to-orange-600 text-xs font-black text-white ring-2 ring-orange-100 transition hover:ring-orange-300"
         >
           {user.image ? <img src={user.image} alt="" className="h-full w-full object-cover" /> : user.initials}
         </button>
