@@ -99,7 +99,7 @@ async function main() {
       const documentWidth = await mobilePage.evaluate(() => document.documentElement.scrollWidth);
       assert.ok(documentWidth <= width + 1, "mobile landing overflows at " + width + "px");
       const tabs = mobilePage.getByRole("navigation", { name: "Điều hướng chính trên điện thoại" });
-      for (const label of ["Trang chủ", "Môn học", "Đề thi", "Tài liệu", "Cửa hàng", "Lớp học", "Đăng nhập"]) {
+      for (const label of ["Trang chủ", "Môn học", "Đề thi", "Tài liệu", "Cửa hàng", "Xếp hạng", "Lớp học", "Đăng nhập"]) {
         await tabs.getByRole("link", { name: label, exact: true }).waitFor();
       }
       const rectangle = await tabs.boundingBox();
