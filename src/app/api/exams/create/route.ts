@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { randomBytes } from "crypto";
+import { randomBytes, randomUUID } from "crypto";
 import { prisma } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk, requireUser } from "@/lib/api";
 import { rateLimitOperation } from "@/lib/security-throttle";
@@ -43,50 +43,67 @@ export async function POST(request: Request) {
       : null;
     const allowedEmails = Array.from(new Set(payload.allowedEmails.map((email) => email.toLowerCase())));
 
-    const exam = await prisma.exam.create({
-      data: {
-        code,
-        slug,
-        title: payload.title,
-        description: `Đề luyện tập do ${user.name ?? user.email ?? "học viên"} tạo.`,
-        family: subject.family,
-        type: "PRACTICE",
-        accessLevel: "FREE",
-        year: new Date().getFullYear(),
-        durationMinutes: payload.durationMinutes,
-        educationLevel: payload.educationLevel,
-        // User/teacher-created practice exams never claim to be official national exam templates.
-        examStructure: undefined,
-        subjectId: subject.id,
-        ownerId: user.id,
-        shareToken,
-        shareMode: payload.shareMode,
-        sharePasswordHash,
-        isPublished: true,
-        accessGrants: allowedEmails.length
-          ? { create: allowedEmails.map((email) => ({ email })) }
-          : undefined,
-        questions: {
-          create: payload.questions.map((question, index) => {
-            return {
-              position: index + 1,
-              type: "SINGLE_CHOICE" as const,
-              prompt: question.prompt,
-              points: 1,
-              explanation: question.explanation || null,
-              answerOptions: {
-                create: question.options.map((content, optionIndex) => ({
-                  label: String.fromCharCode(65 + optionIndex),
-                  content,
-                  isCorrect: optionIndex === question.correctIndex,
-                })),
-              },
-            };
-          }),
+    // Bulk-create in chunks to avoid a giant Prisma nested insert for large
+    // personal question banks, while keeping exam + options all-or-nothing.
+    const exam = await prisma.$transaction(async (tx) => {
+      const created = await tx.exam.create({
+        data: {
+          code,
+          slug,
+          title: payload.title,
+          description: `Đề luyện tập do ${user.name ?? user.email ?? "học viên"} tạo.`,
+          family: subject.family,
+          type: "PRACTICE",
+          accessLevel: "FREE",
+          year: new Date().getFullYear(),
+          durationMinutes: payload.durationMinutes,
+          educationLevel: payload.educationLevel,
+          // A user-created THPTQG practice paper is NOT an official structured exam.
+          subjectId: subject.id,
+          ownerId: user.id,
+          shareToken,
+          shareMode: payload.shareMode,
+          sharePasswordHash,
+          isPublished: true,
+          accessGrants: allowedEmails.length
+            ? { create: allowedEmails.map((email) => ({ email })) }
+            : undefined,
         },
-      },
-      select: { id: true, slug: true, shareToken: true },
-    });
+        select: { id: true, slug: true, shareToken: true },
+      });
+
+      const QUESTION_BATCH_SIZE = 100;
+      const OPTION_BATCH_SIZE = 500;
+      for (let start = 0; start < payload.questions.length; start += QUESTION_BATCH_SIZE) {
+        const chunk = payload.questions.slice(start, start + QUESTION_BATCH_SIZE).map((question, index) => ({
+          ...question,
+          id: randomUUID(),
+          position: start + index + 1,
+        }));
+        await tx.question.createMany({
+          data: chunk.map((question) => ({
+            id: question.id,
+            examId: created.id,
+            position: question.position,
+            type: "SINGLE_CHOICE" as const,
+            prompt: question.prompt,
+            points: 1,
+            explanation: question.explanation || null,
+          })),
+        });
+
+        const options = chunk.flatMap((question) => question.options.map((content, index) => ({
+          questionId: question.id,
+          label: String.fromCharCode(65 + index),
+          content,
+          isCorrect: index === question.correctIndex,
+        })));
+        for (let optionStart = 0; optionStart < options.length; optionStart += OPTION_BATCH_SIZE) {
+          await tx.answerOption.createMany({ data: options.slice(optionStart, optionStart + OPTION_BATCH_SIZE) });
+        }
+      }
+      return created;
+    }, { maxWait: 10000, timeout: 120000 });
 
     return jsonOk({ exam }, 201);
   } catch (error) {
