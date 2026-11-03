@@ -13,7 +13,8 @@ export const createExamSchema = z.object({
   subjectId: z.string().min(1).max(128),
   educationLevel: z.enum(["THCS", "THPT", "EXAM_10", "THPTQG"]),
   durationMinutes: z.number().int().min(5).max(300),
-  questions: z.array(questionSchema).min(1).max(100),
+  // Personal practice exams have no fixed question-count cap; request bytes are still bounded.
+  questions: z.array(questionSchema).min(1),
   shareMode: z.enum(["PUBLIC", "PASSWORD", "RESTRICTED"]).default("PUBLIC"),
   sharePassword: z.string().trim().max(128).optional(),
   allowedEmails: z.array(z.string().trim().email().max(254)).max(100).default([]),
