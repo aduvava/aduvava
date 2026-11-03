@@ -103,6 +103,19 @@ async function run() {
   const createdDocumentIds: string[] = [];
   const contactEmail = `smoke-contact-${nonce}@example.test`;
   try {
+    console.log("SMOKE: security headers are present on production student and Admin responses");
+    const publicHome = await request("/");
+    await assertStatus(publicHome, 200, "public home");
+    assert.equal(publicHome.headers.get("x-content-type-options"), "nosniff");
+    assert.equal(publicHome.headers.get("x-frame-options"), "DENY");
+    assert.ok(publicHome.headers.get("content-security-policy")?.includes("frame-ancestors 'none'"));
+    assert.equal(publicHome.headers.get("referrer-policy"), "no-referrer");
+    const adminLoginPage = await adminRequest("/login");
+    await assertStatus(adminLoginPage, 200, "standalone admin login");
+    assert.equal(adminLoginPage.headers.get("x-frame-options"), "DENY");
+    assert.equal(adminLoginPage.headers.get("x-content-type-options"), "nosniff");
+    assert.ok(adminLoginPage.headers.get("content-security-policy")?.includes("object-src 'none'"));
+
     console.log("SMOKE: public registration and auth with isolated PostgreSQL");
     const bad = await postJson("/api/auth/register", {
       name: "Tester", email: studentEmail, password, role: "TEACHER",
