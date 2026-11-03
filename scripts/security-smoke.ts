@@ -10,6 +10,7 @@ import { existsSync } from "node:fs";
 import { documentStoredPath, documentStorageDirectory } from "../src/lib/private-document-storage";
 import { join } from "node:path";
 import { consumeSecurityThrottle, throttleKey, TooManyRequestsError } from "../src/lib/security-throttle";
+const { hasSecurityThrottleTable } = require("../scripts/public-launch-preflight.js");
 
 const prisma = new PrismaClient();
 const base = process.env.SMOKE_BASE_URL ?? "http://127.0.0.1:3000";
@@ -160,6 +161,9 @@ async function run() {
     assert.equal(profileBody.profile.email, studentEmail);
     assert.ok(!("passwordHash" in profileBody.profile), "never expose a bcrypt password hash");
     assert.ok(!("accounts" in profileBody.profile), "never expose OAuth credentials");
+
+    assert.equal(await hasSecurityThrottleTable(prisma), true,
+      "preflight must decode the SecurityThrottle regclass through Prisma");
 
     console.log("SMOKE: PostgreSQL throttle is shared and blocks concurrent attempts");
     const throttleScope = `smoke-bucket-${nonce}`.replace(/[^a-z0-9-]/g, "");
