@@ -451,7 +451,7 @@ function layout({ title, active, user, body, notice = "" }) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${escapeHtml(title)} | Ava Admin</title>
+  <title>${escapeHtml(title)} | Educhi Admin</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js"></script>
   <style>
@@ -552,7 +552,7 @@ function layout({ title, active, user, body, notice = "" }) {
 <body>
   <div class="shell">
     <aside>
-      <a class="brand" href="/"><span class="brand-mark">A</span><span>Ava Admin</span></a>
+      <a class="brand" href="/"><span class="brand-mark">E</span><span>Educhi Admin</span></a>
       <nav>${nav}</nav>
       <div class="userbox">
         <strong>${escapeHtml(user?.name || "Admin")}</strong>
@@ -575,7 +575,7 @@ function loginPage(error = "") {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Đăng nhập Admin | Ava</title>
+  <title>Đăng nhập Admin | Educhi</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&display=swap');
     body { margin:0; min-height:100vh; display:grid; place-items:center; background:#071025; color:#fff; font-family:"Be Vietnam Pro", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
@@ -591,8 +591,8 @@ function loginPage(error = "") {
 </head>
 <body>
   <form method="post" action="/login">
-    <h1>Ava Admin</h1>
-    <p>Đăng nhập để quản trị web Ava trên server riêng.</p>
+    <h1>Educhi Admin</h1>
+    <p>Đăng nhập để quản trị web Educhi trên server riêng.</p>
     ${error ? `<div class="error">${escapeHtml(error)}</div>` : ""}
     ${process.env.CODESPACE_NAME && process.env.NODE_ENV !== "production" && process.env.SEED_ADMIN_EMAIL && process.env.SEED_ADMIN_PASSWORD
       ? `<p class="demo">Tài khoản admin Codespaces: <strong>${escapeHtml(process.env.SEED_ADMIN_EMAIL)}</strong> / <strong>${escapeHtml(process.env.SEED_ADMIN_PASSWORD)}</strong></p>`
@@ -856,7 +856,7 @@ async function dashboardPage(user, notice) {
     recentPayments.map((item) => row([escapeHtml(item.user?.email || "-"), escapeHtml(item.plan?.name || item.planId), `${formatNumber(item.amount)} VND`, badge(item.status)])),
   );
 
-  const body = `${pageHeader("Tổng quan admin", "Server admin riêng đang kết nối trực tiếp database của web Ava.", `<a class="button" href="/users">Quản lý người dùng</a>`)}
+  const body = `${pageHeader("Tổng quan admin", "Server admin riêng đang kết nối trực tiếp database của web Educhi.", `<a class="button" href="/users">Quản lý người dùng</a>`)}
   <div class="grid stats">${stats}</div>
   <div class="grid two" style="margin-top:18px">
     <section>${pageHeader("Người dùng mới", "5 tài khoản gần nhất")}${users}</section>
@@ -1233,7 +1233,7 @@ async function exportUsersCsv(res) {
   const buffer = Buffer.from(createCsv(headers, rows), "utf8");
   res.writeHead(200, {
     "Content-Type": "text/csv; charset=utf-8",
-    "Content-Disposition": `attachment; filename="ava-users-${new Date().toISOString().slice(0, 10)}.csv"`,
+    "Content-Disposition": `attachment; filename="educhi-users-${new Date().toISOString().slice(0, 10)}.csv"`,
     "Content-Length": buffer.length,
     "Cache-Control": "no-store",
   });
@@ -2608,7 +2608,7 @@ async function createExam(req, res) {
         code,
         slug,
         title,
-        description: description || `Đề ${subject.name} được tạo từ Ava Admin theo luồng ${grade || educationLevel}.`,
+        description: description || `Đề ${subject.name} được tạo từ Educhi Admin theo luồng ${grade || educationLevel}.`,
         family: subject.family,
         type,
         accessLevel,
@@ -2833,7 +2833,7 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(port, process.env.ADMIN_HOST || "127.0.0.1", () => {
-  console.log(`Ava admin server ready: http://localhost:${port}`);
+  console.log(`Educhi admin server ready: http://localhost:${port}`);
 });
 
 process.on("SIGINT", async () => {
