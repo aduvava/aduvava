@@ -25,8 +25,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
 export const metadata: Metadata = {
-  title: "Admin | Ava",
-  description: "Bảng điều khiển quản trị Ava.",
+  title: "Admin | Educhi",
+  description: "Bảng điều khiển quản trị Educhi.",
 };
 
 const resourceLinks: {
@@ -248,7 +248,7 @@ export default async function AdminPage() {
             </p>
             <h1 className="mt-4 text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">Bảng điều khiển quản trị</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
-              Theo dõi vận hành Ava, duyệt nội dung và đi nhanh vào các khu vực CRUD quan trọng.
+              Theo dõi vận hành Educhi, duyệt nội dung và đi nhanh vào các khu vực CRUD quan trọng.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
