@@ -89,6 +89,25 @@ async function main() {
     await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15000 });
     await desktop.close();
 
+    // An existing email/password account must be able to authenticate once,
+    // then reach the explicit Google-linking screen without creating a new user.
+    const linkContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const linkPage = await linkContext.newPage();
+    await linkPage.goto(base + "/login?role=student&error=OAuthAccountNotLinked&callbackUrl=%2Fdashboard");
+    await linkPage.getByRole("alert").getByText(/Đăng nhập bằng email và mật khẩu cũ/).waitFor();
+    await linkPage.locator('input[name="email"]').fill(email);
+    await linkPage.locator('input[name="password"]').fill(password);
+    await linkPage.getByRole("button", { name: "ĐĂNG NHẬP" }).click();
+    await linkPage.waitForURL(/\/account\/link-google\?callbackUrl=/, { timeout: 15000 });
+    await linkPage.getByRole("heading", { name: "Liên kết Google với tài khoản Eduva cũ" }).waitFor();
+    assert.equal(await linkPage.getByText(email, { exact: true }).count(), 1);
+    // OAuth credentials are deliberately unavailable in CI, so we verify the
+    // protected confirmation screen, not a live Google callback.
+    assert.equal(await linkPage.getByRole("button", { name: "Liên kết tài khoản Google" }).isDisabled(), true);
+    const sameUser = await prisma.user.findUniqueOrThrow({ where: { email } });
+    assert.equal(sameUser.id, account.id, "existing Eduva account ID must be preserved");
+    await linkContext.close();
+
     const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true });
     const mobilePage = await mobile.newPage();
     // On narrow Android-sized screens every primary destination is visible in bottom tabs.
@@ -118,7 +137,7 @@ async function main() {
     assert.equal(await mobilePage.getByRole("button", { name: "Đăng nhập bằng Google" }).count(), 1);
     await mobile.close();
 
-    console.log("Chromium smoke passed: home, login guard, registration, session, RBAC, mobile bottom tabs and grade subjects, mobile login.");
+    console.log("Chromium smoke passed: home, login guard, registration, session, RBAC, mobile bottom tabs and grade subjects, existing-account Google linking page, mobile login.");
   } finally {
     await browser.close();
     await prisma.user.deleteMany({ where: { email } });
