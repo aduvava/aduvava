@@ -7,10 +7,12 @@ export function GoogleSignInButton({
   enabled,
   callbackUrl = "/dashboard",
   label = "Tiếp tục với Google",
+  selectAccount = false,
 }: {
   enabled: boolean;
   callbackUrl?: string;
   label?: string;
+  selectAccount?: boolean;
 }) {
   const [pending, setPending] = useState(false);
 
@@ -19,7 +21,7 @@ export function GoogleSignInButton({
     try {
       await signIn("google", {
         callbackUrl: "/auth/continue?callbackUrl=" + encodeURIComponent(callbackUrl),
-      });
+      }, selectAccount ? { prompt: "select_account" } : undefined);
     } catch {
       setPending(false);
     }
