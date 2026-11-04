@@ -33,16 +33,23 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
 
   async function submit(formData: FormData) {
     setMessage("Đang đăng nhập...");
+    const linkingExistingAccount = searchParams.get("error") === "OAuthAccountNotLinked";
     const result = await signIn("credentials", {
       email: formData.get("email"),
       password: formData.get("password"),
-      role,
+      // During linking, verify the original credentials without rejecting
+      // existing accounts that have since become teachers or admins.
+      ...(linkingExistingAccount ? {} : { role }),
       redirect: false,
     });
 
     const destination = getDestination(role);
     const callbackUrl = safePostLoginPath(searchParams.get("callbackUrl"), destination);
     if (result?.ok) {
+      if (linkingExistingAccount) {
+        window.location.assign("/account/link-google?callbackUrl=" + encodeURIComponent(callbackUrl));
+        return;
+      }
       window.location.assign(role === "STUDENT"
         ? "/auth/continue?callbackUrl=" + encodeURIComponent(callbackUrl)
         : callbackUrl);
@@ -52,7 +59,7 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
 
   const googleCallbackUrl = safePostLoginPath(searchParams.get("callbackUrl"), "/dashboard");
   const providerError = searchParams.get("error") === "OAuthAccountNotLinked"
-    ? "Email này đã có tài khoản bằng mật khẩu. Hãy đăng nhập bằng email/mật khẩu; Eduva không tự ghép hai tài khoản để bảo vệ bạn."
+    ? "Tài khoản Eduva này đã tồn tại. Đăng nhập bằng email và mật khẩu cũ ở bên dưới một lần để xác nhận, sau đó liên kết Google. Đề thi và tiến độ học tập sẽ được giữ nguyên."
     : searchParams.get("error")
       ? "Không thể đăng nhập bằng Google. Vui lòng thử lại hoặc dùng email/mật khẩu."
       : null;

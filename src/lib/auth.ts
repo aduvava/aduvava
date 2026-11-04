@@ -1,12 +1,16 @@
 import bcrypt from "bcryptjs";
 import type { NextAuthOptions } from "next-auth";
 import { getServerSession } from "next-auth";
+import { getToken } from "next-auth/jwt";
+import { cookies } from "next/headers";
+import { NextRequest } from "next/server";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { rateLimitOperation, TooManyRequestsError } from "@/lib/security-throttle";
+import { googleIdentityMatchesExistingAccount, isVerifiedGoogleIdentity } from "@/lib/google-account-link";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -61,6 +65,40 @@ export const authOptions: NextAuthOptions = {
   pages: { signIn: "/login" },
   providers,
   callbacks: {
+    async signIn({ account, profile }) {
+      if (account?.provider !== "google") return true;
+      // Google must have verified the email. Never enable automatic email
+      // linking for users who are not already authenticated.
+      if (!isVerifiedGoogleIdentity(profile)) return false;
+
+      // NextAuth v4 supports explicit OAuth account linking when the user is
+      // already signed in. Protect that feature against linking a *different*
+      // Google email into an existing Eduva account.
+      const requestCookies = (await cookies()).getAll();
+      const hasSessionCookie = requestCookies.some(({ name }) =>
+        /^(?:__Secure-)?next-auth\.session-token(?:\.\d+)?$/.test(name),
+      );
+      const cookieHeader = requestCookies
+        .map(({ name, value }) => `${name}=${encodeURIComponent(value)}`).join("; ");
+      const request = new NextRequest("https://eduva.invalid", {
+        headers: { cookie: cookieHeader },
+      });
+      const signedInToken = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+      // If a session cookie exists but cannot be verified, never let the
+      // provider proceed with implicit account linking.
+      if (hasSessionCookie && !signedInToken?.id) return false;
+      if (signedInToken?.id) {
+        const existing = await prisma.user.findUnique({
+          where: { id: String(signedInToken.id) },
+          select: { email: true },
+        });
+        if (!existing) return false;
+        if (!googleIdentityMatchesExistingAccount(profile, existing.email)) {
+          return "/account/link-google?error=GoogleEmailMismatch";
+        }
+      }
+      return true;
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;

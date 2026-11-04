@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { SCHOOL_GRADES, VIETNAM_PROVINCES } from "@/data/profile-options";
 
 export function RegisterForm() {
   const [message, setMessage] = useState<string | null>(null);
+  const [existingAccount, setExistingAccount] = useState(false);
   const role = "STUDENT" as const;
 
   async function submit(formData: FormData) {
@@ -17,11 +19,16 @@ export function RegisterForm() {
       province: formData.get("province"),
       role
     };
+    setExistingAccount(false);
     setMessage("Đang tạo tài khoản...");
     const response = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     if (!response.ok) {
-      const data = await response.json();
-      setMessage(data.error ?? "Không tạo được tài khoản.");
+      if (response.status === 409) {
+        setExistingAccount(true);
+        setMessage("Email này đã có tài khoản Eduva. Hãy đăng nhập tài khoản cũ thay vì đăng ký lại; toàn bộ dữ liệu của bạn vẫn được giữ.");
+      } else {
+        setMessage("Không tạo được tài khoản. Vui lòng kiểm tra thông tin và thử lại.");
+      }
       return;
     }
     await signIn("credentials", { email: payload.email, password: payload.password, role, redirect: false });
@@ -44,7 +51,12 @@ export function RegisterForm() {
         </select>
       </div>
       <button className="min-h-12 w-full rounded-full px-5 py-3 font-extrabold text-white shadow-md transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2" style={{ backgroundColor: "#f97316", color: "#ffffff", visibility: "visible", opacity: 1 }} type="submit">TẠO TÀI KHOẢN</button>
-      {message ? <p className="text-sm font-semibold text-ink/65">{message}</p> : null}
+      {message ? <p role="status" className="text-sm font-semibold text-ink/65">{message}</p> : null}
+      {existingAccount ? (
+        <Link href="/login?role=student" className="rounded-xl bg-orange-50 px-4 py-3 text-center text-sm font-bold text-orange-700 underline">
+          Đăng nhập tài khoản Eduva đã có
+        </Link>
+      ) : null}
     </form>
   );
 }
