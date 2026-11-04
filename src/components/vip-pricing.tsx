@@ -91,7 +91,7 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
           <div className="w-full max-w-2xl rounded-[2rem] bg-white p-6 shadow-2xl sm:p-8" onMouseDown={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500">Thanh toán VIP Ava</p>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500">Thanh toán VIP Educhi</p>
                 <h3 className="mt-2 text-3xl font-black text-slate-950">{plan.name}</h3>
                 <p className="mt-2 text-sm font-semibold text-slate-500">
                   Chọn phương thức thanh toán cho {formatVnd(plan.price)} / {durationLabel(plan)}.
@@ -126,7 +126,7 @@ export function VipPricing({ plans, activeSubscription }: VipPricingProps) {
     <main className="min-h-screen bg-[#fffdf7] px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1320px]">
         <section className="overflow-hidden rounded-[3rem] bg-gradient-to-br from-orange-500 via-orange-500 to-rose-500 p-7 text-white shadow-xl shadow-orange-100 sm:p-8">
-          <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-100">Nạp VIP Ava</p>
+          <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-100">Nạp VIP Educhi</p>
           <div className="mt-4 grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
             <div>
               <h1 className="max-w-4xl text-3xl font-black leading-tight sm:text-5xl">Mở khóa trọn bộ đề thi và nội dung nâng cao</h1>

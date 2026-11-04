@@ -72,22 +72,20 @@ export function MobileSiteNavigation({
         { href: "/login?callbackUrl=/dashboard", label: "Đăng nhập" },
       ];
 
-  const gridColumns = links.length > 7
-    ? "grid-cols-4 min-[480px]:grid-cols-8"
-    : links.length === 7
-      ? "grid-cols-4 min-[420px]:grid-cols-7"
-      : links.length === 6
-        ? "grid-cols-3 min-[420px]:grid-cols-6"
-        : links.length === 5
-          ? "grid-cols-5"
-          : "grid-cols-4";
+  // Trang giới thiệu chỉ hiển thị nội dung chính, không che màn hình bằng tab cố định.
+  if (pathname === "/" || pathname === "/ve-chung-toi") {
+    return null;
+  }
 
   return (
     <nav
       aria-label="Điều hướng chính trên điện thoại"
       className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-[60] border-t border-orange-100 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_24px_rgba(15,23,42,0.08)] backdrop-blur-xl lg:hidden"
     >
-      <div className={"mx-auto grid max-w-xl gap-0.5 px-1.5 py-1.5 " + gridColumns}>
+      <div
+        className="mx-auto grid w-full max-w-2xl gap-0 px-0.5 py-1"
+        style={{ gridTemplateColumns: `repeat(${links.length}, minmax(0, 1fr))` }}
+      >
         {links.map((item) => {
           const target = item.href.split("?")[0].split("#")[0];
           const active = isAuthenticated &&
@@ -100,12 +98,12 @@ export function MobileSiteNavigation({
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={
-                "flex min-h-[46px] min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 py-1 text-center transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500 " +
+                "flex min-h-[48px] min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-0 py-1 text-center transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500 " +
                 (active ? "bg-orange-50 font-black text-orange-600" : "font-bold text-slate-600 hover:bg-orange-50 hover:text-orange-600")
               }
             >
-              <Icon aria-hidden="true" className="h-[19px] w-[19px] shrink-0" strokeWidth={active ? 2.6 : 2} />
-              <span className="max-w-full whitespace-nowrap text-[10px] leading-3">{mobileLabel(item.label)}</span>
+              <Icon aria-hidden="true" className="h-4 w-4 shrink-0 sm:h-[19px] sm:w-[19px]" strokeWidth={active ? 2.6 : 2} />
+              <span className="max-w-full whitespace-nowrap text-[8px] font-bold leading-3 tracking-tight min-[400px]:text-[9px] sm:text-[10px]">{mobileLabel(item.label)}</span>
             </Link>
           );
         })}

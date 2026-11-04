@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
 export const metadata: Metadata = {
-  title: "Trang chủ giáo viên | Ava",
+  title: "Trang chủ giáo viên | Educhi",
   description: "Quản lý lớp học, đề thi, báo cáo và tài liệu giảng dạy.",
 };
 
@@ -69,7 +69,7 @@ export default async function TeacherPage({ searchParams }: { searchParams: Prom
   return (
     <TeacherDashboard
       initialTab={initialTab}
-      teacherName={user.name ?? "Giáo viên Ava"}
+      teacherName={user.name ?? "Giáo viên Educhi"}
       stats={{ studentCount, examCount, submittedCount, documentCount }}
       report={{ averageScore, completionRate, activeStudents: studentCount, weeklySubmissions }}
       exams={recentExams.map((exam) => ({

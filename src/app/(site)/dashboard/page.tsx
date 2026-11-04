@@ -121,7 +121,7 @@ export default async function DashboardPage() {
     const previous = bestByUser.get(attempt.userId);
     if (!previous || score > previous.score || (score === previous.score && attempt.durationSeconds < previous.durationSeconds)) {
       bestByUser.set(attempt.userId, {
-        name: attempt.user.name ?? "Học sinh Ava",
+        name: attempt.user.name ?? "Học sinh Educhi",
         score,
         durationSeconds: attempt.durationSeconds,
       });

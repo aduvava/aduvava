@@ -179,7 +179,7 @@ export function HeaderAccountControls({ initialExp, vipDaysLeft, user }: HeaderA
                   <div>
                     <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500">Hồ sơ học tập</p>
                     <h2 className="mt-1 text-2xl font-black text-slate-950">Thông tin cá nhân</h2>
-                    <p className="mt-1 text-sm font-semibold text-slate-500">Điền thông tin để Ava gợi ý lộ trình học phù hợp hơn.</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">Điền thông tin để Educhi gợi ý lộ trình học phù hợp hơn.</p>
                   </div>
                   <button type="button" onClick={() => setProfileOpen(false)} aria-label="Đóng" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-slate-500 shadow-sm transition hover:text-orange-500">
                     <X className="h-5 w-5" />

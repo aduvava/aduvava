@@ -128,7 +128,7 @@ function ClassroomModal({
       name,
       teacher,
       subject,
-      description: String(form.get("description") ?? "Lớp học mới trên Ava").trim(),
+      description: String(form.get("description") ?? "Lớp học mới trên Educhi").trim(),
       schedule: String(form.get("schedule") ?? "Chưa cập nhật").trim(),
       students: 1,
       assignments: 0,

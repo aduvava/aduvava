@@ -11,7 +11,7 @@ const vietnameseSans = Be_Vietnam_Pro({
 });
 
 export const metadata: Metadata = {
-  title: "Ava",
+  title: "Educhi",
   description: "Nền tảng luyện đề, dashboard học tập, tài liệu, lớp học và cửa hàng EXP cho học sinh.",
   metadataBase: new URL(process.env.NEXTAUTH_URL ?? "http://localhost:3000"),
 };

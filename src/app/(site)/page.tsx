@@ -60,13 +60,6 @@ const teacherFeatures = [
   "Quản lý tài liệu và báo cáo học tập",
 ];
 
-const learningSteps = [
-  ["01", "Chọn mục tiêu", "Lớp 6-12, ôn vào 10 hoặc THPTQG."],
-  ["02", "Luyện đề", "Làm bài theo chuyên đề, kỳ thi hoặc lý thuyết."],
-  ["03", "Xem kết quả", "Biết điểm, thời gian, câu sai và lời giải."],
-  ["04", "Tiến bộ", "Nhận đề gợi ý, tích EXP và leo bảng xếp hạng."],
-];
-
 export default async function HomePage() {
   const [studentCount, examCount, subjectCount, submittedAttemptCount] = await Promise.all([
     prisma.user.count({ where: { role: "STUDENT" } }),
@@ -84,18 +77,19 @@ export default async function HomePage() {
     <main className="hide-site-header overflow-hidden bg-[#fffaf0] text-slate-950">
       <section id="gioi-thieu" className="relative">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(251,146,60,0.18),transparent_28%),radial-gradient(circle_at_85%_15%,rgba(255,237,213,0.9),transparent_32%),linear-gradient(180deg,#fffaf0,#fffdf8)]" />
-        <div className="relative mx-auto grid max-w-[1440px] gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:py-24">
+        <div className="relative mx-auto max-w-[1440px] px-4 pt-12 sm:px-6 lg:px-8 lg:pt-20">
+          <span className="inline-flex w-fit items-center gap-2 rounded-full bg-orange-100 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-orange-600">
+            <Sparkles className="h-4 w-4" />
+            Nền tảng học tập Educhi
+          </span>
+          <h1 className="mt-6 whitespace-nowrap text-[clamp(10px,3vw,44px)] font-black leading-[1.18] tracking-[-0.035em] text-slate-950">
+            Luyện Đề Thông Minh, <span className="text-orange-500">Tự Tin Vượt Ải Cùng Educhi</span>
+          </h1>
+        </div>
+        <div className="relative mx-auto grid max-w-[1440px] gap-8 px-4 pb-16 pt-8 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10 lg:px-8 lg:pb-24 lg:pt-10">
           <div className="flex flex-col justify-center">
-            <span className="inline-flex w-fit items-center gap-2 rounded-full bg-orange-100 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-orange-600">
-              <Sparkles className="h-4 w-4" />
-              Nền tảng học tập Ava
-            </span>
-            <h1 className="mt-7 max-w-5xl text-4xl font-black leading-[1.12] tracking-tight text-slate-950 sm:text-5xl md:text-6xl lg:text-7xl">
-              <span className="block">Luyện Đề Thông Minh</span>
-              <span className="mt-3 block text-orange-500">Tự Tin Vượt Ải Cùng Ava</span>
-            </h1>
-            <p className="mt-6 max-w-2xl text-lg font-medium leading-8 text-slate-600">
-              Ava tự hào là nền tảng biến việc học thành niềm vui. Học sinh thỏa sức luyện đề chinh phục các kì thi quan trọng, xem lời giải chi tiết, khắc phục điểm yếu và đua top EXP. Về phía giáo viên, Ava mang đến một không gian làm việc tối ưu để tạo bài tập, quản lý học viên và đánh giá năng lực dễ dàng.
+            <p className="mt-2 max-w-2xl text-lg font-medium leading-8 text-slate-600">
+              Educhi tự hào là nền tảng biến việc học thành niềm vui. Học sinh thỏa sức luyện đề chinh phục các kì thi quan trọng, xem lời giải chi tiết, khắc phục điểm yếu và đua top EXP. Về phía giáo viên, Educhi mang đến một không gian làm việc tối ưu để tạo bài tập, quản lý học viên và đánh giá năng lực dễ dàng.
             </p>
 
             <div className="mt-8 grid max-w-2xl gap-3 sm:grid-cols-2">
@@ -124,57 +118,37 @@ export default async function HomePage() {
             </div>
           </div>
 
-          <div className="relative min-h-[520px]">
-            <div className="absolute right-0 top-0 h-72 w-72 rounded-full bg-orange-300/25 blur-3xl" />
-            <div className="relative rounded-[2.5rem] border border-orange-100 bg-white p-5 shadow-[0_25px_80px_rgba(84,48,20,0.12)]">
-              <div className="rounded-[2rem] bg-gradient-to-br from-orange-500 via-orange-500 to-rose-500 p-6 text-white">
+          <div className="relative flex min-h-[320px] items-center justify-center sm:min-h-[410px]">
+            <div aria-hidden="true" className="absolute inset-3 rounded-full bg-orange-200/30 blur-3xl" />
+            <div className="relative w-full max-w-[520px] rounded-[2rem] border border-orange-100 bg-white p-4 shadow-[0_25px_80px_rgba(84,48,20,0.12)] sm:p-7">
+              <div className="rounded-[1.5rem] bg-gradient-to-br from-orange-500 via-orange-500 to-rose-500 p-6 sm:p-8">
                 <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-100">Bảng điều khiển học tập</p>
-                    <h2 className="mt-3 text-3xl font-black">Xin chào, bạn đã sẵn sàng chưa?</h2>
+                  <div aria-hidden="true" className="flex-1 space-y-3">
+                    <div className="h-3 w-3/5 rounded-full bg-white/60" />
+                    <div className="h-5 w-5/6 rounded-full bg-white/90" />
+                    <div className="h-3 w-2/3 rounded-full bg-white/40" />
                   </div>
-                  <span className="grid h-16 w-16 place-items-center rounded-3xl bg-white p-2">
+                  <div className="grid h-20 w-20 shrink-0 place-items-center rounded-3xl bg-white p-2 shadow-lg sm:h-24 sm:w-24">
                     <MascotAvatar />
-                  </span>
+                  </div>
                 </div>
-                <div className="mt-7 grid grid-cols-3 gap-3">
-                  {[
-                    [Trophy, "Top tuần"],
-                    [Medal, "EXP"],
-                    [Medal, "Thành tích"],
-                  ].map(([Icon, label]) => (
-                    <div key={String(label)} className="rounded-2xl bg-white/16 p-4 backdrop-blur">
-                      <Icon className="h-5 w-5" />
-                      <p className="mt-3 text-sm font-black">{String(label)}</p>
+                <div aria-hidden="true" className="mt-8 grid grid-cols-3 gap-3">
+                  {[BookOpen, Trophy, Target].map((Icon, index) => (
+                    <div key={index} className="grid h-20 place-items-center rounded-2xl bg-white/20 text-white backdrop-blur sm:h-24">
+                      <Icon className="h-9 w-9" />
                     </div>
                   ))}
                 </div>
               </div>
-
-              <div className="mt-4 grid gap-3">
-                {learningSteps.map(([step, title, text]) => (
-                  <div key={step} className="flex items-center gap-4 rounded-3xl border border-orange-100 bg-orange-50/50 p-4">
-                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-sm font-black text-orange-500 shadow-sm">
-                      {step}
-                    </span>
-                    <div>
-                      <p className="font-black text-slate-900">{title}</p>
-                      <p className="mt-0.5 text-sm font-medium text-slate-500">{text}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="hidden">
-              <div className="flex items-center gap-3">
-                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-blue-50 text-blue-500">
-                  <Bot className="h-6 w-6" />
-                </span>
-                <div>
-                  <p className="font-black text-slate-900">Gợi ý thông minh</p>
-                  <p className="mt-1 text-sm text-slate-500">Đề ôn tập phù hợp với dữ liệu học tập của bạn.</p>
+              <div aria-hidden="true" className="mt-5 flex items-center gap-3 rounded-2xl bg-orange-50 p-4">
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-white text-orange-500">
+                  <CheckCircle2 className="h-7 w-7" />
                 </div>
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="h-3 w-3/4 rounded-full bg-orange-200" />
+                  <div className="h-2.5 w-1/2 rounded-full bg-orange-100" />
+                </div>
+                <Sparkles className="h-6 w-6 shrink-0 text-orange-300" />
               </div>
             </div>
           </div>
@@ -255,7 +229,7 @@ export default async function HomePage() {
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-100">Bắt đầu ngay</p>
-              <h2 className="mt-3 max-w-2xl text-3xl font-black leading-tight sm:text-5xl">Chọn vai trò của bạn và vào Ava trong vài giây.</h2>
+              <h2 className="mt-3 max-w-2xl text-3xl font-black leading-tight sm:text-5xl">Chọn vai trò của bạn và vào Educhi trong vài giây.</h2>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[440px]">
               <Link href="/login?role=student&callbackUrl=/dashboard" className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-6 py-4 text-sm font-black text-orange-600 transition hover:bg-orange-50">

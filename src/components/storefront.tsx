@@ -286,7 +286,7 @@ export function Storefront({
           <div className="flex items-center gap-3">
             <ShoppingBag className="h-8 w-8 text-orange-500" />
             <div>
-              <h1 className="text-3xl font-black text-slate-950 sm:text-4xl">Cửa hàng Ava</h1>
+              <h1 className="text-3xl font-black text-slate-950 sm:text-4xl">Cửa hàng Educhi</h1>
               <p className="mt-1 text-sm font-semibold text-slate-500">Dùng EXP để mở khóa giao diện, trợ giúp, nội dung học tập và quà đổi thưởng.</p>
             </div>
           </div>

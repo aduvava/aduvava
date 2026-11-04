@@ -4,8 +4,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { AdminLoginForm } from "./admin-login-form";
 
 export const metadata: Metadata = {
-  title: "Đăng nhập Admin | Ava",
-  description: "Cổng đăng nhập quản trị Ava.",
+  title: "Đăng nhập Admin | Educhi",
+  description: "Cổng đăng nhập quản trị Educhi.",
 };
 
 function getSafeCallbackUrl(value: string | undefined) {
@@ -26,7 +26,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: P
   return (
     <main className="grid min-h-screen place-items-center bg-slate-950 px-4 py-12 text-white">
       <section className="w-full max-w-md rounded-[1.75rem] border border-white/10 bg-white/10 p-6 shadow-2xl shadow-black/30 backdrop-blur">
-        <p className="text-xs font-black uppercase tracking-[0.2em] text-orange-300">Ava Admin</p>
+        <p className="text-xs font-black uppercase tracking-[0.2em] text-orange-300">Educhi Admin</p>
         <h1 className="mt-4 text-4xl font-black tracking-tight">Đăng nhập quản trị</h1>
         <p className="mt-3 text-sm leading-6 text-white/65">Cổng này tách khỏi website học sinh và chỉ chấp nhận tài khoản có quyền ADMIN.</p>
         <p className="mt-3 rounded-2xl bg-black/20 px-4 py-3 text-xs font-semibold text-white/70">
