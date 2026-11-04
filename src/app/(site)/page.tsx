@@ -80,16 +80,16 @@ export default async function HomePage() {
         <div className="relative mx-auto max-w-[1440px] px-4 pt-12 sm:px-6 lg:px-8 lg:pt-20">
           <span className="inline-flex w-fit items-center gap-2 rounded-full bg-orange-100 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-orange-600">
             <Sparkles className="h-4 w-4" />
-            Nền tảng học tập Ava
+            Nền tảng học tập Educhi
           </span>
           <h1 className="mt-6 whitespace-nowrap text-[clamp(10px,3vw,44px)] font-black leading-[1.18] tracking-[-0.035em] text-slate-950">
-            Luyện Đề Thông Minh, <span className="text-orange-500">Tự Tin Vượt Ải Cùng Ava</span>
+            Luyện Đề Thông Minh, <span className="text-orange-500">Tự Tin Vượt Ải Cùng Educhi</span>
           </h1>
         </div>
         <div className="relative mx-auto grid max-w-[1440px] gap-8 px-4 pb-16 pt-8 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10 lg:px-8 lg:pb-24 lg:pt-10">
           <div className="flex flex-col justify-center">
             <p className="mt-2 max-w-2xl text-lg font-medium leading-8 text-slate-600">
-              Ava tự hào là nền tảng biến việc học thành niềm vui. Học sinh thỏa sức luyện đề chinh phục các kì thi quan trọng, xem lời giải chi tiết, khắc phục điểm yếu và đua top EXP. Về phía giáo viên, Ava mang đến một không gian làm việc tối ưu để tạo bài tập, quản lý học viên và đánh giá năng lực dễ dàng.
+              Educhi tự hào là nền tảng biến việc học thành niềm vui. Học sinh thỏa sức luyện đề chinh phục các kì thi quan trọng, xem lời giải chi tiết, khắc phục điểm yếu và đua top EXP. Về phía giáo viên, Educhi mang đến một không gian làm việc tối ưu để tạo bài tập, quản lý học viên và đánh giá năng lực dễ dàng.
             </p>
 
             <div className="mt-8 grid max-w-2xl gap-3 sm:grid-cols-2">
@@ -229,7 +229,7 @@ export default async function HomePage() {
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-100">Bắt đầu ngay</p>
-              <h2 className="mt-3 max-w-2xl text-3xl font-black leading-tight sm:text-5xl">Chọn vai trò của bạn và vào Ava trong vài giây.</h2>
+              <h2 className="mt-3 max-w-2xl text-3xl font-black leading-tight sm:text-5xl">Chọn vai trò của bạn và vào Educhi trong vài giây.</h2>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[440px]">
               <Link href="/login?role=student&callbackUrl=/dashboard" className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-6 py-4 text-sm font-black text-orange-600 transition hover:bg-orange-50">
