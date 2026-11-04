@@ -34,7 +34,7 @@ export default async function VipPage() {
   ]);
 
   return (
-    <VipPricing
+    <VipPricing automaticConfirmation={Boolean(process.env.SEPAY_WEBHOOK_API_KEY && process.env.SEPAY_WEBHOOK_API_KEY.length >= 32)}
       plans={plans.map((plan) => ({
         id: plan.id,
         slug: plan.slug,

@@ -14,7 +14,7 @@ async function listResource(resource: string) {
     case "questions":
       return prisma.question.findMany({ include: { exam: true, topic: true, answerOptions: true }, orderBy: [{ examId: "asc" }, { position: "asc" }] });
     case "blogs":
-      return prisma.blogPost.findMany({ orderBy: { createdAt: "desc" } });
+      throw new HttpError(404, "Blog đã được gỡ bỏ.");
     case "users":
       return prisma.user.findMany({ select: { id: true, email: true, name: true, role: true, createdAt: true, profile: true }, orderBy: { createdAt: "desc" } });
     case "subscriptions":
@@ -63,7 +63,7 @@ async function createResource(resource: string, body: Record<string, unknown>) {
       });
     }
     case "blogs":
-      return prisma.blogPost.create({ data: body as never });
+      throw new HttpError(404, "Blog đã được gỡ bỏ.");
     case "users": {
       const password = typeof body.password === "string" ? body.password : "";
       if (password.length < 8) throw new HttpError(400, "Mật khẩu phải có ít nhất 8 ký tự");

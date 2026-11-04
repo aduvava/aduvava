@@ -40,9 +40,10 @@ function asMetadata(value) {
  *
  * Prisma TransactionIsolationLevel.Serializable on Postgres prevents two
  * concurrent confirmations from granting VIP twice. Serialization conflicts
- * are retried, but other errors are rethrown without changing payment state.
+ * and duplicate webhook event races are retried; other errors roll back.
+ * @param {{id: string, amount: number} | null} bankEvent
  */
-async function transitionManualPayment(db, paymentId, nextStatus) {
+async function transitionManualPayment(db, paymentId, nextStatus, bankEvent = null) {
   if (!VALID_STATUSES.has(nextStatus)) throw new PaymentTransitionError(400, "Invalid payment status");
 
   for (let attempt = 0; attempt < 4; attempt++) {
@@ -57,6 +58,19 @@ async function transitionManualPayment(db, paymentId, nextStatus) {
           throw new PaymentTransitionError(409, "Only manual bank transfer payments can be confirmed here");
         }
 
+        // Bank event and VIP activation commit together. UNIQUE event ID protects
+        // against webhook retries, concurrent delivery and reuse on another order.
+        if (bankEvent) {
+          if (nextStatus !== "PAID" || bankEvent.amount !== current.amount || !bankEvent.id?.startsWith("sepay:")) {
+            throw new PaymentTransitionError(409, "Bank transaction does not match payment");
+          }
+          const existingEvent = await tx.bankWebhookEvent.findUnique({ where: { id: bankEvent.id } });
+          if (existingEvent && (existingEvent.paymentId !== paymentId || existingEvent.amount !== bankEvent.amount)) {
+            throw new PaymentTransitionError(409, "Bank transaction already used for another payment");
+          }
+          if (current.status === "FAILED") throw new PaymentTransitionError(409, "Failed payment requires manual reconciliation");
+          if (!existingEvent) await tx.bankWebhookEvent.create({ data: { id: bankEvent.id, paymentId, amount: bankEvent.amount } });
+        }
         const metadata = asMetadata(current.metadata);
         if (current.status === "PAID") {
           if (nextStatus !== "PAID") {
@@ -89,7 +103,7 @@ async function transitionManualPayment(db, paymentId, nextStatus) {
           return { payment, activated: false, subscriptionId: null };
         }
 
-        // Only an administrator who has verified bank funds may call this path.
+        // Called by an administrator or an authenticated, matched bank webhook.
         const now = new Date();
         const previous = await tx.subscription.findFirst({
           where: { userId: current.userId, status: "ACTIVE", endsAt: { gt: now } },
@@ -113,6 +127,7 @@ async function transitionManualPayment(db, paymentId, nextStatus) {
             metadata: {
               ...metadata,
               adminVipActivatedAt: now.toISOString(),
+              ...(bankEvent ? { bankEventId: bankEvent.id, verifiedBy: "sepay" } : { verifiedBy: "admin" }),
               vipSubscriptionId: subscription.id,
             },
           },
@@ -128,7 +143,7 @@ async function transitionManualPayment(db, paymentId, nextStatus) {
         return { payment, activated: true, subscriptionId: subscription.id };
       }, { isolationLevel: "Serializable", maxWait: 10000, timeout: 20000 });
     } catch (error) {
-      if (error?.code === "P2034" && attempt < 3) continue;
+      if ((error?.code === "P2034" || (bankEvent && error?.code === "P2002")) && attempt < 3) continue;
       throw error;
     }
   }

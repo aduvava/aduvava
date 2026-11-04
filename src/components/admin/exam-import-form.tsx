@@ -1,5 +1,7 @@
 "use client";
 
+import { ExamClassification, type ClassifiedExam } from "@/components/admin/exam-classification";
+import { ChapterPicker } from "@/components/admin/chapter-picker";
 import { useEffect, useState } from "react";
 import { parseDelimited, rowsToObjects } from "@/lib/spreadsheet-import";
 
@@ -17,9 +19,11 @@ function cell(row: Record<string, unknown>, aliases: string[]) {
 
 export function ExamImportForm() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [items, setItems] = useState<Array<{ id: string; title: string; isPublished: boolean; ownerId?: string | null; _count?: { questions: number } }>>([]);
+  const [items, setItems] = useState<ClassifiedExam[]>([]);
   const [grade, setGrade] = useState(grades[0]);
   const [subjectId, setSubjectId] = useState("");
+  const [contentMode, setContentMode] = useState("exams");
+  const [chapterId, setChapterId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [durationMinutes, setDurationMinutes] = useState(45);
@@ -75,7 +79,7 @@ export function ExamImportForm() {
     if (!title.trim() || !selectedSubject || !questions.length) { setMessage("Nhập tên đề, chọn môn và tải file câu hỏi."); return; }
     setBusy(true);
     try {
-      const response = await fetch("/api/admin/import-exam", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ grade, subjectId: selectedSubject, title, description, durationMinutes: Number(durationMinutes), accessLevel, questions }) });
+      const response = await fetch("/api/admin/import-exam", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ grade, contentMode, chapterId: chapterId || null, subjectId: selectedSubject, title, description, durationMinutes: Number(durationMinutes), accessLevel, questions }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Không lưu được đề thi.");
       setMessage(`Đã lưu ${questions.length} câu vào đề “${title}” ở trạng thái nháp. Kiểm tra trước khi xuất bản.`);
@@ -90,6 +94,8 @@ export function ExamImportForm() {
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <label className="text-sm font-bold">Lớp / kì thi<select className={`${inputClass} mt-2`} value={grade} onChange={(event) => setGrade(event.target.value)}>{grades.map((item) => <option key={item}>{item}</option>)}</select></label>
         <label className="text-sm font-bold">Môn học<select className={`${inputClass} mt-2`} value={selectedSubject} onChange={(event) => setSubjectId(event.target.value)}><option value="">Chọn môn học</option>{available.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
+        <label className="text-sm font-bold sm:col-span-2">Loại đề<select className={`${inputClass} mt-2`} value={contentMode} onChange={e => setContentMode(e.target.value)}><option value="exams">Theo kì thi</option><option value="topics">Theo chuyên đề</option></select></label>
+        <ChapterPicker subjectId={selectedSubject} grade={grade} value={chapterId} onChange={setChapterId} />
         <label className="text-sm font-bold sm:col-span-2">Tên đề thi<input className={`${inputClass} mt-2`} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Ví dụ: Đề kiểm tra Toán lớp 6 số 01" /></label>
         <label className="text-sm font-bold sm:col-span-2">Mô tả / ghi chú<textarea className={`${inputClass} mt-2`} value={description} onChange={(event) => setDescription(event.target.value)} rows={3} /></label>
         <label className="text-sm font-bold">Thời gian làm bài (phút)<input className={`${inputClass} mt-2`} type="number" min={1} max={600} value={durationMinutes} onChange={(event) => setDurationMinutes(Number(event.target.value))} /></label>
@@ -100,6 +106,6 @@ export function ExamImportForm() {
       <button disabled={busy || !questions.length} onClick={() => void save()} className="mt-5 rounded-xl bg-orange-500 px-5 py-3 font-bold text-white disabled:opacity-50">{busy ? "Đang lưu..." : "Lưu đề thi"}</button>
       {message && <p role="status" className="mt-4 text-sm font-semibold text-slate-600">{message}</p>}
     </section>
-    <section className="rounded-3xl bg-white p-5 shadow-sm sm:p-7"><h2 className="text-xl font-black">Đề thi đã lưu</h2><p className="mt-2 text-sm text-slate-500">Đề mới luôn ở trạng thái nháp để kiểm tra đáp án. Đề THPTQG chính thức phải đủ cấu trúc trước khi xuất bản.</p><div className="mt-4 space-y-3">{items.filter((item) => item.ownerId === null).map((item) => <div key={item.id} className="rounded-xl border p-3 text-sm"><strong>{item.title}</strong><p className="text-slate-500">{item._count?.questions ?? 0} câu · {item.isPublished ? "Đã xuất bản" : "Bản nháp"}</p><button onClick={() => void publish(item)} className="mt-2 rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white">{item.isPublished ? "Ẩn đề" : "Xuất bản"}</button></div>)}</div></section>
+    <section className="rounded-3xl bg-white p-5 shadow-sm sm:p-7"><h2 className="text-xl font-black">Đề thi đã lưu</h2><p className="mt-2 text-sm text-slate-500">Đề mới luôn ở trạng thái nháp để kiểm tra đáp án. Đề THPTQG chính thức phải đủ cấu trúc trước khi xuất bản.</p><div className="mt-4 space-y-3">{items.filter((item) => item.ownerId === null).map((item) => <div key={item.id} className="rounded-xl border p-3 text-sm"><strong>{item.title}</strong><p className="text-slate-500">{item._count?.questions ?? 0} câu · {item.isPublished ? "Đã xuất bản" : "Bản nháp"}</p><button onClick={() => void publish(item)} className="mt-2 rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white">{item.isPublished ? "Ẩn đề" : "Xuất bản"}</button><ExamClassification exam={item} onSaved={refresh} /></div>)}</div></section>
   </div>;
 }

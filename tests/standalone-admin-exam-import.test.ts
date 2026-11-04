@@ -74,3 +74,9 @@ describe("standalone Admin question import", () => {
     assert.deepEqual(parsed.questions.map((q: { type: string }) => q.type), ["ESSAY", "SHORT_ANSWER"]);
   });
 });
+
+it("standalone topics in THPTQG do not require a full official examination", () => {
+  const result = parseAdminExamQuestions(JSON.stringify({ questions: [{ prompt: "Một câu chuyên đề", options: ["A", "B"], correct: "A" }] }), { ...settings, durationMinutes: 15, contentMode: "topics" }, normalizeSingle, parseSimple);
+  assert.equal(result.rule, null);
+  assert.equal(result.questions.length, 1);
+});

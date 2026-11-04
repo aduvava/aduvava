@@ -10,7 +10,7 @@ import GoogleProvider from "next-auth/providers/google";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { rateLimitOperation, TooManyRequestsError } from "@/lib/security-throttle";
-import { googleIdentityMatchesExistingAccount, isVerifiedGoogleIdentity } from "@/lib/google-account-link";
+import { canAutomaticallyLinkGoogle, googleIdentityMatchesExistingAccount, isVerifiedGoogleIdentity } from "@/lib/google-account-link";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -54,7 +54,10 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   providers.push(
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      // signIn below gates linking on verified, authoritative Google identities.
+      allowDangerousEmailAccountLinking: true,
+      authorization: { params: { prompt: "select_account" } }
     })
   );
 }
@@ -67,8 +70,7 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ account, profile }) {
       if (account?.provider !== "google") return true;
-      // Google must have verified the email. Never enable automatic email
-      // linking for users who are not already authenticated.
+      // The provider must have verified the email before any login or link.
       if (!isVerifiedGoogleIdentity(profile)) return false;
 
       // NextAuth v4 supports explicit OAuth account linking when the user is
@@ -95,6 +97,15 @@ export const authOptions: NextAuthOptions = {
         if (!existing) return false;
         if (!googleIdentityMatchesExistingAccount(profile, existing.email)) {
           return "/account/link-google?error=GoogleEmailMismatch";
+        }
+      }
+      if (!signedInToken?.id) {
+        const linked = await prisma.account.findUnique({ where: { provider_providerAccountId: { provider: "google", providerAccountId: account.providerAccountId } }, select: { id: true } });
+        // Returning Google identities authenticate by provider subject, without
+        // another linking flow. New Google accounts may use any verified email.
+        if (!linked) {
+          const existing = await prisma.user.findUnique({ where: { email: String(profile?.email).trim().toLowerCase() }, select: { id: true } });
+          if (existing && !canAutomaticallyLinkGoogle(profile)) return "/login?error=OAuthAccountNotLinked";
         }
       }
       return true;

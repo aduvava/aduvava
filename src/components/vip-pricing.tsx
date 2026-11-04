@@ -1,5 +1,6 @@
 "use client";
 
+import { BankTransfer } from "@/components/bank-transfer";
 import { useState } from "react";
 import { Check, Crown, Landmark, X } from "lucide-react";
 import { clsx } from "clsx";
@@ -19,6 +20,7 @@ type VipPricingProps = {
   activeSubscription: { planName: string; endsAt: string } | null;
   pendingPayments: { id: string; planName: string; amount: number; reference: string }[];
   bank: { name: string; accountNumber: string; accountHolder: string } | null;
+  automaticConfirmation?: boolean;
 };
 
 function formatVnd(value: number) {
@@ -35,11 +37,12 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
-  const [transfer, setTransfer] = useState<{ bank: { name: string; accountNumber: string; accountHolder: string }; code: string; amount: number } | null>(null);
+  const [transfer, setTransfer] = useState<{ bank: { name: string; accountNumber: string; accountHolder: string }; code: string; amount: number; id: string; automatic: boolean } | null>(null);
 
   async function checkout() {
     setLoading(true);
     setMessage("Đang tạo yêu cầu thanh toán...");
+    try {
     const response = await fetch("/api/payments/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -54,9 +57,10 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
     const data = await response.json();
     setLoading(false);
     if (response.ok) {
-      setTransfer({ bank: data.bank, code: data.manualTransferCode, amount: data.payment.amount });
-      setMessage("Đã tạo yêu cầu. Chuyển đúng số tiền và nội dung, sau đó chờ đối soát.");
+      setTransfer({ bank: data.bank, code: data.manualTransferCode, amount: data.payment.amount, id: data.payment.id, automatic: data.automaticConfirmation });
+      setMessage("");
     } else setMessage(data.error ?? "Không tạo được yêu cầu thanh toán.");
+    } catch { setMessage("Không kết nối được máy chủ. Vui lòng thử lại."); } finally { setLoading(false); }
   }
 
   return (
@@ -84,7 +88,9 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
             setMessage("");
             setTransfer(null);
             setPaymentOpen(true);
+            void checkout();
           }}
+          disabled={loading}
           className={clsx("mt-6 w-full rounded-2xl px-6 py-3.5 text-base font-black transition", featured ? "bg-orange-500 text-white hover:bg-orange-600" : "bg-slate-950 text-white hover:bg-orange-500")}
         >
           Đăng ký ngay
@@ -94,16 +100,16 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
 
       {paymentOpen ? (
         <div className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/45 p-4 backdrop-blur-sm" onMouseDown={() => setPaymentOpen(false)}>
-          <div className="w-full max-w-2xl rounded-[2rem] bg-white p-6 shadow-2xl sm:p-8" onMouseDown={(event) => event.stopPropagation()}>
+          <div className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl sm:p-8" onMouseDown={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500">Thanh toán VIP Ava</p>
                 <h3 className="mt-2 text-3xl font-black text-slate-950">{plan.name}</h3>
                 <p className="mt-2 text-sm font-semibold text-slate-500">
-                  Chọn phương thức thanh toán cho {formatVnd(plan.price)} / {durationLabel(plan)}.
+                  Quét QR thanh toán {formatVnd(plan.price)} / {durationLabel(plan)}.
                 </p>
               </div>
-              <button type="button" onClick={() => setPaymentOpen(false)} className="rounded-full p-2 text-slate-400 hover:bg-slate-100">
+              <button type="button" aria-label="Đóng thanh toán" onClick={() => setPaymentOpen(false)} className="rounded-full p-2 text-slate-400 hover:bg-slate-100">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -111,18 +117,11 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
             <div className="mt-6 flex items-center gap-4 rounded-2xl border border-orange-200 bg-orange-50 p-4">
               <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-orange-500 text-white"><Landmark className="h-5 w-5" /></span>
               <p className="text-sm font-semibold leading-6 text-slate-600">
-                Hệ thống sẽ tạo mã giao dịch thật ở trạng thái chờ. Dùng mã này làm nội dung chuyển khoản để Admin đối soát và kích hoạt gói.
+                Quét QR để điền sẵn tài khoản, số tiền và nội dung. Trạng thái thanh toán sẽ tự cập nhật tại đây.
               </p>
             </div>
 
-            {transfer ? <div className="mt-5 space-y-2 rounded-2xl border border-orange-200 bg-orange-50 p-5 text-sm">
-              <p>Ngân hàng: <strong>{transfer.bank.name}</strong></p>
-              <p>Số tài khoản: <strong className="select-all">{transfer.bank.accountNumber}</strong></p>
-              <p>Chủ tài khoản: <strong>{transfer.bank.accountHolder}</strong></p>
-              <p>Số tiền: <strong>{formatVnd(transfer.amount)}</strong></p>
-              <p>Nội dung chuyển khoản: <strong className="select-all">{transfer.code}</strong></p>
-              <p className="text-slate-600">VIP được kích hoạt sau khi quản trị viên xác nhận đã nhận tiền.</p>
-            </div> : <button type="button" onClick={checkout} disabled={loading} className="mt-6 w-full rounded-2xl bg-orange-500 px-6 py-4 text-base font-black text-white transition hover:bg-orange-600 disabled:bg-slate-300">
+            {transfer ? <BankTransfer id={transfer.id} bank={transfer.bank} amount={transfer.amount} reference={transfer.code} automatic={transfer.automatic} /> : <button type="button" onClick={checkout} disabled={loading} className="mt-6 w-full rounded-2xl bg-orange-500 px-6 py-4 text-base font-black text-white transition hover:bg-orange-600 disabled:bg-slate-300">
               {loading ? "Đang tạo giao dịch..." : "Tạo mã chuyển khoản"}
             </button>}
             {message && <p role="status" className="mt-3 text-sm text-slate-600">{message}</p>}
@@ -133,7 +132,7 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
   );
 }
 
-export function VipPricing({ plans, activeSubscription, pendingPayments, bank }: VipPricingProps) {
+export function VipPricing({ plans, activeSubscription, pendingPayments, bank, automaticConfirmation }: VipPricingProps) {
   const featured = plans.find((plan) => plan.slug.includes("monthly"))?.id ?? plans[1]?.id;
 
   return (
@@ -167,7 +166,7 @@ export function VipPricing({ plans, activeSubscription, pendingPayments, bank }:
           {bank ? <p className="mt-2 text-sm text-slate-600">{bank.name} · STK <strong className="select-all">{bank.accountNumber}</strong> · {bank.accountHolder}</p> : null}
           <div className="mt-4 grid gap-3 sm:grid-cols-2">{pendingPayments.map((payment) => <div key={payment.id} className="rounded-xl bg-orange-50 p-4 text-sm">
             <strong>{payment.planName} · {formatVnd(payment.amount)}</strong><p>Nội dung: <strong className="select-all">{payment.reference}</strong></p>
-            <p className="mt-1 text-slate-600">Chờ quản trị viên đối soát.</p>
+            {bank && <BankTransfer id={payment.id} bank={bank} amount={payment.amount} reference={payment.reference} automatic={automaticConfirmation} />}
           </div>)}</div>
         </section> : null}
 

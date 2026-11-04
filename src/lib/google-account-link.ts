@@ -1,9 +1,9 @@
-// OAuth must never claim an existing account solely because the emails match.
-// Only verified Google profiles may be used, and an existing logged-in Eduva
-// account can link Google only when both addresses agree.
+// Email linking requires an authoritative Google identity, not just matching text.
+// Explicit linking additionally requires an existing authenticated Eduva session.
 export type GoogleIdentity = {
   email?: unknown;
   email_verified?: unknown;
+  hd?: unknown;
 };
 
 export function isVerifiedGoogleIdentity(profile: GoogleIdentity | null | undefined): boolean {
@@ -21,4 +21,12 @@ export function googleIdentityMatchesExistingAccount(
 ): boolean {
   return isVerifiedGoogleIdentity(profile) &&
     String(profile?.email).trim().toLowerCase() === currentEmail.trim().toLowerCase();
+}
+
+// Google is authoritative for Gmail and verified Workspace domains. For an
+// external mailbox, email_verified alone can refer to ownership years ago.
+export function canAutomaticallyLinkGoogle(profile: GoogleIdentity | null | undefined): boolean {
+  if (!isVerifiedGoogleIdentity(profile)) return false;
+  return String(profile?.email).trim().toLowerCase().endsWith("@gmail.com") ||
+    (typeof profile?.hd === "string" && profile.hd.trim().length > 0);
 }

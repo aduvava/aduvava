@@ -250,6 +250,7 @@ model TheoryChapter {
 
   subject Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   lessons TheoryLesson[]
+  exams Exam[]
 
   @@unique([subjectId, slug])
   @@index([subjectId, educationLevel, grade, isPublished, position])
@@ -300,6 +301,9 @@ model Exam {
   durationMinutes   Int
   educationLevel    EducationLevel?
   grade             String?
+  contentMode       String          @default("exams")
+  chapterId         String?
+  chapter           TheoryChapter?  @relation(fields: [chapterId], references: [id], onDelete: SetNull)
   examStructure     Json?
   targetScore       Float?
   subjectId         String
@@ -320,6 +324,7 @@ model Exam {
   @@index([family, year, accessLevel])
   @@index([educationLevel, subjectId, isPublished])
   @@index([grade, subjectId, isPublished])
+  @@index([chapterId, contentMode])
   @@index([ownerId, createdAt])
   @@index([shareMode, shareToken])
 }
@@ -488,6 +493,7 @@ model Payment {
   status      PaymentStatus @default(PENDING)
   provider    String        @default("manual-bank-transfer")
   reference   String        @unique
+  bankEvents  BankWebhookEvent[]
   checkoutUrl String?
   metadata    Json?
   createdAt   DateTime      @default(now())
@@ -495,6 +501,15 @@ model Payment {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   plan Plan @relation(fields: [planId], references: [id], onDelete: Restrict)
+}
+
+model BankWebhookEvent {
+  id          String   @id
+  paymentId   String
+  amount      Int
+  receivedAt  DateTime @default(now())
+  payment     Payment  @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  @@index([paymentId])
 }
 
 model LeadMessage {

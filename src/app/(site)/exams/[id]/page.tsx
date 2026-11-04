@@ -42,7 +42,7 @@ export default async function ExamDetailPage({
 
   const allowed = await canAccessExam(user.id, exam);
   const lockedBySharing = Boolean(exam.ownerId && exam.ownerId !== user.id && exam.shareMode !== "PUBLIC");
-  const nationalRule = exam.educationLevel === "THPTQG" ? getNationalExamRule(exam.subject.slug) : undefined;
+  const nationalRule = exam.educationLevel === "THPTQG" && exam.contentMode === "exams" && exam.ownerId === null ? getNationalExamRule(exam.subject.slug) : undefined;
   const questionCount = nationalRule ? getNationalQuestionCount(nationalRule) : exam._count.questions;
   const displayedParts = nationalRule?.parts.filter((part) => part.count > 0) ?? [];
   const displayTitle = titleFromClass && titleFromClass.length <= 120 ? titleFromClass : exam.title;
@@ -56,7 +56,7 @@ export default async function ExamDetailPage({
 
         <section className="mt-6 rounded-[2.5rem] border border-orange-100 bg-white px-5 py-8 text-center shadow-sm sm:px-10 sm:py-12">
           <p className="text-xs font-black uppercase tracking-[0.2em] text-orange-500">
-            {exam.educationLevel === "THPTQG" ? "Đề thi theo cấu trúc THPTQG" : "Đề luyện tập"}
+            {exam.educationLevel === "THPTQG" && exam.contentMode === "exams" && exam.ownerId === null ? "Đề thi theo cấu trúc THPTQG" : "Đề luyện tập"}
           </p>
           <h1 className="mx-auto mt-3 max-w-4xl text-3xl font-black leading-tight text-slate-950 sm:text-5xl">{displayTitle}</h1>
           <p className="mx-auto mt-4 max-w-3xl text-sm leading-7 text-slate-500 sm:text-base">{exam.description}</p>

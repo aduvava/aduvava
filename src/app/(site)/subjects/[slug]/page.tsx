@@ -32,10 +32,6 @@ export default async function SubjectPage({ params, searchParams }: SubjectPageP
     prisma.subject.findUnique({
       where: { slug },
       include: {
-        topics: {
-          include: { _count: { select: { questions: true } } },
-          orderBy: { name: "asc" },
-        },
         theoryChapters: {
           where: {
             isPublished: true,
@@ -56,7 +52,7 @@ export default async function SubjectPage({ params, searchParams }: SubjectPageP
         },
         exams: {
           where: {
-            isPublished: true,
+            isPublished: true, ownerId: null,
             ...(query.grade ? { OR: [{ grade: query.grade }, { grade: null }] } : {}),
             ...(requestedEducationLevel === "THPTQG"
               ? { educationLevel: "THPTQG" as const }
@@ -72,7 +68,6 @@ export default async function SubjectPage({ params, searchParams }: SubjectPageP
             },
           },
           orderBy: { createdAt: "desc" },
-          take: 12,
         },
       },
     }),
@@ -99,9 +94,6 @@ export default async function SubjectPage({ params, searchParams }: SubjectPageP
     (total, chapter) => total + chapter.lessons.length,
     0,
   );
-  const units = databaseSubject.topics.length
-    ? [{ title: "Chuyên đề", lessons: databaseSubject.topics.map((topic) => topic.name) }]
-    : [];
   const subjectItems = allSubjects.map((item) => ({
     slug: item.slug,
     name: item.name,
@@ -113,6 +105,7 @@ export default async function SubjectPage({ params, searchParams }: SubjectPageP
   }));
   const hotExams = databaseSubject.exams.map((exam) => ({
     id: exam.id,
+    contentMode: exam.contentMode, chapterId: exam.chapterId,
     title: exam.title,
     href: `/exams/${exam.id}`,
     durationMinutes: exam.durationMinutes,
@@ -120,6 +113,11 @@ export default async function SubjectPage({ params, searchParams }: SubjectPageP
     attemptCount: exam._count.attempts,
     weeklyParticipants: exam.attempts.length,
   }));
+
+  const topicExams = hotExams.filter(exam => exam.contentMode === "topics");
+  const units = databaseSubject.theoryChapters.map(chapter => ({ title: chapter.title, lessons: topicExams.filter(exam => exam.chapterId === chapter.id) }));
+  const unassigned = topicExams.filter(exam => !exam.chapterId);
+  if (unassigned.length) units.push({ title: "Chuyên đề khác", lessons: unassigned });
 
   const context = new URLSearchParams();
   if (query.level) context.set("level", query.level);

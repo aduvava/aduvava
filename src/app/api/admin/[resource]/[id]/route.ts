@@ -33,11 +33,18 @@ async function updateResource(resource: string, id: string, body: Record<string,
           ? current.subject
           : await tx.subject.findUnique({ where: { id: nextSubjectId }, select: { slug: true } });
         if (!nextSubject) throw new HttpError(404, "Không tìm thấy môn học.");
+        const nextMode = body.contentMode ?? current.contentMode;
+        const nextChapterId = body.chapterId === undefined ? current.chapterId : body.chapterId as string | null;
+        const nextGrade = body.grade === undefined ? current.grade : body.grade;
+        if (nextChapterId) {
+          const chapter = await tx.theoryChapter.findUnique({ where: { id: nextChapterId } });
+          if (!chapter || chapter.subjectId !== nextSubjectId || (chapter.educationLevel && chapter.educationLevel !== nextLevel) || (chapter.grade && chapter.grade !== nextGrade)) throw new HttpError(400, "Chương không thuộc lớp và môn của đề.");
+        }
         let structure: unknown | undefined;
-        if (current.ownerId === null && nextPublished && nextLevel === "THPTQG") {
+        if (current.ownerId === null && nextPublished && nextLevel === "THPTQG" && nextMode === "exams") {
           try {
             structure = validateOfficialNationalExam({
-              educationLevel: nextLevel,
+              educationLevel: nextLevel, contentMode: String(nextMode),
               subjectSlug: nextSubject.slug,
               durationMinutes: typeof body.durationMinutes === "number" ? body.durationMinutes : current.durationMinutes,
               questions: current.questions,
@@ -77,7 +84,7 @@ async function updateResource(resource: string, id: string, body: Record<string,
       return prisma.question.update({ where: { id }, data: question as never });
     }
     case "blogs":
-      return prisma.blogPost.update({ where: { id }, data: body as never });
+      throw new HttpError(404, "Blog đã được gỡ bỏ.");
     case "users":
       return prisma.user.update({ where: { id }, data: body as never, select: { id: true, email: true, name: true, role: true } });
     case "subscriptions":
@@ -106,7 +113,7 @@ async function getResource(resource: string, id: string) {
     case "questions":
       return prisma.question.findUnique({ where: { id }, include: { exam: true, topic: true, answerOptions: true } });
     case "blogs":
-      return prisma.blogPost.findUnique({ where: { id } });
+      throw new HttpError(404, "Blog đã được gỡ bỏ.");
     case "users":
       return prisma.user.findUnique({ where: { id }, select: { id: true, email: true, name: true, role: true, createdAt: true, profile: true } });
     case "subscriptions":
@@ -142,7 +149,7 @@ async function deleteResource(resource: string, id: string) {
       return prisma.question.delete({ where: { id } });
     }
     case "blogs":
-      return prisma.blogPost.delete({ where: { id } });
+      throw new HttpError(404, "Blog đã được gỡ bỏ.");
     case "users":
       return prisma.user.delete({ where: { id } });
     case "subscriptions":

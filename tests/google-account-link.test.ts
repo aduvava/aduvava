@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { googleIdentityMatchesExistingAccount, isVerifiedGoogleIdentity } from "../src/lib/google-account-link";
+import { canAutomaticallyLinkGoogle, googleIdentityMatchesExistingAccount, isVerifiedGoogleIdentity } from "../src/lib/google-account-link";
 
 describe("safe linking of Google to an existing Eduva account", () => {
   it("accepts only Google-verified email identities", () => {
@@ -28,4 +28,13 @@ describe("safe linking of Google to an existing Eduva account", () => {
       { email: "student@example.com", email_verified: "true" }, "student@example.com",
     ), false);
   });
+});
+
+it("automatically links only verified Google-hosted email identities", () => {
+ assert.equal(canAutomaticallyLinkGoogle({ email: "user@gmail.com", email_verified: true }), true);
+ assert.equal(canAutomaticallyLinkGoogle({ email: "user@school.edu.vn", email_verified: true, hd: "school.edu.vn" }), true);
+ assert.equal(canAutomaticallyLinkGoogle({ email: "user@yahoo.com", email_verified: true }), false);
+ assert.equal(canAutomaticallyLinkGoogle({ email: "user@gmail.com.attacker.org", email_verified: true }), false);
+ assert.equal(canAutomaticallyLinkGoogle({ email: "user@gmail.com", email_verified: false }), false);
+ assert.equal(canAutomaticallyLinkGoogle(null), false);
 });

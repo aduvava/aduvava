@@ -35,7 +35,8 @@ const resources = [
   { href: "/users", label: "Người dùng" },
   { href: "/exams", label: "Đề thi" },
   { href: "/documents", label: "Tài liệu" },
-  { href: "/theory-chapters", label: "Chương lý thuyết" },
+  { href: "/chapters", label: "Môn học & chương" },
+  { href: "/theory-chapters", label: "Lý thuyết" },
   { href: "/payments", label: "Thanh toán & VIP" },
 ];
 
@@ -1244,7 +1245,35 @@ async function exportUsersCsv(res) {
   res.end(buffer);
 }
 
-function examCreateForm(subjects) {
+function chapterSelect(chapters, subjectElement, gradeElement, levelElement) {
+  const id = `${subjectElement}Chapter`;
+  const options = chapters.map(c => `<option value="${escapeHtml(c.id)}" data-subject="${escapeHtml(c.subjectId)}" data-grade="${escapeHtml(c.grade || "")}" data-level="${escapeHtml(c.educationLevel || "")}">${escapeHtml(c.title)}</option>`).join("");
+  return `<label class="wide">Chương / chuyên đề<select name="chapterId" id="${id}"><option value="">Chưa phân chương</option>${options}</select><a class="button" href="/chapters">+ Nhập chương</a></label>
+  <script>document.addEventListener("DOMContentLoaded", () => {
+    const select = document.getElementById("${id}"); const subject = document.getElementById("${subjectElement}"); const grade = document.getElementById("${gradeElement}"); const level = document.getElementById("${levelElement}");
+    function sync() { Array.from(select.options).forEach(o => { o.hidden = !!o.value && (o.dataset.subject !== subject.value || (o.dataset.grade && o.dataset.grade !== grade.value) || (o.dataset.level && o.dataset.level !== level.value)); }); if (select.selectedOptions[0]?.hidden) select.value = ""; }
+    [subject, grade, level].forEach(el => el.addEventListener("change", sync)); sync();
+  });</script>`;
+}
+async function chaptersPage(user, notice) {
+  await ensureSubjectCatalog(prisma);
+  const [subjects, chapters] = await Promise.all([prisma.subject.findMany({ orderBy: { name: "asc" } }), prisma.theoryChapter.findMany({ include: { subject: true }, orderBy: [{ position: "asc" }, { title: "asc" }] })]);
+  return layout({ title: "Môn học & chương", active: "/chapters", user, notice, body: `${pageHeader("Môn học & chương", "Nhập chương trước, sau đó chọn chương khi tạo đề hoặc tải lý thuyết.")}
+  <section class="card"><h2>Nhập chương</h2><form method="post" action="/chapters/create" class="form"><label>Cấp học<select name="level" id="chapterLevel">${optionList(studyFlows.map(f => ({ value: f.id, label: f.label })))}</select></label><label>Lớp<select name="grade" id="chapterGrade" required></select></label><label>Môn học<select name="subjectId">${subjects.map(s => `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)}</option>`).join("")}</select></label><label>Tên chương<input name="title" required maxlength="180" /></label><label>Thứ tự<input name="position" type="number" min="0" max="10000" value="0" /></label><button type="submit">Lưu chương</button></form></section>
+  ${table(["Môn", "Lớp", "Chương"], chapters.map(c => row([escapeHtml(c.subject.name), escapeHtml(c.grade || "Tất cả"), escapeHtml(c.title)])))}
+  <script>const levels = ${JSON.stringify(Object.fromEntries(studyFlows.map(f => [f.id, f.grades])))}; const level = document.getElementById("chapterLevel"); const grade = document.getElementById("chapterGrade"); function sync() { grade.replaceChildren(...levels[level.value].map(g => new Option(g, g))); } level.addEventListener("change", sync); sync();</script>` });
+}
+async function createChapter(req, res) {
+  try {
+    const form = await readForm(req); const level = String(form.get("level") || ""); const grade = String(form.get("grade") || ""); const subjectId = String(form.get("subjectId") || ""); const title = String(form.get("title") || "").trim(); const position = Number(form.get("position") || 0);
+    if (!title || title.length > 180 || !Number.isInteger(position) || position < 0 || position > 10000 || !studyFlows.find(f => f.id === level)?.grades.includes(grade)) throw new Error("Thông tin chương không hợp lệ.");
+    if (!await prisma.subject.findUnique({ where: { id: subjectId } })) throw new Error("Không tìm thấy môn học.");
+    await prisma.theoryChapter.create({ data: { subjectId, educationLevel: level, grade, title, position, slug: `chuong-${crypto.randomUUID()}`, isPublished: true } });
+    return redirect(res, `/chapters?notice=${encodeURIComponent("Đã lưu chương")}`);
+  } catch (error) { return redirect(res, `/chapters?notice=${encodeURIComponent(error.message || "Không lưu được chương")}`); }
+}
+
+function examCreateForm(subjects, chapters) {
   const subjectOptions = subjects.map((subject) => {
     return `<option value="${escapeHtml(subject.id)}" data-name="${escapeHtml(normalizeText(subject.name))}" data-slug="${escapeHtml(subject.slug)}">${escapeHtml(subject.name)}</option>`;
   }).join("");
@@ -1328,10 +1357,10 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
           <div class="mode-tabs" role="tablist" aria-label="Loại nội dung">
             <button class="mode-tab active" type="button" data-content-mode="topics" data-exam-type="PRACTICE">📖 Theo Chuyên đề</button>
             <button class="mode-tab" type="button" data-content-mode="exams" data-exam-type="MOCK">🗓 Theo Kì thi</button>
-            <button class="mode-tab" type="button" data-content-mode="theory" data-exam-type="PRACTICE">📄 Lý thuyết</button>
           </div>
           <div class="mode-note" id="contentModeNote">Tạo bộ câu hỏi luyện tập theo chuyên đề của môn học đã chọn.</div>
         </label>
+        ${chapterSelect(chapters, "examSubject", "examGrade", "examEducationLevel")}
         <label>Quyền truy cập
           <select name="accessLevel">
             <option value="FREE">Miễn phí</option>
@@ -1529,6 +1558,7 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
           body.set("bulkQuestions", bulk.value);
           body.set("subjectId", subject.value);
           body.set("educationLevel", level.value);
+          body.set("contentMode", contentModeInput.value);
           body.set("durationMinutes", durationInput.value);
           try {
             const response = await fetch("/exams/preview", {
@@ -1563,14 +1593,14 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
           textarea.focus();
         }
         function currentNationalRule() {
-          if (level.value !== "THPTQG") return null;
+          if (level.value !== "THPTQG" || contentModeInput.value !== "exams") return null;
           const slug = subject.selectedOptions[0]?.dataset.slug || "";
           return nationalRules[slug] || null;
         }
         function syncNationalRule() {
           const rule = currentNationalRule();
-          durationInput.readOnly = level.value === "THPTQG";
-          if (level.value !== "THPTQG") {
+          durationInput.readOnly = level.value === "THPTQG" && contentModeInput.value === "exams";
+          if (level.value !== "THPTQG" || contentModeInput.value !== "exams") {
             nationalExamHint.textContent = "Các đề ngoài THPTQG: admin tự chọn số câu, thời lượng và dạng câu.";
           } else if (!rule) {
             nationalExamHint.textContent = "Môn này chưa có mẫu THPTQG chính thức. Hãy chọn môn có cấu trúc được định nghĩa.";
@@ -1641,6 +1671,7 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
             contentModeInput.value = button.dataset.contentMode || "topics";
             examTypeInput.value = button.dataset.examType || "PRACTICE";
             contentModeNote.textContent = modeNotes[contentModeInput.value] || modeNotes.topics;
+            syncNationalRule(); schedulePreview();
           });
         });
         level.addEventListener("change", () => { syncFlow(); schedulePreview(); });
@@ -1699,19 +1730,20 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
 
 async function examsPage(user, notice) {
   await ensureSubjectCatalog(prisma);
-  const [exams, subjects] = await Promise.all([
+  const [exams, subjects, chapters] = await Promise.all([
     prisma.exam.findMany({
     orderBy: { createdAt: "desc" },
     take: 100,
     include: { subject: true, _count: { select: { questions: true, attempts: true } } },
     }),
     prisma.subject.findMany({ orderBy: { name: "asc" } }),
+    prisma.theoryChapter.findMany({ orderBy: [{ position: "asc" }, { title: "asc" }] }),
   ]);
   const rows = exams.map((item) =>
     row([
       `<strong>${escapeHtml(item.title)}</strong><div class="muted">${escapeHtml(item.code)}</div>`,
       escapeHtml(item.subject?.name || "-"),
-      badge(examContentModeLabel(item.examStructure?.contentMode) || item.type),
+      badge(examContentModeLabel(item.contentMode) || item.type),
       badge(item.accessLevel),
       `${formatNumber(item._count.questions)} câu / ${formatNumber(item._count.attempts)} lượt`,
       `${item.durationMinutes} phút`,
@@ -1719,7 +1751,7 @@ async function examsPage(user, notice) {
     ]),
   );
   const body = `${pageHeader("Đề thi", "Tạo đề theo cấp học, lớp/nhóm thi và môn học giống luồng học sinh trên web.", `<a class="button" href="#tao-de-theo-mon">Tạo đề mới</a>`)}
-  ${examCreateForm(subjects)}
+  ${examCreateForm(subjects, chapters)}
   <div style="margin-top:18px">${table(["Đề", "Môn", "Loại", "Quyền", "Thống kê", "Thời gian", "Thao tác"], rows)}</div>`;
   return layout({ title: "Đề thi", active: "/exams", user, notice, body });
 }
@@ -1790,7 +1822,8 @@ async function theoryChaptersPage(user, notice) {
     <div class="exam-create-grid">
       <label>Cấp học<select name="level" id="theoryLevel">${optionList(studyFlows.map((flow) => ({ value: flow.id, label: flow.label })))}</select></label>
       <label>Lớp / nhóm thi<select name="grade" id="theoryGrade" required></select></label>
-      <label>Môn học<select name="subjectId" required>${options}</select></label>
+      <label>Môn học<select name="subjectId" id="theorySubject" required>${options}</select></label>
+      ${chapterSelect(chapters, "theorySubject", "theoryGrade", "theoryLevel")}
       <label class="wide">Tên lý thuyết<input name="title" required maxlength="180" /></label>
       <label>Quyền truy cập<select name="accessLevel"><option value="FREE">Miễn phí</option><option value="PRO">VIP</option></select></label>
       <label>File PDF / Word<input name="file" type="file" accept=".pdf,.docx" required /></label>
@@ -1815,6 +1848,9 @@ async function uploadTheoryChapter(req, res, user) {
     const grade = String(fields.get("grade") || "");
     const subjectId = String(fields.get("subjectId") || "");
     const accessLevel = String(fields.get("accessLevel") || "FREE");
+    const chapterId = String(fields.get("chapterId") || "");
+    const selectedChapter = chapterId ? await prisma.theoryChapter.findUnique({ where: { id: chapterId } }) : null;
+    if (chapterId && (!selectedChapter || selectedChapter.subjectId !== subjectId || (selectedChapter.educationLevel && selectedChapter.educationLevel !== level) || (selectedChapter.grade && selectedChapter.grade !== grade))) throw new Error("Chương không thuộc lớp và môn đã chọn.");
     if (title.length < 3 || title.length > 180 || description.length > 1200 || !["FREE", "PRO"].includes(accessLevel)) throw new Error("Thông tin lý thuyết không hợp lệ.");
     const flow = studyFlows.find((item) => item.id === level);
     if (!flow?.grades.includes(grade)) throw new Error("Lớp không hợp lệ.");
@@ -1831,7 +1867,7 @@ async function uploadTheoryChapter(req, res, user) {
     await prisma.$transaction(async (tx) => {
       const doc = await tx.document.create({ data: { title, description: description || `Lý thuyết ${grade} · ${subject.name}`, level, grade, subject: subject.name, type: "THEORY_SUMMARY", status: "APPROVED", approvedAt: new Date(), originalName: path.basename(file.filename), storedName, mimeType, fileSize: file.size, uploaderId: user.id } });
       const slug = `ly-thuyet-${crypto.randomUUID().slice(0, 12)}`;
-      const chapter = await tx.theoryChapter.create({ data: { subjectId, educationLevel: level, grade, slug, title, description: description || null, isPublished: true } });
+      const chapter = selectedChapter ?? await tx.theoryChapter.create({ data: { subjectId, educationLevel: level, grade, slug, title, description: description || null, isPublished: true } });
       await tx.theoryLesson.create({ data: { chapterId: chapter.id, slug, title, summary: description || null, content: `document:${doc.id}`, accessLevel, isPublished: true } });
     });
     return redirect(res, `/theory-chapters?notice=${encodeURIComponent("Đã lưu tài liệu lý thuyết")}`);
@@ -2707,7 +2743,7 @@ async function createExam(req, res) {
     redirect(res, `/exams?notice=${encodeURIComponent("Loại đề hoặc quyền truy cập không hợp lệ")}`);
     return;
   }
-  if (!["topics", "exams", "theory"].includes(contentMode)) {
+  if (!["topics", "exams"].includes(contentMode)) {
     redirect(res, `/exams?notice=${encodeURIComponent("Loại nội dung không hợp lệ")}`);
     return;
   }
@@ -2718,12 +2754,17 @@ async function createExam(req, res) {
     return;
   }
 
+  const chapterId = String(form.get("chapterId") || "") || null;
+  if (chapterId) {
+    const chapter = await prisma.theoryChapter.findUnique({ where: { id: chapterId } });
+    if (!chapter || chapter.subjectId !== subjectId || (chapter.educationLevel && chapter.educationLevel !== educationLevel) || (chapter.grade && chapter.grade !== grade)) return redirect(res, `/exams?notice=${encodeURIComponent("Chương không thuộc lớp và môn đã chọn.")}`);
+  }
   const importSource = String(form.get("bulkQuestions") || "").trim();
   let parsed;
   try {
     parsed = parseAdminExamQuestions(
       importSource,
-      { educationLevel, subjectSlug: subject.slug, durationMinutes },
+      { educationLevel, subjectSlug: subject.slug, durationMinutes, contentMode },
       normalizeQuestionInput,
       parseQuestionsFromImport,
     );
@@ -2754,6 +2795,7 @@ async function createExam(req, res) {
         durationMinutes,
         educationLevel,
         grade,
+        contentMode, chapterId,
         examStructure: {
           ...(parsed.rule || {}),
           source: "admin-server",
@@ -2818,7 +2860,7 @@ async function previewExamImport(req, res) {
     const subject = await prisma.subject.findUnique({ where: { id: subjectId }, select: { slug: true } });
     if (!subject) throw new Error("Hãy chọn môn học hợp lệ.");
     const parsed = parseAdminExamQuestions(importSource, {
-      educationLevel, subjectSlug: subject.slug, durationMinutes,
+      educationLevel, subjectSlug: subject.slug, durationMinutes, contentMode: String(form.get("contentMode") || "topics"),
     }, normalizeQuestionInput, parseQuestionsFromImport);
     sendJson(res, { ok: true, questions: parsed.preview });
   } catch (error) {
@@ -2895,6 +2937,8 @@ async function router(req, res) {
   }
   if (pathname === "/exams" && req.method === "GET") return sendHtml(res, await examsPage(user, notice));
   if (pathname.startsWith("/announcements")) return redirect(res, `/store-items?notice=${encodeURIComponent("Đã thay Banner / thông báo bằng trang quản lý cửa hàng")}`);
+  if (pathname === "/chapters" && req.method === "GET") return sendHtml(res, await chaptersPage(user, notice));
+  if (pathname === "/chapters/create" && req.method === "POST") return createChapter(req, res);
   if (pathname === "/theory-chapters" && req.method === "GET") return sendHtml(res, await theoryChaptersPage(user, notice));
   if (pathname === "/theory-chapters/upload" && req.method === "POST") return uploadTheoryChapter(req, res, user);
   if (pathname === "/documents" && req.method === "GET") return sendHtml(res, await documentsPage(user, notice));

@@ -1,3 +1,4 @@
+import { chapterMatches } from "@/lib/learning-context";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -6,6 +7,7 @@ import { readLimitedJson } from "@/lib/limited-json";
 
 const schema = z.object({
   grade: z.enum(["Lớp 6", "Lớp 7", "Lớp 8", "Lớp 9", "Lớp 10", "Lớp 11", "Lớp 12", "Ôn thi vào 10", "Ôn thi THPTQG"]),
+  contentMode: z.enum(["topics", "exams"]).default("exams"), chapterId: z.string().min(1).nullable().default(null),
   subjectId: z.string().min(1), title: z.string().trim().min(3).max(250), description: z.string().max(20000),
   durationMinutes: z.number().int().min(1).max(600), accessLevel: z.enum(["FREE", "PRO"]),
   questions: z.array(z.object({ prompt: z.string().trim().min(1).max(50000), options: z.array(z.string().trim().min(1).max(20000)).min(2).max(6), correctIndex: z.number().int().nonnegative(), explanation: z.string().max(50000) }).strict()).min(1).max(2000),
@@ -20,9 +22,13 @@ export async function POST(request: Request) {
     if (input.grade === "Ôn thi THPTQG" && subject.family !== "THPTQG") throw new HttpError(400, "Môn học không thuộc ôn thi THPTQG.");
     if (input.questions.some((question) => question.correctIndex >= question.options.length)) throw new HttpError(400, "Đáp án đúng không hợp lệ.");
     const level = input.grade === "Ôn thi THPTQG" ? "THPTQG" : input.grade === "Ôn thi vào 10" ? "EXAM_10" : Number(input.grade.slice(4)) <= 9 ? "THCS" : "THPT";
+    if (input.chapterId) {
+      const chapter = await prisma.theoryChapter.findUnique({ where: { id: input.chapterId } });
+      if (!chapter || !chapterMatches(chapter, input.subjectId, input.grade)) throw new HttpError(400, "Chương không thuộc lớp và môn đã chọn.");
+    }
     const suffix = randomUUID().replace(/-/g, "").slice(0, 16);
     const exam = await prisma.$transaction(async (tx) => {
-      const created = await tx.exam.create({ data: { code: `ADMIN-${suffix}`, slug: `admin-${suffix}`, title: input.title, description: input.description, family: subject.family, type: "MOCK", accessLevel: input.accessLevel, year: new Date().getFullYear(), durationMinutes: input.durationMinutes, educationLevel: level, grade: input.grade === "Ôn thi vào 10" || input.grade === "Ôn thi THPTQG" ? "Môn thi" : input.grade, subjectId: subject.id, isPublished: false } });
+      const created = await tx.exam.create({ data: { code: `ADMIN-${suffix}`, slug: `admin-${suffix}`, title: input.title, description: input.description, family: subject.family, type: input.contentMode === "topics" ? "PRACTICE" : "MOCK", contentMode: input.contentMode, chapterId: input.chapterId, accessLevel: input.accessLevel, year: new Date().getFullYear(), durationMinutes: input.durationMinutes, educationLevel: level, grade: input.grade === "Ôn thi vào 10" || input.grade === "Ôn thi THPTQG" ? "Môn thi" : input.grade, subjectId: subject.id, isPublished: false } });
       for (let start = 0; start < input.questions.length; start += 100) {
         const chunk = input.questions.slice(start, start + 100).map((question, index) => ({ ...question, id: randomUUID(), position: start + index + 1 }));
         await tx.question.createMany({ data: chunk.map((question) => ({ id: question.id, examId: created.id, position: question.position, type: "SINGLE_CHOICE", prompt: question.prompt, explanation: question.explanation || null, points: 1 })) });
