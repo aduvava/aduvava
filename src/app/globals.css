@@ -34,16 +34,15 @@ body {
   padding-top: 64px;
 }
 
-/* Reserve space so fixed mobile tabs never cover the final card or footer. */
+/* A single-row mobile nav leaves a consistent footer clearance on every phone. */
 @media (max-width: 1023px) {
   .site-layout {
-    padding-bottom: calc(116px + env(safe-area-inset-bottom));
+    padding-bottom: calc(68px + env(safe-area-inset-bottom));
   }
-}
 
-@media (min-width: 480px) and (max-width: 1023px) {
-  .site-layout {
-    padding-bottom: calc(70px + env(safe-area-inset-bottom));
+  /* Landing/about pages deliberately have no fixed bottom navigation. */
+  .site-layout:has(.hide-site-header) {
+    padding-bottom: 0;
   }
 }
 
