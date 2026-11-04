@@ -306,7 +306,7 @@ function ChatSupport() {
                 <MascotAvatar />
               </span>
               <div>
-                <p className="font-extrabold">Hỗ trợ Ava</p>
+                <p className="font-extrabold">Hỗ trợ Educhi</p>
                 <p className="text-xs text-orange-100">Thường phản hồi trong vài phút</p>
               </div>
             </div>
@@ -314,7 +314,7 @@ function ChatSupport() {
           </div>
           <div className="space-y-3 bg-orange-50/50 p-5">
             <div className="max-w-[85%] rounded-2xl rounded-tl-md bg-white p-3 text-sm leading-6 text-slate-600 shadow-sm">
-              Chào bạn! Ava có thể hỗ trợ gì cho việc học hôm nay?
+              Chào bạn! Educhi có thể hỗ trợ gì cho việc học hôm nay?
             </div>
             <div className="flex gap-2">
               <input placeholder="Nhập câu hỏi..." className="min-w-0 flex-1 rounded-2xl border border-orange-100 bg-white px-4 py-3 text-sm outline-none focus:border-orange-400" />
