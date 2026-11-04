@@ -45,7 +45,7 @@ export default async function AdminUsersPage() {
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-16 md:px-6">
-      <p className="text-xs font-black uppercase tracking-[0.2em] text-orange-500">Quản trị Ava</p>
+      <p className="text-xs font-black uppercase tracking-[0.2em] text-orange-500">Quản trị Educhi</p>
       <h1 className="mt-3 text-4xl font-black text-slate-950">Admin · Người dùng</h1>
 
       <section className="mt-8 grid gap-4 md:grid-cols-3">
