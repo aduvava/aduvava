@@ -5,8 +5,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
 export const metadata: Metadata = {
-  title: "Nạp VIP | Ava",
-  description: "Đăng ký VIP Ava để mở khóa đề thi, lý thuyết và AI chấm bài.",
+  title: "Nạp VIP | Educhi",
+  description: "Đăng ký VIP Educhi để mở khóa đề thi, lý thuyết và AI chấm bài.",
 };
 
 function featureList(value: unknown) {
