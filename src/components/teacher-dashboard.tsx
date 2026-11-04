@@ -154,7 +154,7 @@ export function TeacherDashboard({ initialTab, teacherName, stats, report, exams
       name: className,
       teacher: teacherName,
       subject,
-      description: description || "Lớp học mới trên Ava.",
+      description: description || "Lớp học mới trên Educhi.",
       schedule: schedule || "Chưa cập nhật lịch học",
       students: Number.isFinite(studentLimit) && studentLimit > 0 ? Math.min(studentLimit, 999) : 0,
       assignments: 0,
