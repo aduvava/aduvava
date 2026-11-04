@@ -4,7 +4,7 @@ import { ClassroomHub } from "@/components/classroom-hub";
 import { getCurrentUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "Lớp học | Ava",
+  title: "Lớp học | Educhi",
   description: "Quản lý lớp học, bài tập và kết nối với giáo viên.",
 };
 
