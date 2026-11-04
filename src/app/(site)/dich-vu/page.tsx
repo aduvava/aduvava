@@ -5,8 +5,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
 export const metadata: Metadata = {
-  title: "Cửa hàng EXP | Ava",
-  description: "Dùng EXP để đổi vật phẩm học tập và hình ảnh trong Ava.",
+  title: "Cửa hàng EXP | Educhi",
+  description: "Dùng EXP để đổi vật phẩm học tập và hình ảnh trong Educhi.",
 };
 
 export default async function StorePage() {
