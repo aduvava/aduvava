@@ -25,7 +25,7 @@ export function RegisterForm() {
     if (!response.ok) {
       if (response.status === 409) {
         setExistingAccount(true);
-        setMessage("Email này đã có tài khoản Eduva. Hãy đăng nhập tài khoản cũ thay vì đăng ký lại; toàn bộ dữ liệu của bạn vẫn được giữ.");
+        setMessage("Email này đã có tài khoản Educhi. Hãy đăng nhập tài khoản cũ thay vì đăng ký lại; toàn bộ dữ liệu của bạn vẫn được giữ.");
       } else {
         setMessage("Không tạo được tài khoản. Vui lòng kiểm tra thông tin và thử lại.");
       }
@@ -54,7 +54,7 @@ export function RegisterForm() {
       {message ? <p role="status" className="text-sm font-semibold text-ink/65">{message}</p> : null}
       {existingAccount ? (
         <Link href="/login?role=student" className="rounded-xl bg-orange-50 px-4 py-3 text-center text-sm font-bold text-orange-700 underline">
-          Đăng nhập tài khoản Eduva đã có
+          Đăng nhập tài khoản Educhi đã có
         </Link>
       ) : null}
     </form>
