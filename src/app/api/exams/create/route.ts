@@ -53,7 +53,7 @@ export async function POST(request: Request) {
           title: payload.title,
           description: `Đề luyện tập do ${user.name ?? user.email ?? "học viên"} tạo.`,
           family: subject.family,
-          type: "PRACTICE",
+          type: "PRACTICE", contentMode: "topics",
           accessLevel: "FREE",
           year: new Date().getFullYear(),
           durationMinutes: payload.durationMinutes,

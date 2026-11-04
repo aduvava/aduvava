@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { subjectImage } from "@/lib/subject-visuals";
 import { useState } from "react";
 import {
   ArrowLeft,
@@ -32,7 +33,7 @@ import { MascotAvatar } from "@/components/mascot-avatar";
 
 type LearningUnit = {
   title: string;
-  lessons: string[];
+  lessons: HotExam[];
 };
 
 type SubjectItem = {
@@ -46,6 +47,7 @@ type SubjectItem = {
 };
 
 type HotExam = {
+  contentMode: string;
   id: string;
   title: string;
   href: string;
@@ -160,7 +162,7 @@ export function SubjectLearningDetail({
                   "grid h-16 w-16 shrink-0 place-items-center rounded-2xl",
                   active ? "bg-white/95 text-orange-500" : `bg-gradient-to-br ${item.accent} text-white`,
                 )}>
-                  <SubjectIcon icon={item.icon} className="h-8 w-8" />
+                  {subjectImage(item.slug, item.name) ? <img src={subjectImage(item.slug, item.name)!} alt={`Môn ${item.name}`} className="h-full w-full rounded-2xl object-cover" /> : <SubjectIcon icon={item.icon} className="h-8 w-8" />}
                 </span>
                 <span className="min-w-0">
                   <span className="block truncate text-lg font-black">{item.shortName}</span>
@@ -228,18 +230,18 @@ export function SubjectLearningDetail({
                   <section key={unit.title}>
                     <h3 className="text-xl font-black text-orange-600 sm:text-2xl">
                       Chương {unitIndex + 1}: {unit.title}
-                      <span className="ml-3 text-sm font-bold text-slate-400">({unit.lessons.length * 12} đề luyện)</span>
+                      <span className="ml-3 text-sm font-bold text-slate-400">({unit.lessons.length} đề luyện)</span>
                     </h3>
                     <div className="mt-4 space-y-4">
                       {unit.lessons.map((lesson, lessonIndex) => {
-                        const exam = hotExams.length ? hotExams[(unitIndex + lessonIndex) % hotExams.length] : null;
+                        const exam = lesson;
                         return (
-                          <article key={lesson} className="rounded-[1.6rem] border border-slate-200/80 bg-white px-5 py-5 shadow-sm sm:px-7">
+                          <article key={lesson.id} className="rounded-[1.6rem] border border-slate-200/80 bg-white px-5 py-5 shadow-sm sm:px-7">
                             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                               <div className="flex min-w-0 gap-4">
                                 <span className="text-lg font-black text-slate-400">{lessonIndex + 1}.</span>
                                 <div>
-                                  <h4 className="font-bold leading-7 text-slate-700">{lesson}</h4>
+                                  <h4 className="font-bold leading-7 text-slate-700">{lesson.title}</h4>
                                   {exam ? (
                                     <div className="mt-2 flex flex-wrap gap-4 text-xs font-extrabold uppercase text-slate-400">
                                       <span className="inline-flex items-center gap-1.5"><FileText className="h-4 w-4" /> {exam.questionCount} câu</span>
@@ -264,7 +266,7 @@ export function SubjectLearningDetail({
               </div>
               {!subject.units.length ? (
                 <div className="mt-6 rounded-[2rem] border-2 border-dashed border-orange-200 bg-white/70 px-6 py-12 text-center text-sm font-semibold text-slate-500">
-                  Chưa có chuyên đề trong database.
+                  Chưa có chương hoặc đề luyện cho môn học này.
                 </div>
               ) : null}
             </>
@@ -278,7 +280,7 @@ export function SubjectLearningDetail({
                 <p className="mt-2 text-sm leading-6 text-slate-500">Chọn đúng loại kì thi để luyện cấu trúc và thời gian làm bài tương ứng.</p>
               </div>
               <div className="mt-6 grid gap-4 lg:grid-cols-2">
-                {hotExams.map((exam) => (
+                {hotExams.filter(exam => exam.contentMode === "exams").map((exam) => (
                   <article key={exam.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-md">
                     <h3 className="font-black leading-6 text-slate-800">{exam.title}</h3>
                     <div className="mt-4 flex flex-wrap gap-4 text-xs font-bold uppercase text-slate-400">
@@ -292,7 +294,7 @@ export function SubjectLearningDetail({
                   </article>
                 ))}
               </div>
-              {!hotExams.length ? <p className="mt-6 rounded-2xl border border-dashed border-orange-200 bg-white px-5 py-10 text-center text-sm font-semibold text-slate-500">Chưa có đề thi được xuất bản.</p> : null}
+              {!hotExams.some(exam => exam.contentMode === "exams") ? <p className="mt-6 rounded-2xl border border-dashed border-orange-200 bg-white px-5 py-10 text-center text-sm font-semibold text-slate-500">Chưa có đề thi được xuất bản.</p> : null}
             </>
           ) : null}
 

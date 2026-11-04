@@ -1,3 +1,4 @@
+import { requireTheoryDocumentAccess } from "@/lib/theory-document-access";
 import { readFile } from "fs/promises";
 import { readPrivateDocument } from "@/lib/private-document-storage";
 import mammoth from "mammoth";
@@ -28,6 +29,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const { id } = await params;
     const document = await prisma.document.findUnique({ where: { id } });
     if (!document) throw new HttpError(404, "Không tìm thấy tài liệu.");
+    await requireTheoryDocumentAccess(id, user);
     if (document.status !== "APPROVED" && document.uploaderId !== user.id && user.role !== "ADMIN") {
       throw new HttpError(403, "Tài liệu chưa được công khai.");
     }

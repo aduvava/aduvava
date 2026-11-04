@@ -1,24 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, signOut } from "next-auth/react";
 
 export function GoogleSignInButton({
   enabled,
   callbackUrl = "/dashboard",
   label = "Tiếp tục với Google",
-  selectAccount = false,
+  selectAccount = true,
+  linkAccount = false,
 }: {
   enabled: boolean;
   callbackUrl?: string;
   label?: string;
   selectAccount?: boolean;
+  linkAccount?: boolean;
 }) {
   const [pending, setPending] = useState(false);
 
   async function handleGoogleLogin() {
     setPending(true);
     try {
+      if (!linkAccount) await signOut({ redirect: false });
       await signIn("google", {
         callbackUrl: "/auth/continue?callbackUrl=" + encodeURIComponent(callbackUrl),
       }, selectAccount ? { prompt: "select_account" } : undefined);

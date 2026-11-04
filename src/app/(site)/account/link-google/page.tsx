@@ -47,13 +47,14 @@ export default async function LinkGooglePage({
           <GoogleSignInButton
             enabled={googleEnabled}
             label="Liên kết tài khoản Google"
+            linkAccount
             selectAccount
             callbackUrl={destination}
           />
         </div>
         <p className="mt-3 text-xs leading-5 text-slate-500">
           Dữ liệu, lịch sử làm bài, điểm, đề đã tạo và quyền truy cập sẽ được giữ ở tài khoản Eduva hiện tại.
-          Eduva không tự ghép tài khoản chỉ dựa trên địa chỉ email.
+          Bước này chỉ cần một lần khi Google không trực tiếp quản lý hộp thư của tài khoản cũ.
         </p>
         <Link href={destination} className="mt-5 block text-center text-sm font-bold text-orange-600 hover:underline">
           Bỏ qua, tiếp tục dùng mật khẩu

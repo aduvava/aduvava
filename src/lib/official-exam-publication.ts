@@ -14,11 +14,12 @@ export type OfficialExamQuestion = {
 
 export function validateOfficialNationalExam(input: {
   educationLevel: string | null;
+  contentMode?: string;
   subjectSlug: string;
   durationMinutes: number;
   questions: OfficialExamQuestion[];
 }): NationalExamRule | null {
-  if (input.educationLevel !== "THPTQG") return null;
+  if (input.educationLevel !== "THPTQG" || input.contentMode === "topics") return null;
   const rule = getNationalExamRule(input.subjectSlug);
   if (!rule) throw new Error("Môn học này chưa có cấu trúc THPTQG chính thức.");
   if (input.durationMinutes !== rule.durationMinutes) {

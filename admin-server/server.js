@@ -1,12 +1,15 @@
+const { ensureSubjectCatalog } = require("../src/lib/subject-catalog.js");
 const http = require("http");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
+const readXlsxFile = require("read-excel-file/node");
 const { createCsv } = require("./csv-export");
 const { parseAdminExamQuestions } = require("./exam-question-import");
 const nationalExamTemplates = require("../src/data/national-exam-templates.json");
+const defaultVipPlans = require("../src/data/default-vip-plans.json");
 const { transitionManualPayment } = require("../src/lib/payment-transition.js");
 const { trustedPostOrigin, cookieSecuritySuffix } = require("./request-security");
 const { rateLimitOperation, TooManyRequestsError } = require("../src/lib/security-throttle.js");
@@ -32,6 +35,8 @@ const resources = [
   { href: "/users", label: "Người dùng" },
   { href: "/exams", label: "Đề thi" },
   { href: "/documents", label: "Tài liệu" },
+  { href: "/chapters", label: "Môn học & chương" },
+  { href: "/theory-chapters", label: "Lý thuyết" },
   { href: "/payments", label: "Thanh toán & VIP" },
 ];
 
@@ -1240,7 +1245,35 @@ async function exportUsersCsv(res) {
   res.end(buffer);
 }
 
-function examCreateForm(subjects) {
+function chapterSelect(chapters, subjectElement, gradeElement, levelElement) {
+  const id = `${subjectElement}Chapter`;
+  const options = chapters.map(c => `<option value="${escapeHtml(c.id)}" data-subject="${escapeHtml(c.subjectId)}" data-grade="${escapeHtml(c.grade || "")}" data-level="${escapeHtml(c.educationLevel || "")}">${escapeHtml(c.title)}</option>`).join("");
+  return `<label class="wide">Chương / chuyên đề<select name="chapterId" id="${id}"><option value="">Chưa phân chương</option>${options}</select><a class="button" href="/chapters">+ Nhập chương</a></label>
+  <script>document.addEventListener("DOMContentLoaded", () => {
+    const select = document.getElementById("${id}"); const subject = document.getElementById("${subjectElement}"); const grade = document.getElementById("${gradeElement}"); const level = document.getElementById("${levelElement}");
+    function sync() { Array.from(select.options).forEach(o => { o.hidden = !!o.value && (o.dataset.subject !== subject.value || (o.dataset.grade && o.dataset.grade !== grade.value) || (o.dataset.level && o.dataset.level !== level.value)); }); if (select.selectedOptions[0]?.hidden) select.value = ""; }
+    [subject, grade, level].forEach(el => el.addEventListener("change", sync)); sync();
+  });</script>`;
+}
+async function chaptersPage(user, notice) {
+  await ensureSubjectCatalog(prisma);
+  const [subjects, chapters] = await Promise.all([prisma.subject.findMany({ orderBy: { name: "asc" } }), prisma.theoryChapter.findMany({ include: { subject: true }, orderBy: [{ position: "asc" }, { title: "asc" }] })]);
+  return layout({ title: "Môn học & chương", active: "/chapters", user, notice, body: `${pageHeader("Môn học & chương", "Nhập chương trước, sau đó chọn chương khi tạo đề hoặc tải lý thuyết.")}
+  <section class="card"><h2>Nhập chương</h2><form method="post" action="/chapters/create" class="form"><label>Cấp học<select name="level" id="chapterLevel">${optionList(studyFlows.map(f => ({ value: f.id, label: f.label })))}</select></label><label>Lớp<select name="grade" id="chapterGrade" required></select></label><label>Môn học<select name="subjectId">${subjects.map(s => `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)}</option>`).join("")}</select></label><label>Tên chương<input name="title" required maxlength="180" /></label><label>Thứ tự<input name="position" type="number" min="0" max="10000" value="0" /></label><button type="submit">Lưu chương</button></form></section>
+  ${table(["Môn", "Lớp", "Chương"], chapters.map(c => row([escapeHtml(c.subject.name), escapeHtml(c.grade || "Tất cả"), escapeHtml(c.title)])))}
+  <script>const levels = ${JSON.stringify(Object.fromEntries(studyFlows.map(f => [f.id, f.grades])))}; const level = document.getElementById("chapterLevel"); const grade = document.getElementById("chapterGrade"); function sync() { grade.replaceChildren(...levels[level.value].map(g => new Option(g, g))); } level.addEventListener("change", sync); sync();</script>` });
+}
+async function createChapter(req, res) {
+  try {
+    const form = await readForm(req); const level = String(form.get("level") || ""); const grade = String(form.get("grade") || ""); const subjectId = String(form.get("subjectId") || ""); const title = String(form.get("title") || "").trim(); const position = Number(form.get("position") || 0);
+    if (!title || title.length > 180 || !Number.isInteger(position) || position < 0 || position > 10000 || !studyFlows.find(f => f.id === level)?.grades.includes(grade)) throw new Error("Thông tin chương không hợp lệ.");
+    if (!await prisma.subject.findUnique({ where: { id: subjectId } })) throw new Error("Không tìm thấy môn học.");
+    await prisma.theoryChapter.create({ data: { subjectId, educationLevel: level, grade, title, position, slug: `chuong-${crypto.randomUUID()}`, isPublished: true } });
+    return redirect(res, `/chapters?notice=${encodeURIComponent("Đã lưu chương")}`);
+  } catch (error) { return redirect(res, `/chapters?notice=${encodeURIComponent(error.message || "Không lưu được chương")}`); }
+}
+
+function examCreateForm(subjects, chapters) {
   const subjectOptions = subjects.map((subject) => {
     return `<option value="${escapeHtml(subject.id)}" data-name="${escapeHtml(normalizeText(subject.name))}" data-slug="${escapeHtml(subject.slug)}">${escapeHtml(subject.name)}</option>`;
   }).join("");
@@ -1293,7 +1326,7 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
     <div class="topbar" style="margin-bottom:16px">
       <div>
         <h1 style="font-size:26px">Tạo đề theo cấp học và môn học</h1>
-        <div class="subtitle">Chọn đúng luồng cấp học như màn học sinh, sau đó tạo đề bằng file TXT/CSV/JSON hoặc dán nội dung import.</div>
+        <div class="subtitle">Chọn lớp, môn, nhập tên đề và thời gian; tải Excel/CSV hoặc dán câu hỏi để lưu đề.</div>
       </div>
     </div>
     <form class="form" method="post" action="/exams/create">
@@ -1324,10 +1357,10 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
           <div class="mode-tabs" role="tablist" aria-label="Loại nội dung">
             <button class="mode-tab active" type="button" data-content-mode="topics" data-exam-type="PRACTICE">📖 Theo Chuyên đề</button>
             <button class="mode-tab" type="button" data-content-mode="exams" data-exam-type="MOCK">🗓 Theo Kì thi</button>
-            <button class="mode-tab" type="button" data-content-mode="theory" data-exam-type="PRACTICE">📄 Lý thuyết</button>
           </div>
           <div class="mode-note" id="contentModeNote">Tạo bộ câu hỏi luyện tập theo chuyên đề của môn học đã chọn.</div>
         </label>
+        ${chapterSelect(chapters, "examSubject", "examGrade", "examEducationLevel")}
         <label>Quyền truy cập
           <select name="accessLevel">
             <option value="FREE">Miễn phí</option>
@@ -1344,8 +1377,8 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
       <div class="helper-card">
         <h2>Tạo nhanh từ file</h2>
         <div class="file-strip">
-          <label>Chọn file .txt, .csv, .tsv hoặc .json
-            <input id="examImportFile" type="file" accept=".txt,.csv,.tsv,.json,text/plain,application/json,text/csv" />
+          <label>Chọn file Excel, CSV, TXT hoặc JSON
+            <input id="examImportFile" type="file" accept=".xlsx,.txt,.csv,.tsv,.json" />
           </label>
           <label>Chèn ảnh từ máy vào câu hỏi
             <input id="questionImageFiles" type="file" accept="image/*" multiple />
@@ -1525,6 +1558,7 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
           body.set("bulkQuestions", bulk.value);
           body.set("subjectId", subject.value);
           body.set("educationLevel", level.value);
+          body.set("contentMode", contentModeInput.value);
           body.set("durationMinutes", durationInput.value);
           try {
             const response = await fetch("/exams/preview", {
@@ -1559,14 +1593,14 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
           textarea.focus();
         }
         function currentNationalRule() {
-          if (level.value !== "THPTQG") return null;
+          if (level.value !== "THPTQG" || contentModeInput.value !== "exams") return null;
           const slug = subject.selectedOptions[0]?.dataset.slug || "";
           return nationalRules[slug] || null;
         }
         function syncNationalRule() {
           const rule = currentNationalRule();
-          durationInput.readOnly = level.value === "THPTQG";
-          if (level.value !== "THPTQG") {
+          durationInput.readOnly = level.value === "THPTQG" && contentModeInput.value === "exams";
+          if (level.value !== "THPTQG" || contentModeInput.value !== "exams") {
             nationalExamHint.textContent = "Các đề ngoài THPTQG: admin tự chọn số câu, thời lượng và dạng câu.";
           } else if (!rule) {
             nationalExamHint.textContent = "Môn này chưa có mẫu THPTQG chính thức. Hãy chọn môn có cấu trúc được định nghĩa.";
@@ -1637,6 +1671,7 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
             contentModeInput.value = button.dataset.contentMode || "topics";
             examTypeInput.value = button.dataset.examType || "PRACTICE";
             contentModeNote.textContent = modeNotes[contentModeInput.value] || modeNotes.topics;
+            syncNationalRule(); schedulePreview();
           });
         });
         level.addEventListener("change", () => { syncFlow(); schedulePreview(); });
@@ -1657,7 +1692,19 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
         importFile.addEventListener("change", async () => {
           const file = importFile.files && importFile.files[0];
           if (!file) return;
-          bulk.value = await file.text();
+          if (file.name.toLowerCase().endsWith(".xlsx")) {
+            try {
+              const upload = new FormData();
+              upload.set("file", file);
+              const response = await fetch("/exams/import-xlsx", { method: "POST", body: upload });
+              const data = await response.json();
+              if (!response.ok) throw new Error(data.error || "Không đọc được Excel.");
+              bulk.value = JSON.stringify({ questions: data.questions }, null, 2);
+            } catch (error) {
+              renderPreview({ ok: false, error: error.message || "Không đọc được Excel." });
+              return;
+            }
+          } else bulk.value = await file.text();
           bulk.focus();
           schedulePreview();
         });
@@ -1682,19 +1729,21 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
 }
 
 async function examsPage(user, notice) {
-  const [exams, subjects] = await Promise.all([
+  await ensureSubjectCatalog(prisma);
+  const [exams, subjects, chapters] = await Promise.all([
     prisma.exam.findMany({
     orderBy: { createdAt: "desc" },
     take: 100,
     include: { subject: true, _count: { select: { questions: true, attempts: true } } },
     }),
     prisma.subject.findMany({ orderBy: { name: "asc" } }),
+    prisma.theoryChapter.findMany({ orderBy: [{ position: "asc" }, { title: "asc" }] }),
   ]);
   const rows = exams.map((item) =>
     row([
       `<strong>${escapeHtml(item.title)}</strong><div class="muted">${escapeHtml(item.code)}</div>`,
       escapeHtml(item.subject?.name || "-"),
-      badge(examContentModeLabel(item.examStructure?.contentMode) || item.type),
+      badge(examContentModeLabel(item.contentMode) || item.type),
       badge(item.accessLevel),
       `${formatNumber(item._count.questions)} câu / ${formatNumber(item._count.attempts)} lượt`,
       `${item.durationMinutes} phút`,
@@ -1702,7 +1751,7 @@ async function examsPage(user, notice) {
     ]),
   );
   const body = `${pageHeader("Đề thi", "Tạo đề theo cấp học, lớp/nhóm thi và môn học giống luồng học sinh trên web.", `<a class="button" href="#tao-de-theo-mon">Tạo đề mới</a>`)}
-  ${examCreateForm(subjects)}
+  ${examCreateForm(subjects, chapters)}
   <div style="margin-top:18px">${table(["Đề", "Môn", "Loại", "Quyền", "Thống kê", "Thời gian", "Thao tác"], rows)}</div>`;
   return layout({ title: "Đề thi", active: "/exams", user, notice, body });
 }
@@ -1755,6 +1804,77 @@ function documentUploadForm() {
       <button type="submit">Tải lên tài liệu</button>
     </form>
   </section>`;
+}
+
+async function theoryChaptersPage(user, notice) {
+  await ensureSubjectCatalog(prisma);
+  const [subjects, chapters] = await Promise.all([
+    prisma.subject.findMany({ orderBy: { name: "asc" } }),
+    prisma.theoryChapter.findMany({ include: { subject: true, lessons: true }, orderBy: { createdAt: "desc" }, take: 100 }),
+  ]);
+  const options = subjects.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join("");
+  const chapterRows = chapters.map((chapter) => row([
+    escapeHtml(chapter.title), escapeHtml(chapter.grade || "-"), escapeHtml(chapter.subject.name),
+    escapeHtml(chapter.lessons.length ? "Đã có tài liệu" : "Chưa có bài"),
+  ]));
+  const body = `${pageHeader("Chương lý thuyết", "Chọn lớp, môn, tên lý thuyết và file PDF hoặc Word. Học sinh sẽ thấy nội dung trong mục Lý thuyết của môn học.")}
+  <section class="card"><form class="form" method="post" action="/theory-chapters/upload" enctype="multipart/form-data">
+    <div class="exam-create-grid">
+      <label>Cấp học<select name="level" id="theoryLevel">${optionList(studyFlows.map((flow) => ({ value: flow.id, label: flow.label })))}</select></label>
+      <label>Lớp / nhóm thi<select name="grade" id="theoryGrade" required></select></label>
+      <label>Môn học<select name="subjectId" id="theorySubject" required>${options}</select></label>
+      ${chapterSelect(chapters, "theorySubject", "theoryGrade", "theoryLevel")}
+      <label class="wide">Tên lý thuyết<input name="title" required maxlength="180" /></label>
+      <label>Quyền truy cập<select name="accessLevel"><option value="FREE">Miễn phí</option><option value="PRO">VIP</option></select></label>
+      <label>File PDF / Word<input name="file" type="file" accept=".pdf,.docx" required /></label>
+      <label class="wide">Mô tả<textarea name="description" rows="3"></textarea></label>
+    </div><button type="submit">Lưu tài liệu lý thuyết</button>
+  </form></section><div style="margin-top:18px">${table(["Chương", "Lớp", "Môn", "Nội dung"], chapterRows)}</div>
+  <script>const level = document.getElementById("theoryLevel"); const grade = document.getElementById("theoryGrade");
+    const grades = ${JSON.stringify(Object.fromEntries(studyFlows.map((flow) => [flow.id, flow.grades])))};
+    function syncGrades() { grade.replaceChildren(...(grades[level.value] || []).map((value) => new Option(value, value))); }
+    level.addEventListener("change", syncGrades); syncGrades();</script>`;
+  return layout({ title: "Chương lý thuyết", active: "/theory-chapters", user, notice, body });
+}
+
+async function uploadTheoryChapter(req, res, user) {
+  let storedPath = "";
+  try {
+    const { fields, files } = await readMultipartForm(req);
+    const file = files.get("file");
+    const title = String(fields.get("title") || "").trim();
+    const description = String(fields.get("description") || "").trim();
+    const level = String(fields.get("level") || "");
+    const grade = String(fields.get("grade") || "");
+    const subjectId = String(fields.get("subjectId") || "");
+    const accessLevel = String(fields.get("accessLevel") || "FREE");
+    const chapterId = String(fields.get("chapterId") || "");
+    const selectedChapter = chapterId ? await prisma.theoryChapter.findUnique({ where: { id: chapterId } }) : null;
+    if (chapterId && (!selectedChapter || selectedChapter.subjectId !== subjectId || (selectedChapter.educationLevel && selectedChapter.educationLevel !== level) || (selectedChapter.grade && selectedChapter.grade !== grade))) throw new Error("Chương không thuộc lớp và môn đã chọn.");
+    if (title.length < 3 || title.length > 180 || description.length > 1200 || !["FREE", "PRO"].includes(accessLevel)) throw new Error("Thông tin lý thuyết không hợp lệ.");
+    const flow = studyFlows.find((item) => item.id === level);
+    if (!flow?.grades.includes(grade)) throw new Error("Lớp không hợp lệ.");
+    const subject = await prisma.subject.findUnique({ where: { id: subjectId } });
+    if (!subject) throw new Error("Không tìm thấy môn học.");
+    if (!file || !file.size || file.size > 15 * 1024 * 1024) throw new Error("Chọn file tối đa 15 MB.");
+    const { extension, mimeType } = validateDocumentBuffer(file.buffer, file.filename, file.mimeType);
+    if (![".pdf", ".docx"].includes(extension)) throw new Error("Chỉ hỗ trợ PDF và Word .docx.");
+    await scanDocumentBuffer(file.buffer);
+    const storedName = `${crypto.randomUUID()}${extension}`;
+    fs.mkdirSync(documentsDirectory(), { recursive: true });
+    storedPath = documentStoredPath(storedName);
+    fs.writeFileSync(storedPath, file.buffer, { flag: "wx" });
+    await prisma.$transaction(async (tx) => {
+      const doc = await tx.document.create({ data: { title, description: description || `Lý thuyết ${grade} · ${subject.name}`, level, grade, subject: subject.name, type: "THEORY_SUMMARY", status: "APPROVED", approvedAt: new Date(), originalName: path.basename(file.filename), storedName, mimeType, fileSize: file.size, uploaderId: user.id } });
+      const slug = `ly-thuyet-${crypto.randomUUID().slice(0, 12)}`;
+      const chapter = selectedChapter ?? await tx.theoryChapter.create({ data: { subjectId, educationLevel: level, grade, slug, title, description: description || null, isPublished: true } });
+      await tx.theoryLesson.create({ data: { chapterId: chapter.id, slug, title, summary: description || null, content: `document:${doc.id}`, accessLevel, isPublished: true } });
+    });
+    return redirect(res, `/theory-chapters?notice=${encodeURIComponent("Đã lưu tài liệu lý thuyết")}`);
+  } catch (error) {
+    if (storedPath) fs.rmSync(storedPath, { force: true });
+    return redirect(res, `/theory-chapters?notice=${encodeURIComponent(error.message || "Không thể tải tài liệu")}`);
+  }
 }
 
 async function documentsPage(user, notice) {
@@ -1993,6 +2113,7 @@ async function activateVipForUser(userId, planId) {
 }
 
 async function paymentsPage(user, notice, url) {
+  if (await prisma.plan.count() === 0) await prisma.plan.createMany({ data: defaultVipPlans.map((plan) => ({ ...plan, isActive: true })), skipDuplicates: true });
   const status = String(url.searchParams.get("status") || "ALL");
   const paymentWhere = paymentStatuses.includes(status) ? { status } : {};
   const now = new Date();
@@ -2052,12 +2173,10 @@ async function paymentsPage(user, notice, url) {
       `${formatNumber(item.amount)} VND`,
       badge(item.status),
       escapeHtml(formatDate(item.createdAt)),
-      `<form class="inline-form" method="post" action="/payments/${item.id}/status">
-        <select name="status">
-          ${paymentStatuses.map((value) => `<option value="${value}"${selected(item.status, value)}>${value}</option>`).join("")}
-        </select>
+      item.status === "PENDING" ? `<form class="inline-form" method="post" action="/payments/${item.id}/status" onsubmit="return this.elements.status.value !== 'PAID' || confirm('Đã kiểm tra sao kê và nhận đủ ${formatNumber(item.amount)} VND cho mã ${escapeHtml(item.reference)}?')">
+        <select name="status"><option value="PENDING">Chờ</option><option value="PAID">Đã nhận tiền</option><option value="FAILED">Thất bại</option></select>
         <button type="submit">Lưu</button>
-      </form>`,
+      </form>` : badge(item.status),
     ]),
   );
 
@@ -2069,7 +2188,15 @@ async function paymentsPage(user, notice, url) {
       badge(planIntervalLabel(item.interval)),
       item.isActive ? badge("Đang bán") : `<span class="muted">Đang ẩn</span>`,
       `${formatNumber(item._count.subscriptions)} VIP / ${formatNumber(item._count.payments)} giao dịch`,
-      `<form method="post" action="/plans/${item.id}/toggle"><button class="${item.isActive ? "secondary" : ""}" type="submit">${item.isActive ? "Ẩn gói" : "Bật bán"}</button></form>`,
+      `<div class="action-stack"><form method="post" action="/plans/${item.id}/toggle"><button class="${item.isActive ? "secondary" : ""}" type="submit">${item.isActive ? "Ẩn gói" : "Bật bán"}</button></form>
+        <details><summary>Chỉnh sửa</summary><form class="form" method="post" action="/plans/${item.id}/update" style="min-width:260px;margin-top:10px">
+          <label>Tên<input name="name" value="${escapeHtml(item.name)}" required /></label>
+          <label>Mô tả<input name="description" value="${escapeHtml(item.description)}" required /></label>
+          <label>Giá<input name="price" type="number" min="0" value="${item.price}" required /></label>
+          <label>Thời hạn<select name="interval">${optionList(planIntervals.map((value) => ({ value, label: planIntervalLabel(value) })), item.interval)}</select></label>
+          <label>Quyền lợi (mỗi dòng một mục)<textarea name="features" rows="5">${escapeHtml(Array.isArray(item.features) ? item.features.join("\n") : "")}</textarea></label>
+          <button type="submit">Lưu gói</button>
+        </form></details></div>`,
     ]),
   );
 
@@ -2083,10 +2210,21 @@ async function paymentsPage(user, notice, url) {
     ]),
   );
 
+  const planForm = `<section class="card" style="margin-top:18px"><h2>Thêm gói thành viên</h2>
+    <form class="form" method="post" action="/plans/create"><div class="exam-create-grid">
+      <label>Tên gói<input name="name" required /></label><label>Mã gói<input name="slug" required /></label>
+      <label>Giá (VND)<input name="price" type="number" min="0" required /></label>
+      <label>Thời hạn<select name="interval"><option value="MONTH">1 tháng</option><option value="QUARTER">3 tháng</option><option value="YEAR">1 năm</option></select></label>
+      <label>Trạng thái<select name="isActive"><option value="true">Hiển thị</option><option value="false">Ẩn</option></select></label>
+      <label class="wide">Mô tả<input name="description" required /></label>
+      <label class="wide">Quyền lợi (mỗi dòng một mục)<textarea name="features" rows="4"></textarea></label>
+    </div><button type="submit">Lưu gói VIP</button></form></section>`;
+
   const body = `${pageHeader("Thanh toán & gói VIP", "Gộp quản lý giao dịch, gói thành viên và VIP đang hoạt động trên một trang.")}
     <div class="grid stats">${statCards}</div>
     <div style="margin-top:16px">${filters}</div>
     <div style="margin-top:18px">${pageHeader("Giao dịch", `${payments.length} giao dịch đang hiển thị. Có ${failedCount} giao dịch thất bại.`)}${table(["Mã", "Người dùng", "Gói", "Số tiền", "Trạng thái", "Ngày tạo", "Thao tác"], paymentRows)}</div>
+    ${planForm}
     <div style="margin-top:18px">${pageHeader("Gói VIP", `${activePlanCount} gói đang bán trên web.`)}${table(["Gói", "Slug", "Giá", "Chu kỳ", "Trạng thái", "Sử dụng", "Thao tác"], planRows)}</div>
     <div style="margin-top:18px">${pageHeader("VIP đang hoạt động", "30 tài khoản có hạn VIP mới nhất.")}${table(["Người dùng", "Gói", "Trạng thái", "Bắt đầu", "Hết hạn"], subscriptionRows)}</div>`;
   return layout({ title: "Thanh toán & gói VIP", active: "/payments", user, notice, body });
@@ -2102,6 +2240,19 @@ async function createPlan(req, res) {
   } catch (error) {
     redirect(res, `/payments?notice=${encodeURIComponent(error.message || "Không thể tạo gói VIP")}`);
   }
+}
+
+async function updatePlan(req, res, id) {
+  try {
+    const existing = await prisma.plan.findUnique({ where: { id } });
+    if (!existing) throw new Error("Không tìm thấy gói VIP.");
+    const form = await readForm(req);
+    form.set("slug", existing.slug);
+    form.set("isActive", String(existing.isActive));
+    const { slug, ...data } = parsePlanForm(form);
+    await prisma.plan.update({ where: { id }, data });
+    redirect(res, `/payments?notice=${encodeURIComponent("Đã cập nhật gói VIP")}`);
+  } catch (error) { redirect(res, `/payments?notice=${encodeURIComponent(error.message || "Không sửa được gói")}`); }
 }
 
 async function upgradeUserVip(req, res, userId) {
@@ -2547,6 +2698,29 @@ async function updateUserBalance(req, res, id) {
   redirect(res, `/users?notice=${encodeURIComponent("Đã cập nhật Coin và EXP")}`);
 }
 
+async function importXlsx(req, res) {
+  try {
+    const { files } = await readMultipartForm(req);
+    const file = files.get("file");
+    if (!file || !/\.xlsx$/i.test(file.filename) || file.size > 5 * 1024 * 1024) throw new Error("Chọn file .xlsx tối đa 5 MB.");
+    const rows = await readXlsxFile(file.buffer);
+    if (rows.length < 2 || rows.length > 2001 || rows[0].length > 60) throw new Error("Bảng cần có tiêu đề và tối đa 2.000 câu hỏi.");
+    const headers = rows[0].map((value) => normalizeHeader(value));
+    const field = (row, aliases) => String(row[headers.findIndex((name) => aliases.includes(name))] ?? "").trim();
+    const questions = rows.slice(1).filter((row) => row.some((value) => String(value ?? "").trim())).map((row, index) => {
+      const prompt = field(row, ["question", "prompt", "cauhoi", "noidungcauhoi"]);
+      const options = ["a", "b", "c", "d", "e", "f"].map((letter) => field(row, [letter, `option${letter}`, `phuongan${letter}`])).filter(Boolean);
+      const correct = field(row, ["correct", "answer", "dapandung", "dapan"]);
+      const explanation = field(row, ["explanation", "solution", "giaithich", "loigiai"]);
+      if (!prompt || options.length < 2 || !correct) throw new Error(`Dòng ${index + 2}: thiếu câu hỏi, đáp án hoặc phương án.`);
+      return { prompt, options, correct, explanation };
+    });
+    if (!questions.length) throw new Error("File chưa có câu hỏi.");
+    parseQuestionsFromImport(JSON.stringify({ questions }));
+    return sendJson(res, { questions });
+  } catch (error) { return sendJson(res, { error: error.message || "Không đọc được Excel." }, 400); }
+}
+
 async function createExam(req, res) {
   const form = await readForm(req);
   const subjectId = String(form.get("subjectId") || "");
@@ -2569,7 +2743,7 @@ async function createExam(req, res) {
     redirect(res, `/exams?notice=${encodeURIComponent("Loại đề hoặc quyền truy cập không hợp lệ")}`);
     return;
   }
-  if (!["topics", "exams", "theory"].includes(contentMode)) {
+  if (!["topics", "exams"].includes(contentMode)) {
     redirect(res, `/exams?notice=${encodeURIComponent("Loại nội dung không hợp lệ")}`);
     return;
   }
@@ -2580,12 +2754,17 @@ async function createExam(req, res) {
     return;
   }
 
+  const chapterId = String(form.get("chapterId") || "") || null;
+  if (chapterId) {
+    const chapter = await prisma.theoryChapter.findUnique({ where: { id: chapterId } });
+    if (!chapter || chapter.subjectId !== subjectId || (chapter.educationLevel && chapter.educationLevel !== educationLevel) || (chapter.grade && chapter.grade !== grade)) return redirect(res, `/exams?notice=${encodeURIComponent("Chương không thuộc lớp và môn đã chọn.")}`);
+  }
   const importSource = String(form.get("bulkQuestions") || "").trim();
   let parsed;
   try {
     parsed = parseAdminExamQuestions(
       importSource,
-      { educationLevel, subjectSlug: subject.slug, durationMinutes },
+      { educationLevel, subjectSlug: subject.slug, durationMinutes, contentMode },
       normalizeQuestionInput,
       parseQuestionsFromImport,
     );
@@ -2615,6 +2794,8 @@ async function createExam(req, res) {
         year,
         durationMinutes,
         educationLevel,
+        grade,
+        contentMode, chapterId,
         examStructure: {
           ...(parsed.rule || {}),
           source: "admin-server",
@@ -2679,7 +2860,7 @@ async function previewExamImport(req, res) {
     const subject = await prisma.subject.findUnique({ where: { id: subjectId }, select: { slug: true } });
     if (!subject) throw new Error("Hãy chọn môn học hợp lệ.");
     const parsed = parseAdminExamQuestions(importSource, {
-      educationLevel, subjectSlug: subject.slug, durationMinutes,
+      educationLevel, subjectSlug: subject.slug, durationMinutes, contentMode: String(form.get("contentMode") || "topics"),
     }, normalizeQuestionInput, parseQuestionsFromImport);
     sendJson(res, { ok: true, questions: parsed.preview });
   } catch (error) {
@@ -2750,11 +2931,16 @@ async function router(req, res) {
   }
   if (pathname === "/exams/create" && req.method === "POST") return createExam(req, res);
   if (pathname === "/exams/preview" && req.method === "POST") return previewExamImport(req, res);
+  if (pathname === "/exams/import-xlsx" && req.method === "POST") return importXlsx(req, res);
   if (pathname.startsWith("/exams/") && pathname.endsWith("/delete") && req.method === "POST") {
     return deleteExam(res, pathname.split("/")[2]);
   }
   if (pathname === "/exams" && req.method === "GET") return sendHtml(res, await examsPage(user, notice));
   if (pathname.startsWith("/announcements")) return redirect(res, `/store-items?notice=${encodeURIComponent("Đã thay Banner / thông báo bằng trang quản lý cửa hàng")}`);
+  if (pathname === "/chapters" && req.method === "GET") return sendHtml(res, await chaptersPage(user, notice));
+  if (pathname === "/chapters/create" && req.method === "POST") return createChapter(req, res);
+  if (pathname === "/theory-chapters" && req.method === "GET") return sendHtml(res, await theoryChaptersPage(user, notice));
+  if (pathname === "/theory-chapters/upload" && req.method === "POST") return uploadTheoryChapter(req, res, user);
   if (pathname === "/documents" && req.method === "GET") return sendHtml(res, await documentsPage(user, notice));
   if (pathname === "/documents/upload" && req.method === "POST") return uploadDocument(req, res, user);
   if (pathname.startsWith("/documents/") && pathname.endsWith("/file") && req.method === "GET") {
@@ -2769,6 +2955,7 @@ async function router(req, res) {
   if (pathname === "/payments" && req.method === "GET") return sendHtml(res, await paymentsPage(user, notice, url));
   if (pathname === "/plans" && req.method === "GET") return redirect(res, "/payments");
   if (pathname === "/plans/create" && req.method === "POST") return createPlan(req, res);
+  if (pathname.startsWith("/plans/") && pathname.endsWith("/update") && req.method === "POST") return updatePlan(req, res, pathname.split("/")[2]);
   if (pathname.startsWith("/plans/") && pathname.endsWith("/toggle") && req.method === "POST") {
     return togglePlan(res, pathname.split("/")[2]);
   }

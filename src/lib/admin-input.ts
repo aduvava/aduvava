@@ -27,6 +27,8 @@ const schemas = {
     year: z.number().int().min(2000).max(2200),
     durationMinutes: z.number().int().min(1).max(600),
     educationLevel: z.enum(["THCS", "THPT", "EXAM_10", "THPTQG"]).nullable(),
+    grade: optionalText(50),
+    contentMode: z.enum(["topics", "exams"]), chapterId: id.nullable(),
     targetScore: z.number().finite().nonnegative().nullable(),
     subjectId: id, isPublished: z.boolean(),
   }),

@@ -5,12 +5,12 @@ const { transitionManualPayment, extendUtcMonths, PaymentTransitionError } =
   require("../src/lib/payment-transition.js");
 
 type MockPayment = {
-  id: string; userId: string; planId: string; status: string;
+  id: string; userId: string; planId: string; status: string; amount: number;
   provider: string; reference: string; metadata: Record<string, unknown>;
   plan: { id: string; name: string; interval: string };
 };
 type MockSubscription = {
-  id: string; userId: string; planId: string; status: string;
+  id: string; userId: string; planId: string; status: string; amount: number;
   startsAt: Date; endsAt: Date;
 };
 
@@ -18,11 +18,12 @@ function createFakeDb(opts?: { payment?: Partial<MockPayment>; failUpdate?: bool
   let state = {
     payment: {
       id: "payment-1", userId: "student-1", planId: "plan-1",
-      status: "PENDING", provider: "manual-bank-transfer",
+      amount: 39000, status: "PENDING", provider: "manual-bank-transfer",
       reference: "EDUVA-SMOKE", metadata: {},
       plan: { id: "plan-1", name: "VIP", interval: "MONTH" },
       ...opts?.payment,
     } as MockPayment,
+    bankEvents: [] as Array<{ id: string; paymentId: string; amount: number }>,
     subscriptions: [] as MockSubscription[],
     notifications: [] as Array<{ userId: string; href: string }>,
   };
@@ -32,6 +33,10 @@ function createFakeDb(opts?: { payment?: Partial<MockPayment>; failUpdate?: bool
       assert.equal(txOptions.isolationLevel, "Serializable");
       const snapshot = structuredClone(state);
       const tx = {
+        bankWebhookEvent: {
+          findUnique: async ({ where }: { where: { id: string } }) => snapshot.bankEvents.find(e => e.id === where.id) ?? null,
+          create: async ({ data }: { data: { id: string; paymentId: string; amount: number } }) => { snapshot.bankEvents.push(data); return data; },
+        },
         payment: {
           findUnique: async () => snapshot.payment,
           update: async ({ data }: { data: Partial<MockPayment> }) => {
@@ -112,4 +117,41 @@ describe("atomic manual VIP transitions", () => {
     assert.equal(extendUtcMonths(new Date("2028-01-31T10:00:00Z"), 1).toISOString(),
       "2028-02-29T10:00:00.000Z");
   });
+});
+
+describe("verified bank settlement", () => {
+ const event = { id: "sepay:123", amount: 39000 };
+ it("activates once across webhook retries and later admin confirmation", async () => {
+   const db = createFakeDb();
+   await transitionManualPayment(db, "payment-1", "PAID", event);
+   await transitionManualPayment(db, "payment-1", "PAID", event);
+   await transitionManualPayment(db, "payment-1", "PAID");
+   assert.equal(db.state.subscriptions.length, 1); assert.equal(db.state.bankEvents.length, 1);
+   assert.equal(db.state.payment.metadata.verifiedBy, "sepay");
+ });
+ it("records a webhook after manual approval without extending VIP again", async () => {
+   const db = createFakeDb(); await transitionManualPayment(db, "payment-1", "PAID"); await transitionManualPayment(db, "payment-1", "PAID", event);
+   assert.equal(db.state.subscriptions.length, 1); assert.equal(db.state.bankEvents.length, 1);
+ });
+ it("rolls back the bank receipt together with a failed VIP activation", async () => {
+   const db = createFakeDb({ failUpdate: true });
+   await assert.rejects(transitionManualPayment(db, "payment-1", "PAID", event), /Simulated database/);
+   assert.equal(db.state.bankEvents.length, 0); assert.equal(db.state.subscriptions.length, 0); assert.equal(db.state.payment.status, "PENDING");
+ });
+ it("refuses wrong amounts, reuse on another order and failed orders", async () => {
+   const db = createFakeDb();
+   await assert.rejects(transitionManualPayment(db, "payment-1", "PAID", { ...event, amount: 1000 }), /does not match/);
+   assert.equal(db.state.bankEvents.length, 0);
+   await transitionManualPayment(db, "payment-1", "PAID", event);
+   await assert.rejects(transitionManualPayment(db, "payment-2", "PAID", event), /another payment/);
+   const failed = createFakeDb({ payment: { status: "FAILED" } });
+   await assert.rejects(transitionManualPayment(failed, "payment-1", "PAID", event), /manual reconciliation/);
+   assert.equal(failed.state.subscriptions.length, 0);
+ });
+ it("retries serialization conflicts and grants only one subscription", async () => {
+   const db = createFakeDb(); const original = db.$transaction; let calls = 0;
+   db.$transaction = async (fn, options) => { if (calls++ === 0) throw Object.assign(new Error("serialization"), { code: "P2034" }); return original(fn, options); };
+   await transitionManualPayment(db, "payment-1", "PAID", event);
+   assert.equal(calls, 2); assert.equal(db.state.subscriptions.length, 1);
+ });
 });

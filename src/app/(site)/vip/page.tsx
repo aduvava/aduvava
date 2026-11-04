@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { VipPricing } from "@/components/vip-pricing";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { ensureDefaultVipPlans } from "@/lib/default-vip-plans";
 
 export const metadata: Metadata = {
   title: "Nạp VIP | Ava",
@@ -15,22 +15,26 @@ function featureList(value: unknown) {
 
 export default async function VipPage() {
   const user = await getCurrentUser();
-  if (!user) redirect("/login?role=student&callbackUrl=/vip");
 
-  const [plans, activeSubscription] = await Promise.all([
+  await ensureDefaultVipPlans();
+  const [plans, activeSubscription, pendingPayments] = await Promise.all([
     prisma.plan.findMany({
       where: { isActive: true },
       orderBy: [{ price: "asc" }, { createdAt: "asc" }],
     }),
-    prisma.subscription.findFirst({
+    user ? prisma.subscription.findFirst({
       where: { userId: user.id, status: "ACTIVE", endsAt: { gt: new Date() } },
       include: { plan: true },
       orderBy: { endsAt: "desc" },
-    }),
+    }) : Promise.resolve(null),
+    user ? prisma.payment.findMany({
+      where: { userId: user.id, status: "PENDING", provider: "manual-bank-transfer" },
+      include: { plan: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 10,
+    }) : Promise.resolve([]),
   ]);
 
   return (
-    <VipPricing
+    <VipPricing automaticConfirmation={Boolean(process.env.SEPAY_WEBHOOK_API_KEY && process.env.SEPAY_WEBHOOK_API_KEY.length >= 32)}
       plans={plans.map((plan) => ({
         id: plan.id,
         slug: plan.slug,
@@ -43,6 +47,10 @@ export default async function VipPage() {
       activeSubscription={activeSubscription ? {
         planName: activeSubscription.plan.name,
         endsAt: activeSubscription.endsAt.toISOString(),
+      } : null}
+      pendingPayments={pendingPayments.map((payment) => ({ id: payment.id, planName: payment.plan.name, amount: payment.amount, reference: payment.reference }))}
+      bank={process.env.PAYMENT_BANK_NAME && process.env.PAYMENT_BANK_ACCOUNT_NUMBER && process.env.PAYMENT_BANK_ACCOUNT_HOLDER ? {
+        name: process.env.PAYMENT_BANK_NAME, accountNumber: process.env.PAYMENT_BANK_ACCOUNT_NUMBER, accountHolder: process.env.PAYMENT_BANK_ACCOUNT_HOLDER,
       } : null}
     />
   );

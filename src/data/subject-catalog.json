@@ -1,0 +1,180 @@
+[
+  {
+    "slug": "toan",
+    "name": "Toán",
+    "icon": "calculator",
+    "image": "/subject-images/toan.png",
+    "family": "THPTQG",
+    "description": "Đề thi và lý thuyết môn Toán.",
+    "color": "#f97316",
+    "groups": [
+      "secondary",
+      "high-school",
+      "national-exam",
+      "grade-10"
+    ]
+  },
+  {
+    "slug": "ngu-van",
+    "name": "Ngữ Văn",
+    "icon": "book-open",
+    "image": "/subject-images/ngu-van.png",
+    "family": "THPTQG",
+    "description": "Đề thi và lý thuyết môn Ngữ Văn.",
+    "color": "#f97316",
+    "groups": [
+      "secondary",
+      "high-school",
+      "national-exam",
+      "grade-10"
+    ]
+  },
+  {
+    "slug": "tieng-anh",
+    "name": "Tiếng Anh",
+    "icon": "languages",
+    "image": "/subject-images/tieng-anh.png",
+    "family": "THPTQG",
+    "description": "Đề thi và lý thuyết môn Tiếng Anh.",
+    "color": "#f97316",
+    "groups": [
+      "secondary",
+      "high-school",
+      "national-exam",
+      "grade-10"
+    ]
+  },
+  {
+    "slug": "lich-su",
+    "name": "Lịch Sử",
+    "icon": "landmark",
+    "image": "/subject-images/lich-su.png",
+    "family": "THPTQG",
+    "description": "Đề thi và lý thuyết môn Lịch Sử.",
+    "color": "#f97316",
+    "groups": [
+      "secondary",
+      "high-school",
+      "national-exam"
+    ]
+  },
+  {
+    "slug": "dia-ly",
+    "name": "Địa Lý",
+    "icon": "earth",
+    "image": "/subject-images/dia-ly.png",
+    "family": "THPTQG",
+    "description": "Đề thi và lý thuyết môn Địa Lý.",
+    "color": "#f97316",
+    "groups": [
+      "secondary",
+      "high-school",
+      "national-exam"
+    ]
+  },
+  {
+    "slug": "vat-ly",
+    "name": "Vật Lý",
+    "icon": "atom",
+    "image": "/subject-images/vat-ly.png",
+    "family": "THPTQG",
+    "description": "Đề thi và lý thuyết môn Vật Lý.",
+    "color": "#f97316",
+    "groups": [
+      "secondary",
+      "high-school",
+      "national-exam"
+    ]
+  },
+  {
+    "slug": "hoa-hoc",
+    "name": "Hóa Học",
+    "icon": "flask",
+    "image": "/subject-images/hoa-hoc.png",
+    "family": "THPTQG",
+    "description": "Đề thi và lý thuyết môn Hóa Học.",
+    "color": "#f97316",
+    "groups": [
+      "secondary",
+      "high-school",
+      "national-exam"
+    ]
+  },
+  {
+    "slug": "sinh-hoc",
+    "name": "Sinh Học",
+    "icon": "dna",
+    "image": "/subject-images/sinh-hoc.png",
+    "family": "THPTQG",
+    "description": "Đề thi và lý thuyết môn Sinh Học.",
+    "color": "#f97316",
+    "groups": [
+      "secondary",
+      "high-school",
+      "national-exam"
+    ]
+  },
+  {
+    "slug": "kt-va-phap-luat",
+    "name": "KT&PL",
+    "icon": "scale",
+    "image": "/subject-images/kt-va-phap-luat.png",
+    "family": "THPTQG",
+    "description": "Đề thi và lý thuyết môn KT&PL.",
+    "color": "#f97316",
+    "groups": [
+      "high-school",
+      "national-exam"
+    ]
+  },
+  {
+    "slug": "cong-nghe",
+    "name": "Công Nghệ",
+    "icon": "cog",
+    "image": "/subject-images/cong-nghe-nong-nghiep.png",
+    "family": "THPTQG",
+    "description": "Đề thi và lý thuyết môn Công Nghệ.",
+    "color": "#f97316",
+    "groups": [
+      "secondary"
+    ]
+  },
+  {
+    "slug": "cong-nghe-nong-nghiep",
+    "name": "Công nghệ Nông nghiệp",
+    "icon": "leaf",
+    "image": "/subject-images/cong-nghe-nong-nghiep.png",
+    "family": "THPTQG",
+    "description": "Đề thi và lý thuyết môn Công nghệ Nông nghiệp.",
+    "color": "#f97316",
+    "groups": [
+      "high-school",
+      "national-exam"
+    ]
+  },
+  {
+    "slug": "cong-nghe-cong-nghiep",
+    "name": "Công nghệ Công nghiệp",
+    "icon": "factory",
+    "image": null,
+    "family": "THPTQG",
+    "description": "Đề thi và lý thuyết môn Công nghệ Công nghiệp.",
+    "color": "#f97316",
+    "groups": [
+      "high-school",
+      "national-exam"
+    ]
+  },
+  {
+    "slug": "tin-hoc",
+    "name": "Tin Học",
+    "icon": "laptop",
+    "image": null,
+    "family": "THPTQG",
+    "description": "Đề thi và lý thuyết môn Tin Học.",
+    "color": "#f97316",
+    "groups": [
+      "high-school"
+    ]
+  }
+]

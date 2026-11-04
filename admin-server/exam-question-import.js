@@ -10,8 +10,8 @@ function getOfficialSpec(educationLevel, subjectSlug) {
   return { ...spec, subjectSlug };
 }
 
-function parseAdminExamQuestions(raw, { educationLevel, subjectSlug, durationMinutes }, normalizeSingle, parseSimple) {
-  const rule = getOfficialSpec(educationLevel, subjectSlug);
+function parseAdminExamQuestions(raw, { educationLevel, subjectSlug, durationMinutes, contentMode = "exams" }, normalizeSingle, parseSimple) {
+  const rule = contentMode === "topics" ? null : getOfficialSpec(educationLevel, subjectSlug);
   if (rule && durationMinutes !== rule.durationMinutes) {
     throw new Error(`Đề THPTQG môn này phải có thời gian ${rule.durationMinutes} phút.`);
   }

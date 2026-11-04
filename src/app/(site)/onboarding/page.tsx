@@ -3,7 +3,7 @@ import { Card } from "@/components/ui";
 import { OnboardingForm } from "@/components/forms/onboarding-form";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { safePostLoginPath } from "@/lib/onboarding";
+import { isStudentOnboardingComplete, safePostLoginPath } from "@/lib/onboarding";
 
 export default async function OnboardingPage({ searchParams }: { searchParams: Promise<{ callbackUrl?: string }> }) {
   const params = await searchParams;
@@ -23,6 +23,8 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
       targetScore: true,
     },
   });
+
+  if (isStudentOnboardingComplete(profile)) redirect(next);
 
   return (
     <div className="mx-auto grid min-h-[70vh] max-w-5xl place-items-center px-4 py-16 md:px-6">
