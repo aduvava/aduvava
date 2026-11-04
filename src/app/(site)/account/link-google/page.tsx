@@ -47,6 +47,7 @@ export default async function LinkGooglePage({
           <GoogleSignInButton
             enabled={googleEnabled}
             label="Liên kết tài khoản Google"
+            selectAccount
             callbackUrl={destination}
           />
         </div>
