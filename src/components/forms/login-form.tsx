@@ -46,7 +46,7 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
     const destination = getDestination(role);
     const callbackUrl = safePostLoginPath(searchParams.get("callbackUrl"), destination);
     if (result?.ok) {
-      if (linkingExistingAccount && googleEnabled) {
+      if (linkingExistingAccount) {
         window.location.assign("/account/link-google?callbackUrl=" + encodeURIComponent(callbackUrl));
         return;
       }
