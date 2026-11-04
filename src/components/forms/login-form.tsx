@@ -59,7 +59,7 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
 
   const googleCallbackUrl = safePostLoginPath(searchParams.get("callbackUrl"), "/dashboard");
   const providerError = searchParams.get("error") === "OAuthAccountNotLinked"
-    ? "Tài khoản Eduva này đã tồn tại. Đăng nhập bằng email và mật khẩu cũ ở bên dưới một lần để xác nhận, sau đó liên kết Google. Đề thi và tiến độ học tập sẽ được giữ nguyên."
+    ? "Tài khoản Educhi này đã tồn tại. Đăng nhập bằng email và mật khẩu cũ ở bên dưới một lần để xác nhận, sau đó liên kết Google. Đề thi và tiến độ học tập sẽ được giữ nguyên."
     : searchParams.get("error")
       ? "Không thể đăng nhập bằng Google. Vui lòng thử lại hoặc dùng email/mật khẩu."
       : null;
