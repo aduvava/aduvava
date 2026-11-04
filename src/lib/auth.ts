@@ -74,12 +74,19 @@ export const authOptions: NextAuthOptions = {
       // NextAuth v4 supports explicit OAuth account linking when the user is
       // already signed in. Protect that feature against linking a *different*
       // Google email into an existing Eduva account.
-      const cookieHeader = (await cookies()).getAll()
+      const requestCookies = (await cookies()).getAll();
+      const hasSessionCookie = requestCookies.some(({ name }) =>
+        /^(?:__Secure-)?next-auth\\.session-token(?:\\.\\d+)?$/.test(name),
+      );
+      const cookieHeader = requestCookies
         .map(({ name, value }) => `${name}=${encodeURIComponent(value)}`).join("; ");
       const request = new NextRequest("https://eduva.invalid", {
         headers: { cookie: cookieHeader },
       });
       const signedInToken = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+      // If a session cookie exists but cannot be verified, never let the
+      // provider proceed with implicit account linking.
+      if (hasSessionCookie && !signedInToken?.id) return false;
       if (signedInToken?.id) {
         const existing = await prisma.user.findUnique({
           where: { id: String(signedInToken.id) },
