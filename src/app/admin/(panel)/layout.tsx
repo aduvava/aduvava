@@ -41,7 +41,7 @@ export default function AdminPanelLayout({ children }: { children: ReactNode }) 
                 <LayoutDashboard className="h-5 w-5" />
               </span>
               <span>
-                <span className="block text-lg font-black tracking-tight">Ava Admin</span>
+                <span className="block text-lg font-black tracking-tight">Educhi Admin</span>
                 <span className="text-xs font-bold text-white/45">Trung tâm quản trị</span>
               </span>
             </Link>
@@ -79,7 +79,7 @@ export default function AdminPanelLayout({ children }: { children: ReactNode }) 
               <span className="grid h-9 w-9 place-items-center rounded-xl bg-orange-500 text-white">
                 <LayoutDashboard className="h-4 w-4" />
               </span>
-              Ava Admin
+              Educhi Admin
             </Link>
             <Link href="/dashboard" className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600">
               Website
