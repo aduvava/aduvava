@@ -29,6 +29,7 @@ import {
   X,
 } from "lucide-react";
 import { clsx } from "clsx";
+import subjectCatalog from "@/data/subject-catalog.json";
 import { getDashboardImage } from "@/data/dashboard-images";
 import { MascotAvatar } from "@/components/mascot-avatar";
 
@@ -388,6 +389,10 @@ export function StudentDashboard({
 }: DashboardProps) {
   const [activeGroup, setActiveGroup] = useState(studyGroups[0].id);
   const currentGroup = useMemo(() => studyGroups.find((group) => group.id === activeGroup) ?? studyGroups[0], [activeGroup]);
+  const visibleSubjects = subjects.filter((subject) => {
+    const entry = subjectCatalog.find((item) => item.slug === subject.slug);
+    return !entry || entry.groups.includes(activeGroup);
+  });
   const [activeClass, setActiveClass] = useState(studyGroups[0].classes[0]);
   const [activeSubject, setActiveSubject] = useState(subjects[0]?.slug ?? "");
   const [communityMessages, setCommunityMessages] = useState<CommunityMessage[]>(initialMessages);
@@ -482,7 +487,7 @@ export function StudentDashboard({
             ))}
           </div>
           <div className="mx-auto mt-5 grid max-w-[690px] grid-cols-2 justify-items-center gap-2 sm:grid-cols-3 sm:gap-3">
-            {subjects.map((subject) => {
+            {visibleSubjects.map((subject) => {
               const visual = getItemVisual(subject.name, subject.slug);
               const ItemIcon = visual.icon;
               const active = activeSubject === subject.slug;
@@ -518,7 +523,7 @@ export function StudentDashboard({
               );
             })}
           </div>
-          {!subjects.length ? (
+          {!visibleSubjects.length ? (
             <p className="mx-auto mt-5 max-w-xl rounded-2xl border border-dashed border-orange-200 bg-white px-5 py-8 text-center text-sm font-semibold text-slate-500">
               Chưa có môn học trong database. Admin có thể thêm môn học để hiển thị tại đây.
             </p>

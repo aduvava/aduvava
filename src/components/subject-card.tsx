@@ -1,11 +1,14 @@
+import { subjectImage } from "@/lib/subject-visuals";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { Card } from "@/components/ui";
 
 export function SubjectCard({ subject }: { subject: { slug: string; name: string; description: string; color?: string | null; _count?: { exams: number } } }) {
+  const image = subjectImage(subject.slug, subject.name);
   return (
     <Link href={`/subjects/${subject.slug}`}>
       <Card className="group h-full overflow-hidden transition hover:-translate-y-1">
+        {image && <img src={image} alt={`Môn ${subject.name}`} className="mb-5 h-24 w-24 rounded-2xl object-cover" />}
         <div className="mb-8 h-2 w-24 rounded-full" style={{ backgroundColor: subject.color ?? "#1f6f5b" }} />
         <div className="flex items-start justify-between gap-4">
           <h3 className="font-display text-3xl font-black text-ink">{subject.name}</h3>

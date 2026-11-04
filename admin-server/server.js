@@ -1,3 +1,4 @@
+const { ensureSubjectCatalog } = require("../src/lib/subject-catalog.js");
 const http = require("http");
 const crypto = require("crypto");
 const fs = require("fs");
@@ -1697,6 +1698,7 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
 }
 
 async function examsPage(user, notice) {
+  await ensureSubjectCatalog(prisma);
   const [exams, subjects] = await Promise.all([
     prisma.exam.findMany({
     orderBy: { createdAt: "desc" },
@@ -1773,6 +1775,7 @@ function documentUploadForm() {
 }
 
 async function theoryChaptersPage(user, notice) {
+  await ensureSubjectCatalog(prisma);
   const [subjects, chapters] = await Promise.all([
     prisma.subject.findMany({ orderBy: { name: "asc" } }),
     prisma.theoryChapter.findMany({ include: { subject: true, lessons: true }, orderBy: { createdAt: "desc" }, take: 100 }),

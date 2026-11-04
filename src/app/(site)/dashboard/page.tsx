@@ -1,3 +1,4 @@
+import { ensureSubjectCatalog } from "@/lib/subject-catalog";
 import { redirect } from "next/navigation";
 import { StudentDashboard } from "@/components/student-dashboard";
 import { getCurrentUser } from "@/lib/auth";
@@ -15,6 +16,7 @@ export default async function DashboardPage() {
     if (!isStudentOnboardingComplete(profile)) redirect("/onboarding?callbackUrl=/dashboard");
   }
 
+  await ensureSubjectCatalog(prisma);
   const [inProgressAttempt, attempts, account, subjects] = await Promise.all([
     prisma.attempt.findFirst({
       where: { userId: user.id, status: "IN_PROGRESS" },

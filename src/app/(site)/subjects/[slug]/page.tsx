@@ -1,3 +1,4 @@
+import { ensureSubjectCatalog } from "@/lib/subject-catalog";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { SubjectLearningDetail } from "@/components/subject-learning-detail";
@@ -26,6 +27,7 @@ export default async function SubjectPage({ params, searchParams }: SubjectPageP
   const requestedEducationLevel = query.level ? educationLevelByQuery[query.level] : undefined;
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
+  await ensureSubjectCatalog(prisma);
   const [databaseSubject, allSubjects] = await Promise.all([
     prisma.subject.findUnique({
       where: { slug },

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { subjectImage } from "@/lib/subject-visuals";
 import { useState } from "react";
 import {
   ArrowLeft,
@@ -160,7 +161,7 @@ export function SubjectLearningDetail({
                   "grid h-16 w-16 shrink-0 place-items-center rounded-2xl",
                   active ? "bg-white/95 text-orange-500" : `bg-gradient-to-br ${item.accent} text-white`,
                 )}>
-                  <SubjectIcon icon={item.icon} className="h-8 w-8" />
+                  {subjectImage(item.slug, item.name) ? <img src={subjectImage(item.slug, item.name)!} alt={`Môn ${item.name}`} className="h-full w-full rounded-2xl object-cover" /> : <SubjectIcon icon={item.icon} className="h-8 w-8" />}
                 </span>
                 <span className="min-w-0">
                   <span className="block truncate text-lg font-black">{item.shortName}</span>

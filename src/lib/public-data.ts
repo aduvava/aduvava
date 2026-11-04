@@ -1,7 +1,9 @@
+import { ensureSubjectCatalog } from "@/lib/subject-catalog";
 import { prisma } from "@/lib/db";
 
 export async function getPublicSubjects(family?: "THPTQG" | "DGNL") {
   try {
+    await ensureSubjectCatalog(prisma);
     return await prisma.subject.findMany({
       where: family ? { family } : undefined,
       include: { _count: { select: { exams: true } } },

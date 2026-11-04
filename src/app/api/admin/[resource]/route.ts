@@ -1,3 +1,4 @@
+import { ensureSubjectCatalog } from "@/lib/subject-catalog";
 import bcrypt from "bcryptjs";
 import { parseAdminInput } from "@/lib/admin-input";
 import { prisma } from "@/lib/db";
@@ -6,6 +7,7 @@ import { handleRouteError, HttpError, jsonOk, readJson, requireAdmin } from "@/l
 async function listResource(resource: string) {
   switch (resource) {
     case "subjects":
+      await ensureSubjectCatalog(prisma);
       return prisma.subject.findMany({ include: { _count: { select: { exams: true } } }, orderBy: { createdAt: "desc" } });
     case "exams":
       return prisma.exam.findMany({ include: { subject: true, _count: { select: { questions: true, attempts: true } } }, orderBy: { createdAt: "desc" } });
