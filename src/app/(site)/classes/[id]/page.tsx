@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "Chi tiết lớp học | Ava",
+  title: "Chi tiết lớp học | Educhi",
 };
 
 export default async function ClassroomDetailPage() {
