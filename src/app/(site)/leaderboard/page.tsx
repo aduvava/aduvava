@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
 export const metadata: Metadata = {
-  title: "Bảng xếp hạng | Ava",
+  title: "Bảng xếp hạng | Educhi",
   description: "Theo dõi thứ hạng học tập theo tuần, tháng và từng môn học.",
 };
 
@@ -110,7 +110,7 @@ export default async function LeaderboardPage() {
     <Leaderboard
       currentUser={{
         id: user.id,
-        name: user.name ?? "Học sinh Ava",
+        name: user.name ?? "Học sinh Educhi",
         image: user.image ?? null,
         educationLevel: inferLevel(currentGrade),
         grade: currentGrade,
@@ -120,7 +120,7 @@ export default async function LeaderboardPage() {
       attempts={attempts.map((attempt) => ({
         id: attempt.id,
         userId: attempt.userId,
-        userName: attempt.user.name ?? "Học sinh Ava",
+        userName: attempt.user.name ?? "Học sinh Educhi",
         userImage: attempt.user.image,
         cosmetics: cosmeticsFrom(attempt.user),
         educationLevel: mapEducationLevel(
