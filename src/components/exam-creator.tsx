@@ -622,7 +622,7 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
                 value={sharePassword}
                 onChange={(event) => setSharePassword(event.target.value)}
                 disabled={shareMode !== "PASSWORD"}
-                placeholder="Ví dụ: ava-2026"
+                placeholder="Ví dụ: educhi-2026"
                 className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-orange-400 disabled:bg-slate-100"
               />
             </label>
