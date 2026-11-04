@@ -28,7 +28,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
     <div className="mx-auto grid min-h-[70vh] max-w-5xl place-items-center px-4 py-16 md:px-6">
       <Card className="w-full max-w-xl">
         <h1 className="font-display text-4xl font-black text-ink">Hoàn thiện thông tin cá nhân</h1>
-        <p className="mt-3 text-sm leading-6 text-slate-600">Bạn đã đăng nhập thành công. Hoàn thiện thông tin học tập một lần để Eduva gợi ý nội dung phù hợp.</p>
+        <p className="mt-3 text-sm leading-6 text-slate-600">Bạn đã đăng nhập thành công. Hoàn thiện thông tin học tập một lần để Educhi gợi ý nội dung phù hợp.</p>
         <div className="mt-6"><OnboardingForm initialProfile={profile} nextPath={next} /></div>
       </Card>
     </div>
