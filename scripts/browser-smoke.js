@@ -97,7 +97,7 @@ async function main() {
     await linkPage.getByRole("alert").getByText(/Đăng nhập bằng email và mật khẩu cũ/).waitFor();
     await linkPage.locator('input[name="email"]').fill(email);
     await linkPage.locator('input[name="password"]').fill(password);
-    await linkPage.getByRole("button", { name: "ĐĂNG NHẬP" }).click();
+    await linkPage.getByRole("button", { name: "ĐĂNG NHẬP", exact: true }).click();
     await linkPage.waitForURL(/\/account\/link-google\?callbackUrl=/, { timeout: 15000 });
     await linkPage.getByRole("heading", { name: "Liên kết Google với tài khoản Eduva cũ" }).waitFor();
     assert.equal(await linkPage.getByText(email, { exact: true }).count(), 1);
