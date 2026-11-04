@@ -67,7 +67,7 @@ export async function SiteHeader() {
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-orange-50 p-1 shadow-lg shadow-orange-200 sm:h-12 sm:w-12 sm:rounded-2xl">
               <MascotAvatar />
             </span>
-            <span className="text-lg font-black tracking-tight text-orange-500 sm:text-2xl">Ava</span>
+            <span className="text-lg font-black tracking-tight text-orange-500 sm:text-2xl">Educhi</span>
           </Link>
 
           <nav className="intro-page-nav hidden items-center gap-5 text-sm font-bold text-slate-600">
@@ -119,7 +119,7 @@ export async function SiteHeader() {
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-orange-50 p-1 shadow-md shadow-orange-200 sm:h-11 sm:w-11 sm:rounded-2xl">
             <MascotAvatar />
           </span>
-          <span className="text-lg font-black tracking-tight text-orange-500 sm:text-xl">Ava</span>
+          <span className="text-lg font-black tracking-tight text-orange-500 sm:text-xl">Educhi</span>
         </Link>
 
         <nav className="intro-page-nav hidden items-center gap-5 text-sm font-bold text-slate-600">
@@ -176,7 +176,7 @@ export async function SiteHeader() {
             initialExp={account?.exp ?? 0}
             vipDaysLeft={vipDaysLeft}
             user={{
-              name: session.user.name ?? "Tài khoản Ava",
+              name: session.user.name ?? "Tài khoản Educhi",
               email: session.user.email ?? "",
               image: session.user.image ?? null,
               initials,
