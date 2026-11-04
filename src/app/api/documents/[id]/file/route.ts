@@ -1,4 +1,5 @@
-﻿import { readFile } from "fs/promises";
+import { requireTheoryDocumentAccess } from "@/lib/theory-document-access";
+import { readFile } from "fs/promises";
 import { readPrivateDocument } from "@/lib/private-document-storage";
 import { prisma } from "@/lib/db";
 import { handleRouteError, HttpError, requireUser } from "@/lib/api";
@@ -12,6 +13,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const download = new URL(request.url).searchParams.get("download") === "1";
     const document = await prisma.document.findUnique({ where: { id } });
     if (!document) throw new HttpError(404, "Không tìm thấy tài liệu.");
+    await requireTheoryDocumentAccess(id, user);
     if (document.status !== "APPROVED" && document.uploaderId !== user.id && user.role !== "ADMIN") {
       throw new HttpError(403, "Tài liệu chưa được công khai.");
     }

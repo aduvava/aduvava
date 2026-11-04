@@ -17,6 +17,8 @@ type Plan = {
 type VipPricingProps = {
   plans: Plan[];
   activeSubscription: { planName: string; endsAt: string } | null;
+  pendingPayments: { id: string; planName: string; amount: number; reference: string }[];
+  bank: { name: string; accountNumber: string; accountHolder: string } | null;
 };
 
 function formatVnd(value: number) {
@@ -33,6 +35,7 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [transfer, setTransfer] = useState<{ bank: { name: string; accountNumber: string; accountHolder: string }; code: string; amount: number } | null>(null);
 
   async function checkout() {
     setLoading(true);
@@ -50,8 +53,10 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
 
     const data = await response.json();
     setLoading(false);
-    setPaymentOpen(false);
-    setMessage(response.ok ? `Mã thanh toán: ${data.manualTransferCode}. Admin sẽ kích hoạt VIP sau khi xác nhận.` : data.error ?? "Không tạo được yêu cầu thanh toán.");
+    if (response.ok) {
+      setTransfer({ bank: data.bank, code: data.manualTransferCode, amount: data.payment.amount });
+      setMessage("Đã tạo yêu cầu. Chuyển đúng số tiền và nội dung, sau đó chờ đối soát.");
+    } else setMessage(data.error ?? "Không tạo được yêu cầu thanh toán.");
   }
 
   return (
@@ -77,6 +82,7 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
           type="button"
           onClick={() => {
             setMessage("");
+            setTransfer(null);
             setPaymentOpen(true);
           }}
           className={clsx("mt-6 w-full rounded-2xl px-6 py-3.5 text-base font-black transition", featured ? "bg-orange-500 text-white hover:bg-orange-600" : "bg-slate-950 text-white hover:bg-orange-500")}
@@ -109,9 +115,17 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
               </p>
             </div>
 
-            <button type="button" onClick={checkout} disabled={loading} className="mt-6 w-full rounded-2xl bg-orange-500 px-6 py-4 text-base font-black text-white transition hover:bg-orange-600 disabled:bg-slate-300">
-              {loading ? "Đang xác nhận..." : "Xác nhận thanh toán"}
-            </button>
+            {transfer ? <div className="mt-5 space-y-2 rounded-2xl border border-orange-200 bg-orange-50 p-5 text-sm">
+              <p>Ngân hàng: <strong>{transfer.bank.name}</strong></p>
+              <p>Số tài khoản: <strong className="select-all">{transfer.bank.accountNumber}</strong></p>
+              <p>Chủ tài khoản: <strong>{transfer.bank.accountHolder}</strong></p>
+              <p>Số tiền: <strong>{formatVnd(transfer.amount)}</strong></p>
+              <p>Nội dung chuyển khoản: <strong className="select-all">{transfer.code}</strong></p>
+              <p className="text-slate-600">VIP được kích hoạt sau khi quản trị viên xác nhận đã nhận tiền.</p>
+            </div> : <button type="button" onClick={checkout} disabled={loading} className="mt-6 w-full rounded-2xl bg-orange-500 px-6 py-4 text-base font-black text-white transition hover:bg-orange-600 disabled:bg-slate-300">
+              {loading ? "Đang tạo giao dịch..." : "Tạo mã chuyển khoản"}
+            </button>}
+            {message && <p role="status" className="mt-3 text-sm text-slate-600">{message}</p>}
           </div>
         </div>
       ) : null}
@@ -119,7 +133,7 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
   );
 }
 
-export function VipPricing({ plans, activeSubscription }: VipPricingProps) {
+export function VipPricing({ plans, activeSubscription, pendingPayments, bank }: VipPricingProps) {
   const featured = plans.find((plan) => plan.slug.includes("monthly"))?.id ?? plans[1]?.id;
 
   return (
@@ -147,6 +161,15 @@ export function VipPricing({ plans, activeSubscription }: VipPricingProps) {
             )}
           </div>
         </section>
+
+        {pendingPayments.length ? <section className="mt-6 rounded-3xl border border-orange-200 bg-white p-6">
+          <h2 className="text-xl font-black">Chuyển khoản đang chờ xác nhận</h2>
+          {bank ? <p className="mt-2 text-sm text-slate-600">{bank.name} · STK <strong className="select-all">{bank.accountNumber}</strong> · {bank.accountHolder}</p> : null}
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">{pendingPayments.map((payment) => <div key={payment.id} className="rounded-xl bg-orange-50 p-4 text-sm">
+            <strong>{payment.planName} · {formatVnd(payment.amount)}</strong><p>Nội dung: <strong className="select-all">{payment.reference}</strong></p>
+            <p className="mt-1 text-slate-600">Chờ quản trị viên đối soát.</p>
+          </div>)}</div>
+        </section> : null}
 
         <section className="mt-8 grid gap-6 lg:grid-cols-3">
           {plans.map((plan) => <PlanCard key={plan.id} plan={plan} featured={plan.id === featured} />)}

@@ -43,6 +43,8 @@ export default async function TheoryLessonPage({ params }: TheoryLessonPageProps
     const active = await hasActiveSubscription(user.id);
     if (!active) redirect("/vip");
   }
+  const documentId = /^document:([a-zA-Z0-9]+)$/.exec(lesson.content)?.[1];
+  const attachment = documentId ? await prisma.document.findFirst({ where: { id: documentId, status: "APPROVED" }, select: { id: true, originalName: true } }) : null;
 
   return (
     <main className="min-h-screen bg-[#fffdf1] px-4 py-10 text-slate-900 md:px-8">
@@ -67,7 +69,12 @@ export default async function TheoryLessonPage({ params }: TheoryLessonPageProps
           <h1 className="mt-5 text-3xl font-black leading-tight md:text-5xl">{lesson.title}</h1>
           <p className="mt-3 text-sm font-bold text-slate-400">Chương: {lesson.chapter.title}</p>
           {lesson.summary ? <p className="mt-6 rounded-3xl bg-orange-50 p-5 text-lg font-semibold leading-8 text-orange-700">{lesson.summary}</p> : null}
-          <div className="mt-8 space-y-5">{renderContent(lesson.content)}</div>
+          {attachment ? <div className="mt-8 space-y-4">
+            <div className="flex flex-wrap gap-3 text-sm font-bold">
+              <a href={`/api/documents/${attachment.id}/preview`} target="_blank" rel="noopener noreferrer" className="rounded-xl bg-orange-500 px-4 py-3 text-white">Xem tài liệu</a>
+              <a href={`/api/documents/${attachment.id}/file?download=1`} className="rounded-xl bg-slate-100 px-4 py-3 text-slate-800">Tải {attachment.originalName}</a>
+            </div>
+          </div> : <div className="mt-8 space-y-5">{renderContent(lesson.content)}</div>}
         </article>
       </div>
     </main>

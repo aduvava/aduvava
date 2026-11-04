@@ -1,0 +1,41 @@
+[
+  {
+    "slug": "ava-basic",
+    "name": "Gói 39k",
+    "description": "VIP cơ bản trong một tháng.",
+    "price": 39000,
+    "interval": "MONTH",
+    "features": [
+      "Kho đề từ lớp 6 đến 12 và các kì thi",
+      "Đáp án và lý thuyết",
+      "Tự tạo đề thi không giới hạn",
+      "AI chấm tối đa 2 bài Ngữ văn"
+    ]
+  },
+  {
+    "slug": "ava-monthly",
+    "name": "Gói 99k",
+    "description": "VIP toàn diện trong một tháng.",
+    "price": 99000,
+    "interval": "MONTH",
+    "features": [
+      "Kho đề và lý thuyết từ lớp 6 đến 12",
+      "Tự tạo đề thi không giới hạn",
+      "AI chấm tối đa 6 bài Ngữ văn",
+      "Phân tích năng lực và bảng xếp hạng"
+    ]
+  },
+  {
+    "slug": "ava-quarter",
+    "name": "Gói 299k",
+    "description": "VIP dài hạn trong ba tháng.",
+    "price": 299000,
+    "interval": "QUARTER",
+    "features": [
+      "Kho đề và lý thuyết từ lớp 6 đến 12",
+      "Tự tạo đề thi không giới hạn",
+      "AI chấm bài Ngữ văn",
+      "Phân tích năng lực và bảng xếp hạng"
+    ]
+  }
+]

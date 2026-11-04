@@ -55,10 +55,11 @@ export default async function SubjectPage({ params, searchParams }: SubjectPageP
         exams: {
           where: {
             isPublished: true,
+            ...(query.grade ? { OR: [{ grade: query.grade }, { grade: null }] } : {}),
             ...(requestedEducationLevel === "THPTQG"
               ? { educationLevel: "THPTQG" as const }
               : requestedEducationLevel
-                ? { OR: [{ educationLevel: requestedEducationLevel }, { educationLevel: null }] }
+                ? { educationLevel: requestedEducationLevel }
                 : {}),
           },
           include: {
