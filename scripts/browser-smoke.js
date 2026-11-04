@@ -99,7 +99,7 @@ async function main() {
     await linkPage.locator('input[name="password"]').fill(password);
     await linkPage.getByRole("button", { name: "ĐĂNG NHẬP", exact: true }).click();
     await linkPage.waitForURL(/\/account\/link-google\?callbackUrl=/, { timeout: 15000 });
-    await linkPage.getByRole("heading", { name: "Liên kết Google với tài khoản Eduva cũ" }).waitFor();
+    await linkPage.getByRole("heading", { name: "Liên kết Google với tài khoản Educhi cũ" }).waitFor();
     assert.equal(await linkPage.getByText(email, { exact: true }).count(), 1);
     // OAuth credentials are deliberately unavailable in CI, so we verify the
     // protected confirmation screen, not a live Google callback.
@@ -110,20 +110,37 @@ async function main() {
 
     const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true });
     const mobilePage = await mobile.newPage();
-    // On narrow Android-sized screens every primary destination is visible in bottom tabs.
+    // Intro is intentionally free of fixed bottom navigation; inner pages retain
+    // the single-row tabs. Verify narrow Android-sized screens without horizontal scrolling.
     for (const width of [320, 390, 420]) {
       await mobilePage.setViewportSize({ width, height: 844 });
       await mobilePage.goto(base, { waitUntil: "domcontentloaded" });
-      await mobilePage.getByRole("heading", { name: /Luyện Đề Thông Minh/i }).waitFor();
-      const documentWidth = await mobilePage.evaluate(() => document.documentElement.scrollWidth);
-      assert.ok(documentWidth <= width + 1, "mobile landing overflows at " + width + "px");
+      const heading = mobilePage.getByRole("heading", { name: /Luyện Đề Thông Minh/i });
+      await heading.waitFor();
+      const headingLines = await heading.evaluate((element) => {
+        const height = element.getBoundingClientRect().height;
+        const lineHeight = parseFloat(getComputedStyle(element).lineHeight);
+        return height / lineHeight;
+      });
+      assert.ok(headingLines <= 1.1, "landing headline must stay on one line at " + width + "px");
+      assert.equal(await mobilePage.getByRole("navigation", { name: "Điều hướng chính trên điện thoại" }).count(), 0,
+        "landing page must not have fixed bottom nav");
+
+      await mobilePage.goto(base + "/login?role=student", { waitUntil: "domcontentloaded" });
       const tabs = mobilePage.getByRole("navigation", { name: "Điều hướng chính trên điện thoại" });
+      const itemRects = [];
       for (const label of ["Trang chủ", "Môn học", "Đề thi", "Tài liệu", "Cửa hàng", "Xếp hạng", "Lớp học", "Đăng nhập"]) {
-        await tabs.getByRole("link", { name: label, exact: true }).waitFor();
+        const link = tabs.getByRole("link", { name: label, exact: true });
+        await link.waitFor();
+        itemRects.push(await link.boundingBox());
       }
+      assert.ok(itemRects.every((rect) => rect && Math.abs(rect.y - itemRects[0].y) <= 1),
+        "mobile navigation items must occupy one row at " + width + "px");
       const rectangle = await tabs.boundingBox();
       assert.ok(rectangle && Math.abs(rectangle.y + rectangle.height - 844) <= 2,
         "mobile navigation must stay fixed to the bottom at " + width + "px");
+      const documentWidth = await mobilePage.evaluate(() => document.documentElement.scrollWidth);
+      assert.ok(documentWidth <= width + 1, "mobile layout overflows at " + width + "px");
       assert.equal(await mobilePage.getByRole("button", { name: "Mở menu điều hướng" }).count(), 0);
     }
     const examLink = await mobilePage.getByRole("navigation", { name: "Điều hướng chính trên điện thoại" })
