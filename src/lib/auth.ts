@@ -76,7 +76,7 @@ export const authOptions: NextAuthOptions = {
       // Google email into an existing Eduva account.
       const requestCookies = (await cookies()).getAll();
       const hasSessionCookie = requestCookies.some(({ name }) =>
-        /^(?:__Secure-)?next-auth\\.session-token(?:\\.\\d+)?$/.test(name),
+        /^(?:__Secure-)?next-auth\.session-token(?:\.\d+)?$/.test(name),
       );
       const cookieHeader = requestCookies
         .map(({ name, value }) => `${name}=${encodeURIComponent(value)}`).join("; ");
