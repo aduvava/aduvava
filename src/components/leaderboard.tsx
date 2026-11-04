@@ -241,7 +241,7 @@ function ChatButton() {
         <div className="fixed bottom-[calc(11rem+env(safe-area-inset-bottom))] right-5 z-50 lg:bottom-24 w-[calc(100vw-2.5rem)] max-w-sm rounded-3xl border border-orange-100 bg-white p-5 shadow-2xl">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-black text-slate-900">Hỗ trợ Ava</p>
+              <p className="font-black text-slate-900">Hỗ trợ Educhi</p>
               <p className="mt-1 text-sm text-slate-500">Bạn cần hỗ trợ về bảng xếp hạng?</p>
             </div>
             <button
