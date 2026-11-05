@@ -28,8 +28,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ les
         "Content-Disposition": `${isPdf ? "inline" : "attachment"}; filename="${filename}"`,
         "Content-Length": String(buffer.length),
         "Cache-Control": "private, no-store",
+        // Use browser-native PDF rendering; force downloads for DOCX.
         "X-Content-Type-Options": "nosniff",
-        "Content-Security-Policy": "sandbox",
       },
     });
   } catch {
