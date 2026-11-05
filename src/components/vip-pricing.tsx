@@ -78,7 +78,15 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
       }
       const data = await response.json();
       if (!response.ok || !data.bankTransfer) {
-        setMessage(data.error ?? "Không thể tạo thông tin chuyển khoản. Vui lòng thử lại.");
+        if (response.status === 429) {
+          const retrySeconds = Number(response.headers.get("Retry-After"));
+          const wait = Number.isFinite(retrySeconds) && retrySeconds > 0
+            ? ` Vui lòng thử lại sau khoảng ${Math.ceil(retrySeconds / 60)} phút.`
+            : " Vui lòng thử lại sau.";
+          setMessage("Bạn đã tạo quá nhiều yêu cầu thanh toán." + wait);
+        } else {
+          setMessage(data.error ?? "Không thể tạo thông tin chuyển khoản. Vui lòng thử lại.");
+        }
         return;
       }
       setBankTransfer(data.bankTransfer);
