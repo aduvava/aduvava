@@ -42,7 +42,7 @@ function asMetadata(value) {
  * concurrent confirmations from granting VIP twice. Serialization conflicts
  * are retried, but other errors are rethrown without changing payment state.
  */
-async function transitionManualPayment(db, paymentId, nextStatus, sepayEventId = null) {
+async function transitionManualPayment(db, paymentId, nextStatus, sepayEventId = /** @type {string | null} */ (null)) {
   if (!VALID_STATUSES.has(nextStatus)) throw new PaymentTransitionError(400, "Invalid payment status");
   if (sepayEventId !== null && (!/^[1-9][0-9]{0,15}$/.test(sepayEventId) || nextStatus !== "PAID")) {
     throw new PaymentTransitionError(400, "Invalid SePay event ID or payment transition");
@@ -150,6 +150,11 @@ async function transitionManualPayment(db, paymentId, nextStatus, sepayEventId =
       }, { isolationLevel: "Serializable", maxWait: 10000, timeout: 20000 });
     } catch (error) {
       if (error?.code === "P2034" && attempt < 3) continue;
+      if (sepayEventId !== null && error?.code === "P2002") {
+        // A concurrent event may have been committed first. Do not retry
+        // activation under another payment; the unique receipt is authoritative.
+        throw new PaymentTransitionError(409, "SePay event or payment was already reconciled");
+      }
       throw error;
     }
   }
