@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { SubjectLearningDetail } from "@/components/subject-learning-detail";
+import { getDashboardSubjects } from "@/lib/dashboard-subjects";
 
 type SubjectPageProps = {
   params: Promise<{ slug: string }>;
@@ -106,7 +107,12 @@ export default async function SubjectPage({ params, searchParams }: SubjectPageP
   const units = databaseSubject.topics.length
     ? [{ title: "Chuyên đề", lessons: databaseSubject.topics.map((topic) => topic.name) }]
     : [];
-  const subjectItems = allSubjects.map((item) => ({
+  const visibleSubjects = requestedEducationLevel === "THCS"
+    ? getDashboardSubjects(allSubjects, "secondary")
+    : allSubjects;
+  const displaySubjectName = visibleSubjects.find((item) => item.slug === databaseSubject.slug)?.name
+    ?? databaseSubject.name;
+  const subjectItems = visibleSubjects.map((item) => ({
     slug: item.slug,
     name: item.name,
     shortName: item.name,
@@ -133,8 +139,8 @@ export default async function SubjectPage({ params, searchParams }: SubjectPageP
     <SubjectLearningDetail
       subject={{
         slug: databaseSubject.slug,
-        name: databaseSubject.name,
-        shortName: databaseSubject.name,
+        name: displaySubjectName,
+        shortName: displaySubjectName,
         description: databaseSubject.description,
         accent: "from-orange-500 to-amber-400",
         icon: databaseSubject.icon,

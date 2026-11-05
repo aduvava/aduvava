@@ -20,6 +20,7 @@ import {
   Headphones,
   Languages,
   Landmark,
+  Laptop,
   Leaf,
   MessageCircleMore,
   Play,
@@ -31,6 +32,7 @@ import {
 import { clsx } from "clsx";
 import { getDashboardImage } from "@/data/dashboard-images";
 import { MascotAvatar } from "@/components/mascot-avatar";
+import { getDashboardSubjects, secondarySubjectCount } from "@/lib/dashboard-subjects";
 
 type ExamItem = {
   id: string;
@@ -179,6 +181,15 @@ const subjectVisuals = {
     icon: BookMarked,
     imageSrc: "/subject-images/hoa-hoc.png",
     className: "from-emerald-50 to-lime-50 text-emerald-600",
+  },
+  "Giáo dục công dân": {
+    icon: Gavel,
+    imageSrc: "/subject-images/kt-va-phap-luat.png",
+    className: "from-amber-50 to-orange-50 text-amber-700",
+  },
+  "Tin học": {
+    icon: Laptop,
+    className: "from-blue-50 to-cyan-50 text-blue-600",
   },
   "KT&PL": {
     icon: Gavel,
@@ -389,7 +400,8 @@ export function StudentDashboard({
   const [activeGroup, setActiveGroup] = useState(studyGroups[0].id);
   const currentGroup = useMemo(() => studyGroups.find((group) => group.id === activeGroup) ?? studyGroups[0], [activeGroup]);
   const [activeClass, setActiveClass] = useState(studyGroups[0].classes[0]);
-  const [activeSubject, setActiveSubject] = useState(subjects[0]?.slug ?? "");
+  const visibleSubjects = useMemo(() => getDashboardSubjects(subjects, activeGroup), [subjects, activeGroup]);
+  const [activeSubject, setActiveSubject] = useState(getDashboardSubjects(subjects, studyGroups[0].id)[0]?.slug ?? "");
   const [communityMessages, setCommunityMessages] = useState<CommunityMessage[]>(initialMessages);
   const [communityDraft, setCommunityDraft] = useState("");
   const [replyTarget, setReplyTarget] = useState<CommunityMessage | null>(null);
@@ -397,12 +409,12 @@ export function StudentDashboard({
   function selectGroup(group: (typeof studyGroups)[number]) {
     setActiveGroup(group.id);
     setActiveClass(group.classes[0]);
-    setActiveSubject(subjects[0]?.slug ?? "");
+    setActiveSubject(getDashboardSubjects(subjects, group.id)[0]?.slug ?? "");
   }
 
   function selectClass(className: string) {
     setActiveClass(className);
-    setActiveSubject(subjects[0]?.slug ?? "");
+    setActiveSubject(visibleSubjects[0]?.slug ?? "");
   }
 
   function sendCommunityMessage() {
@@ -482,7 +494,7 @@ export function StudentDashboard({
             ))}
           </div>
           <div className="mx-auto mt-5 grid max-w-[690px] grid-cols-2 justify-items-center gap-2 sm:grid-cols-3 sm:gap-3">
-            {subjects.map((subject) => {
+            {visibleSubjects.map((subject) => {
               const visual = getItemVisual(subject.name, subject.slug);
               const ItemIcon = visual.icon;
               const active = activeSubject === subject.slug;
@@ -518,9 +530,14 @@ export function StudentDashboard({
               );
             })}
           </div>
-          {!subjects.length ? (
+          {!visibleSubjects.length ? (
             <p className="mx-auto mt-5 max-w-xl rounded-2xl border border-dashed border-orange-200 bg-white px-5 py-8 text-center text-sm font-semibold text-slate-500">
-              Chưa có môn học trong database. Admin có thể thêm môn học để hiển thị tại đây.
+              Chưa có môn học phù hợp trong cơ sở dữ liệu. Quản trị viên có thể bổ sung môn học để hiển thị tại đây.
+            </p>
+          ) : null}
+          {activeGroup === "secondary" && visibleSubjects.length > 0 && visibleSubjects.length < secondarySubjectCount ? (
+            <p className="mt-4 text-center text-xs text-slate-500">
+              Một số môn THCS chưa có trong cơ sở dữ liệu nên chưa thể mở nội dung.
             </p>
           ) : null}
             </div>

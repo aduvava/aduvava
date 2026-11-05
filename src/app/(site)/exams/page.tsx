@@ -13,18 +13,87 @@ import {
   Users,
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { getAverageScore, getCompletionRate } from "@/lib/exam-hub-stats";
 
-const teacherQuickStats = [
-  { label: "Đề đã tạo", value: "63", note: "12 đề đang dùng", icon: Archive, color: "bg-blue-50 text-blue-600" },
-  { label: "Lượt làm bài", value: "1.2K", note: "Tăng 18% tuần này", icon: Users, color: "bg-orange-50 text-orange-600" },
-  { label: "Tỉ lệ hoàn thành", value: "86%", note: "Theo các lớp đang học", icon: BarChart3, color: "bg-emerald-50 text-emerald-600" },
-];
 
-const studentQuickStats = [
-  { label: "Đề đã luyện", value: "28", note: "6 đề trong tuần này", icon: PlayCircle, color: "bg-orange-50 text-orange-600" },
-  { label: "Điểm trung bình", value: "8.4", note: "+0.6 so với tháng trước", icon: BarChart3, color: "bg-blue-50 text-blue-600" },
-  { label: "Xếp hạng lớp", value: "Top 5", note: "Còn 120 EXP để lên hạng", icon: Trophy, color: "bg-emerald-50 text-emerald-600" },
-];
+async function loadTeacherQuickStats(userId: string, weekAgo: Date) {
+  // An administrator also sees their OWN exams here, not every teacher's data.
+  const exam = { ownerId: userId };
+  const [examCount, publishedCount, allAttempts, submittedCount, weeklySubmissions] = await Promise.all([
+    prisma.exam.count({ where: exam }),
+    prisma.exam.count({ where: { ...exam, isPublished: true } }),
+    prisma.attempt.count({ where: { exam } }),
+    prisma.attempt.count({ where: { exam, status: "SUBMITTED" } }),
+    prisma.attempt.count({ where: { exam, status: "SUBMITTED", submittedAt: { gte: weekAgo } } }),
+  ]);
+  return [
+    {
+      label: "Đề đã tạo",
+      value: examCount.toLocaleString("vi-VN"),
+      note: `${publishedCount.toLocaleString("vi-VN")} đề đã xuất bản`,
+      icon: Archive,
+      color: "bg-blue-50 text-blue-600",
+    },
+    {
+      label: "Lượt làm bài",
+      value: allAttempts.toLocaleString("vi-VN"),
+      note: `${weeklySubmissions.toLocaleString("vi-VN")} lượt nộp trong 7 ngày`,
+      icon: Users,
+      color: "bg-orange-50 text-orange-600",
+    },
+    {
+      label: "Tỉ lệ hoàn thành",
+      value: `${getCompletionRate(submittedCount, allAttempts)}%`,
+      note: `${submittedCount.toLocaleString("vi-VN")}/${allAttempts.toLocaleString("vi-VN")} lượt đã nộp`,
+      icon: BarChart3,
+      color: "bg-emerald-50 text-emerald-600",
+    },
+  ];
+}
+
+async function loadStudentQuickStats(userId: string, weekAgo: Date) {
+  const [submittedAttempts, allAttempts] = await Promise.all([
+    prisma.attempt.findMany({
+      where: { userId, status: "SUBMITTED" },
+      select: { examId: true, score: true, maxScore: true, submittedAt: true },
+    }),
+    prisma.attempt.count({ where: { userId } }),
+  ]);
+  const completed = submittedAttempts.length;
+  const distinctExams = new Set(submittedAttempts.map((attempt) => attempt.examId)).size;
+  const weeklySubmissions = submittedAttempts.filter(
+    (attempt) => attempt.submittedAt && attempt.submittedAt >= weekAgo,
+  ).length;
+
+  // There is no persisted class enrollment/ranking yet; don't show invented "Top 5".
+  return [
+    {
+      label: "Đề đã luyện",
+      value: distinctExams.toLocaleString("vi-VN"),
+      note: `${weeklySubmissions.toLocaleString("vi-VN")} bài đã nộp trong 7 ngày`,
+      icon: PlayCircle,
+      color: "bg-orange-50 text-orange-600",
+    },
+    {
+      label: "Điểm trung bình",
+      value: getAverageScore(submittedAttempts).toLocaleString("vi-VN", {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      }),
+      note: `Từ ${completed.toLocaleString("vi-VN")} bài đã nộp · thang 10`,
+      icon: BarChart3,
+      color: "bg-blue-50 text-blue-600",
+    },
+    {
+      label: "Tỉ lệ hoàn thành",
+      value: `${getCompletionRate(completed, allAttempts)}%`,
+      note: `${completed.toLocaleString("vi-VN")}/${allAttempts.toLocaleString("vi-VN")} lượt đã nộp`,
+      icon: Trophy,
+      color: "bg-emerald-50 text-emerald-600",
+    },
+  ];
+}
 
 const teacherWorkflow = [
   ["01", "Soạn đề", "Tạo câu hỏi, đáp án, thời lượng và thang điểm."],
@@ -43,7 +112,10 @@ export default async function ExamsHubPage() {
   if (!user) redirect("/login?callbackUrl=/exams");
 
   const isTeacher = user.role === "TEACHER" || user.role === "ADMIN";
-  const quickStats = isTeacher ? teacherQuickStats : studentQuickStats;
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const quickStats = isTeacher
+    ? await loadTeacherQuickStats(user.id, weekAgo)
+    : await loadStudentQuickStats(user.id, weekAgo);
   const workflow = isTeacher ? teacherWorkflow : studentWorkflow;
 
   return (
