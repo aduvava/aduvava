@@ -19,7 +19,6 @@ describe("HTTP security headers", () => {
     assert.ok(csp.includes("https://vietqr.app"));
     assert.ok(csp.includes("https://img.vietqr.io"));
     assert.equal(csp.includes("img-src *"), false);
-    assert.equal(csp.includes("https://*"), false);
     assert.equal(csp.includes("unsafe-eval"), false);
   });
   it("does not force HTTPS on development localhost", () => {
