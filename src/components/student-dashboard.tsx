@@ -32,7 +32,7 @@ import {
 import { clsx } from "clsx";
 import { getDashboardImage } from "@/data/dashboard-images";
 import { MascotAvatar } from "@/components/mascot-avatar";
-import { getDashboardSubjects, secondarySubjectCount } from "@/lib/dashboard-subjects";
+import { getDashboardSubjects, getSubjectCatalogSize } from "@/lib/dashboard-subjects";
 
 type ExamItem = {
   id: string;
@@ -535,9 +535,9 @@ export function StudentDashboard({
               Chưa có môn học phù hợp trong cơ sở dữ liệu. Quản trị viên có thể bổ sung môn học để hiển thị tại đây.
             </p>
           ) : null}
-          {activeGroup === "secondary" && visibleSubjects.length > 0 && visibleSubjects.length < secondarySubjectCount ? (
+          {visibleSubjects.length > 0 && visibleSubjects.length < getSubjectCatalogSize(activeGroup) ? (
             <p className="mt-4 text-center text-xs text-slate-500">
-              Một số môn THCS chưa có trong cơ sở dữ liệu nên chưa thể mở nội dung.
+              Một số môn của cấp học này chưa có trong cơ sở dữ liệu nên chưa thể mở nội dung.
             </p>
           ) : null}
             </div>
