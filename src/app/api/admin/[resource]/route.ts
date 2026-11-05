@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { parseAdminInput } from "@/lib/admin-input";
+import { gradeToLevel } from "@/lib/theory-admin";
 import { prisma } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk, readJson, requireAdmin } from "@/lib/api";
 
@@ -83,8 +84,13 @@ async function createResource(resource: string, body: Record<string, unknown>) {
       return prisma.plan.create({ data: body as never });
     case "store-items":
       return prisma.storeItem.create({ data: body as never });
-    case "theory-chapters":
+    case "theory-chapters": {
+      const grade = String(body.grade ?? "");
+      if (grade && gradeToLevel(grade) !== body.educationLevel) {
+        throw new HttpError(400, "Lớp và cấp học không khớp.");
+      }
       return prisma.theoryChapter.create({ data: body as never });
+    }
     case "theory-lessons":
       return prisma.theoryLesson.create({ data: body as never });
     default:

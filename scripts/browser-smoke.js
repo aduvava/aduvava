@@ -143,7 +143,7 @@ async function main() {
     assert.equal(chapterResponse.status(), 201, "admin creates a chapter");
     const chapterId = (await chapterResponse.json()).item.id;
     await adminPage.goto(base + "/admin/theory-chapters");
-    await adminPage.getByRole("heading", { name: "Chương lý thuyết" }).waitFor();
+    await adminPage.getByRole("heading", { name: "Chương lý thuyết", exact: true }).waitFor();
     assert.equal(await adminPage.getByText("JSON editor").count(), 0, "chapter UI hides JSON editor");
 
     const pdfBytes = Buffer.from("%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n");
@@ -163,7 +163,7 @@ async function main() {
     const guestFile = await fetch(base + "/api/theory/" + lessonId + "/file");
     assert.equal(guestFile.status, 401, "no anonymous access to lesson PDF");
     await adminPage.goto(base + "/admin/theory-lessons");
-    await adminPage.getByRole("heading", { name: "Bài lý thuyết" }).waitFor();
+    await adminPage.getByRole("heading", { name: "Bài lý thuyết", exact: true }).waitFor();
     assert.equal(await adminPage.getByText("JSON editor").count(), 0, "lesson UI hides JSON editor");
 
     const planResponse = await adminPage.request.post(base + "/api/admin/plans", { data: {
@@ -173,7 +173,7 @@ async function main() {
     assert.equal(planResponse.status(), 201, "admin creates VIP plan");
     const planId = (await planResponse.json()).item.id;
     await adminPage.goto(base + "/admin/plans");
-    await adminPage.getByRole("heading", { name: "Gói thành viên" }).waitFor();
+    await adminPage.getByRole("heading", { name: "Gói thành viên", exact: true }).waitFor();
     assert.equal(await adminPage.getByText("JSON editor").count(), 0, "VIP plan UI hides JSON editor");
     const checkoutResponse = await adminPage.request.post(base + "/api/payments/checkout", { data: { planId } });
     assert.equal(checkoutResponse.status(), 201, "checkout creates pending payment");
