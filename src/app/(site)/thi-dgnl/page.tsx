@@ -6,7 +6,7 @@ import { SectionHeader } from "@/components/ui";
 
 async function getExams() {
   try {
-    return await prisma.exam.findMany({ where: { family: "DGNL", isPublished: true }, include: { subject: true, _count: { select: { questions: true, attempts: true } } }, orderBy: { createdAt: "desc" }, take: 9 });
+    return await prisma.exam.findMany({ where: { family: "DGNL", isPublished: true, ownerId: null }, include: { subject: true, _count: { select: { questions: true, attempts: true } } }, orderBy: { createdAt: "desc" }, take: 9 });
   } catch {
     return [];
   }
