@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { prisma } from "@/lib/db";
 import { PaymentTransitionError } from "@/lib/payment-transition";
 import { TooManyRequestsError } from "@/lib/security-throttle";
 import { DocumentScanError } from "@/lib/document-malware-scan";
 import { InvalidJsonBodyError, RequestBodyTooLargeError } from "@/lib/limited-json";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 
 export class HttpError extends Error {
   status: number;
@@ -34,13 +32,7 @@ export async function readJson<T>(request: Request) {
 }
 
 export async function requireUser() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) throw new HttpError(401, "Authentication required");
-  // Enforce account existence and current roles, rather than trusting stale JWT claims.
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { id: true, name: true, email: true, image: true, role: true },
-  });
+  const user = await getCurrentUser();
   if (!user) throw new HttpError(401, "Authentication required");
   return user;
 }

@@ -1,16 +1,15 @@
 import bcrypt from "bcryptjs";
 import type { NextAuthOptions } from "next-auth";
 import { getServerSession } from "next-auth";
-import { getToken } from "next-auth/jwt";
 import { cookies } from "next/headers";
-import { NextRequest } from "next/server";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { rateLimitOperation, TooManyRequestsError } from "@/lib/security-throttle";
-import { googleIdentityMatchesExistingAccount, isVerifiedGoogleIdentity } from "@/lib/google-account-link";
+import { isVerifiedGoogleIdentity } from "@/lib/google-account-link";
+import { resolveActiveRole } from "@/lib/roles";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -40,7 +39,8 @@ const providers: NextAuthOptions["providers"] = [
 
       const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
       if (!user?.passwordHash) return null;
-      if (parsed.data.role && user.role !== parsed.data.role) return null;
+      // Student and teacher use the same account/password; admin stays restricted.
+      if (parsed.data.role === "ADMIN" && user.role !== "ADMIN") return null;
 
       const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);
       if (!valid) return null;
@@ -54,7 +54,10 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   providers.push(
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      // Google provides verified emails. This lets existing email/password users
+      // sign in with their verified Google identity without a manual link step.
+      allowDangerousEmailAccountLinking: true,
     })
   );
 }
@@ -66,38 +69,9 @@ export const authOptions: NextAuthOptions = {
   providers,
   callbacks: {
     async signIn({ account, profile }) {
-      if (account?.provider !== "google") return true;
-      // Google must have verified the email. Never enable automatic email
-      // linking for users who are not already authenticated.
-      if (!isVerifiedGoogleIdentity(profile)) return false;
-
-      // NextAuth v4 supports explicit OAuth account linking when the user is
-      // already signed in. Protect that feature against linking a *different*
-      // Google email into an existing Eduva account.
-      const requestCookies = (await cookies()).getAll();
-      const hasSessionCookie = requestCookies.some(({ name }) =>
-        /^(?:__Secure-)?next-auth\.session-token(?:\.\d+)?$/.test(name),
-      );
-      const cookieHeader = requestCookies
-        .map(({ name, value }) => `${name}=${encodeURIComponent(value)}`).join("; ");
-      const request = new NextRequest("https://eduva.invalid", {
-        headers: { cookie: cookieHeader },
-      });
-      const signedInToken = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-      // If a session cookie exists but cannot be verified, never let the
-      // provider proceed with implicit account linking.
-      if (hasSessionCookie && !signedInToken?.id) return false;
-      if (signedInToken?.id) {
-        const existing = await prisma.user.findUnique({
-          where: { id: String(signedInToken.id) },
-          select: { email: true },
-        });
-        if (!existing) return false;
-        if (!googleIdentityMatchesExistingAccount(profile, existing.email)) {
-          return "/account/link-google?error=GoogleEmailMismatch";
-        }
-      }
-      return true;
+      // Never trust an unverified identity. Google accounts with different
+      // emails stay separate unless the user is deliberately linking accounts.
+      return account?.provider !== "google" || isVerifiedGoogleIdentity(profile);
     },
     async jwt({ token, user }) {
       if (user) {
@@ -108,9 +82,14 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      if (session.user) {
+      if (session.user && token.id) {
         session.user.id = String(token.id);
-        session.user.role = token.role === "ADMIN" ? "ADMIN" : token.role === "TEACHER" ? "TEACHER" : "STUDENT";
+        const stored = await prisma.user.findUnique({
+          where: { id: String(token.id) },
+          select: { role: true },
+        });
+        const selected = (await cookies()).get("educhi_active_role")?.value;
+        session.user.role = resolveActiveRole(stored?.role, selected);
       }
       return session;
     }
@@ -122,8 +101,11 @@ export async function getCurrentUser() {
   if (!session?.user?.id) return null;
   // Never authorize Server Components using a potentially stale JWT role.
   // A deleted user or a revoked admin/teacher must lose access immediately.
-  return prisma.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { id: true, name: true, email: true, image: true, role: true },
   });
+  if (!user) return null;
+  const selected = (await cookies()).get("educhi_active_role")?.value;
+  return { ...user, role: resolveActiveRole(user.role, selected) };
 }

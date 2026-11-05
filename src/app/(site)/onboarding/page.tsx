@@ -7,10 +7,9 @@ import { safePostLoginPath } from "@/lib/onboarding";
 
 export default async function OnboardingPage({ searchParams }: { searchParams: Promise<{ callbackUrl?: string }> }) {
   const params = await searchParams;
-  const next = safePostLoginPath(params.callbackUrl, "/dashboard");
   const user = await getCurrentUser();
+  const next = safePostLoginPath(params.callbackUrl, user?.role === "TEACHER" ? "/teacher" : "/dashboard");
   if (!user) redirect("/login?role=student&callbackUrl=/onboarding");
-  if (user.role === "TEACHER") redirect("/teacher");
   if (user.role === "ADMIN") redirect("/admin");
 
   const profile = await prisma.studentProfile.findUnique({
@@ -29,7 +28,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
       <Card className="w-full max-w-xl">
         <h1 className="font-display text-4xl font-black text-ink">Hoàn thiện thông tin cá nhân</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">Bạn đã đăng nhập thành công. Hoàn thiện thông tin học tập một lần để Educhi gợi ý nội dung phù hợp.</p>
-        <div className="mt-6"><OnboardingForm initialProfile={profile} nextPath={next} /></div>
+        <div className="mt-6"><OnboardingForm initialProfile={profile} nextPath={next} role={user.role === "TEACHER" ? "TEACHER" : "STUDENT"} /></div>
       </Card>
     </div>
   );

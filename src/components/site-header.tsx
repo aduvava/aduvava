@@ -33,6 +33,7 @@ export async function SiteHeader() {
     ? await prisma.user.findUnique({
         where: { id: session.user.id },
         select: {
+          role: true,
           exp: true,
           subscriptions: {
             where: { status: "ACTIVE", endsAt: { gt: new Date() } },
@@ -173,6 +174,8 @@ export async function SiteHeader() {
             Nạp vip
           </Link>
           <HeaderAccountControls
+            canUseAdmin={account?.role === "ADMIN"}
+            activeRole={session.user.role}
             initialExp={account?.exp ?? 0}
             vipDaysLeft={vipDaysLeft}
             user={{

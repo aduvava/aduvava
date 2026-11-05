@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { handleRouteError, jsonOk, readJson, requireUser } from "@/lib/api";
-import { completeStudentProfileSchema } from "@/lib/onboarding";
+import { completeStudentProfileSchema, completeTeacherProfileSchema } from "@/lib/onboarding";
 
 const profileSchema = z.object({
   grade: z.string().optional(),
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     // Profile setup is performed after authentication, and server-side validation
     // must not rely only on the "required" inputs in the browser.
     const payload = typeof body === "object" && body !== null && "source" in body && body.source === "onboarding"
-      ? completeStudentProfileSchema.parse(body)
+      ? (user.role === "TEACHER" ? completeTeacherProfileSchema : completeStudentProfileSchema).parse(body)
       : profileSchema.parse(body);
     const profile = await prisma.studentProfile.upsert({
       where: { userId: user.id },
