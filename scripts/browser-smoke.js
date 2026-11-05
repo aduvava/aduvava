@@ -189,6 +189,22 @@ async function main() {
     assert.equal(qr.searchParams.get("amount"), "10000");
     assert.equal(qr.searchParams.get("addInfo"), checkoutData.manualTransferCode);
     assert.equal(qr.searchParams.get("accountName"), "CI TEST BENEFICIARY");
+    // A repeat click, page refresh, or recovering from prior configuration
+    // errors must display the same unpaid order without consuming another
+    // new-invoice quota.
+    const repeatCheckout = await adminPage.request.post(base + "/api/payments/checkout", {
+      data: { planId },
+    });
+    assert.equal(repeatCheckout.status(), 200, "reuse pending checkout without creating a second payment");
+    const repeated = await repeatCheckout.json();
+    assert.equal(repeated.reusedPending, true);
+    assert.equal(repeated.payment.id, checkoutData.payment.id);
+    assert.equal(repeated.manualTransferCode, checkoutData.manualTransferCode);
+    assert.equal(
+      await prisma.payment.count({ where: { userId: account.id, planId, status: "PENDING" } }),
+      1,
+      "repeated checkout must not create duplicate unpaid invoices",
+    );
     const paymentId = checkoutData.payment.id;
     await adminPage.goto(base + "/admin/payments");
     await adminPage.getByRole("heading", { name: "Thanh toán VIP" }).waitFor();
