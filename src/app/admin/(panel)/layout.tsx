@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
 import {
   BookOpenCheck,
   ClipboardList,
@@ -30,7 +32,11 @@ const adminNav = [
   { href: "/admin/payments", label: "Thanh toán", Icon: CreditCard },
 ];
 
-export default function AdminPanelLayout({ children }: { children: ReactNode }) {
+export default async function AdminPanelLayout({ children }: { children: ReactNode }) {
+  // Protect all admin UI pages, including those without individual checks.
+  const user = await getCurrentUser();
+  if (!user) redirect("/admin/login");
+  if (user.role !== "ADMIN") redirect("/dashboard");
   return (
     <main className="admin-shell min-h-screen bg-slate-100 text-slate-950 lg:grid lg:grid-cols-[280px_1fr]">
       <aside className="hidden border-r border-slate-200 bg-slate-950 text-white lg:block">

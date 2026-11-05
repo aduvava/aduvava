@@ -31,13 +31,10 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  if (pathname.startsWith("/teacher") && token.role !== "TEACHER" && token.role !== "ADMIN") {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
-
-  if (pathname.startsWith("/dashboard") && token.role === "TEACHER") {
-    return NextResponse.redirect(new URL("/teacher", request.url));
-  }
+  // Student/teacher is now a selectable authenticated mode. A JWT role
+  // may be stale immediately after opting into teaching; the destination
+  // Server Component checks the current DB entitlement and selected mode.
+  // The proxy only rejects unauthenticated requests here.
 
   return NextResponse.next();
 }
