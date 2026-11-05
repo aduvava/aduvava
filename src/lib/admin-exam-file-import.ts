@@ -86,7 +86,7 @@ export async function importAdminExamFile(file: File): Promise<ImportedExamQuest
     return parseAdminExamRows(parseDelimited(await file.text(), name.endsWith(".tsv") ? "\t" : ","));
   }
   if (name.endsWith(".xlsx")) {
-    const { default: readSheet } = await import("read-excel-file/browser");
+    const { readSheet } = await import("read-excel-file/browser");
     return parseAdminExamRows(await readSheet(file));
   }
   throw new Error("Chỉ hỗ trợ tệp TXT, CSV, TSV hoặc XLSX.");
