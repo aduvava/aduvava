@@ -11,7 +11,7 @@ const reference = "EDUVA-" + "A1".repeat(12);
 
 describe("customer-facing VietQR transfer details", () => {
   it("constructs bank holder, amount, exact note and prefilled VietQR", () => {
-    const bank = configuredReceivingBank(base as NodeJS.ProcessEnv);
+    const bank = configuredReceivingBank(base);
     assert.ok(bank);
     const details = makeBankTransferDetails(bank, 39000, reference);
     assert.deepEqual(
@@ -29,14 +29,14 @@ describe("customer-facing VietQR transfer details", () => {
   });
 
   it("does not allow missing, blank, malformed or mismatched account configuration", () => {
-    assert.equal(configuredReceivingBank({} as NodeJS.ProcessEnv), null);
-    assert.equal(configuredReceivingBank({ ...base, PAYMENT_BANK_ACCOUNT_NAME: " " } as NodeJS.ProcessEnv), null);
-    assert.equal(configuredReceivingBank({ ...base, PAYMENT_BANK_ACCOUNT_NUMBER: "123-456" } as NodeJS.ProcessEnv), null);
-    assert.equal(configuredReceivingBank({ ...base, SEPAY_BANK_GATEWAY: "BDV/" } as NodeJS.ProcessEnv), null);
+    assert.equal(configuredReceivingBank({}), null);
+    assert.equal(configuredReceivingBank({ ...base, PAYMENT_BANK_ACCOUNT_NAME: " " }), null);
+    assert.equal(configuredReceivingBank({ ...base, PAYMENT_BANK_ACCOUNT_NUMBER: "123-456" }), null);
+    assert.equal(configuredReceivingBank({ ...base, SEPAY_BANK_GATEWAY: "BDV/" }), null);
   });
 
   it("rejects unsafe amount and reference without producing a QR", () => {
-    const bank = configuredReceivingBank(base as NodeJS.ProcessEnv);
+    const bank = configuredReceivingBank(base);
     assert.ok(bank);
     assert.throws(() => makeBankTransferDetails(bank, 0, reference), /amount/);
     assert.throws(() => makeBankTransferDetails(bank, -39000, reference), /amount/);

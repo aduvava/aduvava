@@ -256,6 +256,21 @@ async function main() {
     const receipt = await prisma.sePayReceipt.findUnique({ where: { eventId: String(webhookPayload.id) } });
     assert.equal(receipt?.paymentId, autoOrder.payment.id, "SePay event ID recorded atomically");
 
+    // Customer-facing mobile/desktop payment details, not merely a reference string.
+    await adminPage.goto(base + "/vip");
+    await adminPage.getByRole("button", { name: "Đăng ký ngay" }).first().click();
+    const transferDialog = adminPage.getByRole("dialog", { name: "Thông tin chuyển khoản VIP Educhi" });
+    await transferDialog.waitFor();
+    await transferDialog.getByText("Số tài khoản", { exact: true }).waitFor();
+    await transferDialog.getByText("1234567890", { exact: true }).waitFor();
+    await transferDialog.getByText("CI TEST BENEFICIARY", { exact: true }).waitFor();
+    await transferDialog.getByText("Nội dung chuyển khoản (giữ nguyên)").waitFor();
+    assert.equal(await transferDialog.getByRole("button", { name: "Sao chép Nội dung chuyển khoản (giữ nguyên)" }).count(), 1);
+    const qrImage = transferDialog.getByRole("img", { name: /Mã VietQR nhận/ });
+    await qrImage.waitFor({ state: "attached" });
+    assert.match(await qrImage.getAttribute("src") ?? "", /img\.vietqr\.io\/image\/BIDV-1234567890-compact2\.png/);
+    await transferDialog.getByRole("button", { name: "Đóng thông tin chuyển khoản" }).click();
+
     const deleteLesson = await adminPage.request.delete(base + "/api/admin/theory-lessons/manage", { data: { lessonId } });
     assert.equal(deleteLesson.status(), 200, "admin can delete uploaded lessons");
     await adminContext.close();
