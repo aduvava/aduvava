@@ -15,7 +15,7 @@ export default async function LeaderboardPage() {
 
   const [attempts, subjects, currentAccount, storeItems] = await Promise.all([
     prisma.attempt.findMany({
-      where: { status: "SUBMITTED", submittedAt: { not: null } },
+      where: { status: "SUBMITTED", submittedAt: { not: null }, exam: { ownerId: null, isPublished: true } },
       select: {
         id: true,
         userId: true,

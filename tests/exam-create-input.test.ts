@@ -11,8 +11,10 @@ const valid = {
 };
 
 describe("user exam input bounds", () => {
-  it("accepts ordinary exam creation", () => {
-    assert.equal(createExamSchema.safeParse(valid).success, true);
+  it("accepts ordinary exam creation as private by default", () => {
+    const result = createExamSchema.safeParse(valid);
+    assert.equal(result.success, true);
+    if (result.success) assert.equal(result.data.shareMode, "RESTRICTED");
   });
 
   it("allows more than 100 personal questions, including THPTQG practice", () => {

@@ -63,6 +63,7 @@ export default async function SubjectPage({ params, searchParams }: SubjectPageP
         exams: {
           where: {
             isPublished: true,
+            ownerId: null,
             ...(requestedEducationLevel === "THPTQG"
               ? { educationLevel: "THPTQG" as const }
               : requestedEducationLevel
@@ -82,7 +83,7 @@ export default async function SubjectPage({ params, searchParams }: SubjectPageP
       },
     }),
     prisma.subject.findMany({
-      include: { _count: { select: { exams: true, theoryChapters: true } } },
+      include: { _count: { select: { exams: { where: { isPublished: true, ownerId: null } }, theoryChapters: true } } },
       orderBy: { name: "asc" },
     }),
   ]);

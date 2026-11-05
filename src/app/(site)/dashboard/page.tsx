@@ -61,6 +61,7 @@ export default async function DashboardPage() {
     ? await prisma.exam.findMany({
         where: {
           isPublished: true,
+          ownerId: null,
           id: { notIn: attemptedExamIds },
           ...(weakSubjectIds.length ? { subjectId: { in: weakSubjectIds } } : {}),
         },
@@ -75,6 +76,7 @@ export default async function DashboardPage() {
     ? await prisma.exam.findMany({
         where: {
           isPublished: true,
+          ownerId: null,
           id: { notIn: [...attemptedExamIds, ...personalizedExams.map((exam) => exam.id)] },
           educationLevel: "THPTQG",
         },
@@ -90,6 +92,7 @@ export default async function DashboardPage() {
         status: "SUBMITTED" as const,
         submittedAt: { not: null },
         exam: {
+          ownerId: null,
           subjectId: {
             in: weakSubjectIds.length
               ? weakSubjectIds
@@ -105,7 +108,7 @@ export default async function DashboardPage() {
     : {
         status: "SUBMITTED" as const,
         submittedAt: { not: null },
-        exam: { educationLevel: "THPTQG" as const },
+        exam: { educationLevel: "THPTQG" as const, ownerId: null },
       };
 
   const rankingAttempts = await prisma.attempt.findMany({

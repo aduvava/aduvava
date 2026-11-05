@@ -308,7 +308,7 @@ model Exam {
   subjectId         String
   ownerId           String?
   shareToken        String?         @unique
-  shareMode         ExamShareMode   @default(PUBLIC)
+  shareMode         ExamShareMode   @default(RESTRICTED)
   sharePasswordHash String?
   isPublished       Boolean         @default(true)
   createdAt         DateTime        @default(now())

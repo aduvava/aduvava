@@ -7,7 +7,7 @@ export async function GET(request: Request) {
     const family = searchParams.get("family");
     const subjects = await prisma.subject.findMany({
       where: family === "THPTQG" || family === "DGNL" ? { family } : undefined,
-      include: { _count: { select: { exams: true } } },
+      include: { _count: { select: { exams: { where: { isPublished: true, ownerId: null } } } } },
       orderBy: { name: "asc" }
     });
     return jsonOk({ subjects });

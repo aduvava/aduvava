@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { Pencil, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
+import { Pencil, Plus, RefreshCw, Search, Trash2, UploadCloud, X } from "lucide-react";
+import { importAdminExamFile, type ImportedExamQuestion } from "@/lib/admin-exam-file-import";
 
 type Level = "THCS" | "THPT" | "EXAM_10" | "THPTQG" | null;
 type Family = "THPTQG" | "DGNL";
@@ -55,6 +56,9 @@ export function ExamManager() {
   const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [fileQuestions, setFileQuestions] = useState<ImportedExamQuestion[] | null>(null);
+  const [selectedFileName, setSelectedFileName] = useState("");
+  const [parsingFile, setParsingFile] = useState(false);
   const pageSize = 30;
 
   const load = useCallback(async () => {
@@ -94,8 +98,28 @@ export function ExamManager() {
   function reset() {
     setEditing(null);
     setDraft(newDraft());
+    setFileQuestions(null);
+    setSelectedFileName("");
+  }
+  async function uploadQuestions(file?: File) {
+    if (!file) return;
+    setFileQuestions(null);
+    setSelectedFileName(file.name);
+    setParsingFile(true);
+    setMessage("Đang đọc file đề thi...");
+    try {
+      const parsed = await importAdminExamFile(file);
+      setFileQuestions(parsed);
+      setMessage(`Đã đọc ${parsed.length} câu hỏi. Kiểm tra lại thông tin rồi tạo đề.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Không đọc được file. Hãy kiểm tra định dạng.");
+    } finally {
+      setParsingFile(false);
+    }
   }
   function edit(exam: Exam) {
+    setFileQuestions(null);
+    setSelectedFileName("");
     setEditing(exam);
     setDraft({
       title: exam.title, description: exam.description, code: exam.code, slug: exam.slug,
@@ -134,13 +158,17 @@ export function ExamManager() {
     if (!data.code || !data.slug) return setMessage("Mã đề và đường dẫn không được để trống.");
     setBusy(true); setMessage("Đang lưu đề thi...");
     try {
-      const url = editing ? "/api/admin/exams/" + encodeURIComponent(editing.id) : "/api/admin/exams";
+      const url = editing ? "/api/admin/exams/" + encodeURIComponent(editing.id)
+        : fileQuestions ? "/api/admin/exams/import" : "/api/admin/exams";
       const response = await fetch(url, {
         method: editing ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" }, body: JSON.stringify(data),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(fileQuestions && !editing ? { metadata: data, questions: fileQuestions } : data),
       });
       if (!response.ok) throw new Error(await apiMessage(response));
-      setMessage(editing ? "Đã lưu thay đổi đề thi." : "Đã tạo bản nháp. Bạn có thể thêm câu hỏi trong mục Câu hỏi.");
+      setMessage(editing ? "Đã lưu thay đổi đề thi."
+        : fileQuestions ? `Đã tạo đề và nhập đủ ${fileQuestions.length} câu hỏi.`
+        : "Đã tạo đề. Bạn có thể thêm câu hỏi trong mục Câu hỏi.");
       reset();
       setPage(1);
       await load();
@@ -239,11 +267,28 @@ export function ExamManager() {
               </div>
             </details>
           ) : null}
+          {!editing ? (
+            <div className="rounded-xl border border-dashed border-orange-300 bg-orange-50/40 p-4">
+              <label htmlFor="admin-exam-upload" className="flex cursor-pointer items-center gap-2 text-sm font-black text-orange-700">
+                <UploadCloud className="h-5 w-5" /> Tải file câu hỏi (không bắt buộc)
+              </label>
+              <input id="admin-exam-upload" type="file" accept=".txt,.csv,.tsv,.xlsx" className="mt-3 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-orange-500 file:px-3 file:py-2 file:font-bold file:text-white" onChange={(event) => { void uploadQuestions(event.target.files?.[0]); event.target.value = ""; }} />
+              <p className="mt-2 text-xs text-slate-500">Nhận TXT, CSV, TSV, Excel (XLSX), tối đa 5 MB. Mỗi câu cần 4 phương án A–D và cột/ dòng đáp án đúng. Không chọn file vẫn có thể tạo đề trống và thêm câu hỏi sau.</p>
+              {selectedFileName ? <p className="mt-2 text-xs font-bold text-slate-700">{selectedFileName} · {parsingFile ? "Đang đọc..." : fileQuestions ? `${fileQuestions.length} câu hợp lệ` : "Chưa nhập thành công"}</p> : null}
+              {fileQuestions?.length ? (
+                <div className="mt-3 rounded-lg bg-white p-3 text-xs text-slate-700">
+                  <p className="font-black">Xem nhanh câu đầu: {fileQuestions[0].prompt}</p>
+                  <p className="mt-1">Đáp án: {String.fromCharCode(65 + fileQuestions[0].correctIndex)}</p>
+                  <button type="button" onClick={() => { setFileQuestions(null); setSelectedFileName(""); }} className="mt-2 font-bold text-red-600">Bỏ file đã chọn</button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <label className="flex items-start gap-3 rounded-xl bg-slate-50 p-3 text-sm font-semibold text-slate-700">
             <input type="checkbox" className="mt-1" checked={draft.isPublished} onChange={(e) => setValue("isPublished", e.target.checked)} />
             <span>Xuất bản cho học viên <span className="block text-xs font-normal text-slate-500">Tắt để ẩn đề. Đề THPTQG chính thức phải có đủ cấu trúc hợp lệ mới xuất bản được.</span></span>
           </label>
-          <button type="submit" disabled={busy} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-black text-white hover:bg-orange-600 disabled:opacity-50">
+          <button type="submit" disabled={busy || parsingFile} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-black text-white hover:bg-orange-600 disabled:opacity-50">
             <Plus className="h-4 w-4" /> {busy ? "Đang xử lý..." : editing ? "Lưu thay đổi" : "Tạo đề thi"}
           </button>
         </form>
