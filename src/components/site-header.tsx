@@ -173,6 +173,7 @@ export async function SiteHeader() {
             Nạp vip
           </Link>
           <HeaderAccountControls
+            activeRole={session.user.role}
             initialExp={account?.exp ?? 0}
             vipDaysLeft={vipDaysLeft}
             user={{

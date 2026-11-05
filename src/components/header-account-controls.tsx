@@ -8,6 +8,7 @@ import { Crown, Gem, GraduationCap, History, LogOut, School, Target, Trophy, Use
 type HeaderAccountControlsProps = {
   initialExp: number;
   vipDaysLeft: number | null;
+  activeRole: "STUDENT" | "TEACHER" | "ADMIN";
   user: { name: string; email: string; image: string | null; initials: string };
 };
 
@@ -32,7 +33,7 @@ const profileFields = [
   { key: "targetScore", label: "Điểm số mong muốn", placeholder: "Ví dụ: 27+ điểm", Icon: Trophy },
 ] as const;
 
-export function HeaderAccountControls({ initialExp, vipDaysLeft, user }: HeaderAccountControlsProps) {
+export function HeaderAccountControls({ initialExp, vipDaysLeft, activeRole, user }: HeaderAccountControlsProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profile, setProfile] = useState<StudentProfileForm>(emptyProfile);
@@ -154,6 +155,17 @@ export function HeaderAccountControls({ initialExp, vipDaysLeft, user }: HeaderA
               <p className="mt-1 truncate text-xs text-slate-500">{user.email}</p>
             </div>
             <div className="space-y-1 p-2">
+              <div className="px-4 pb-1 pt-2 text-[11px] font-black uppercase tracking-wider text-slate-400">Chuyển vai trò</div>
+              <a href="/auth/select-role?role=student&callbackUrl=/dashboard" className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-extrabold transition hover:bg-orange-50 ${activeRole === "STUDENT" ? "bg-orange-50 text-orange-600" : "text-slate-700"}`}>
+                <GraduationCap className="h-5 w-5" /> Học sinh {activeRole === "STUDENT" ? "✓" : ""}
+              </a>
+              <a href="/auth/select-role?role=teacher&callbackUrl=/teacher" className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-extrabold transition hover:bg-orange-50 ${activeRole === "TEACHER" ? "bg-orange-50 text-orange-600" : "text-slate-700"}`}>
+                <School className="h-5 w-5" /> Giáo viên {activeRole === "TEACHER" ? "✓" : ""}
+              </a>
+              {activeRole === "ADMIN" ? (
+                <a href="/auth/select-role?role=admin&callbackUrl=/admin" className="flex items-center gap-3 rounded-2xl bg-orange-50 px-4 py-3 text-sm font-extrabold text-orange-600">Quản trị viên ✓</a>
+              ) : null}
+              <div className="my-1 border-t border-slate-100" />
               <button type="button" onClick={openProfile} className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-extrabold text-slate-700 transition hover:bg-orange-50 hover:text-orange-600">
                 <UserRound className="h-5 w-5" /> Thông tin cá nhân
               </button>

@@ -7,8 +7,8 @@ import { safePostLoginPath } from "@/lib/onboarding";
 
 export default async function OnboardingPage({ searchParams }: { searchParams: Promise<{ callbackUrl?: string }> }) {
   const params = await searchParams;
-  const next = safePostLoginPath(params.callbackUrl, "/dashboard");
   const user = await getCurrentUser();
+  const next = safePostLoginPath(params.callbackUrl, user?.role === "TEACHER" ? "/teacher" : "/dashboard");
   if (!user) redirect("/login?role=student&callbackUrl=/onboarding");
   if (user.role === "ADMIN") redirect("/admin");
 
