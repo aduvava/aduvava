@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { getDashboardSubjects, secondarySubjectCount } from "../src/lib/dashboard-subjects";
+import { getDashboardSubjects, getSubjectCatalogSize, secondarySubjectCount } from "../src/lib/dashboard-subjects";
 
 describe("THCS subject selection", () => {
   const subjects = [
@@ -43,7 +43,45 @@ describe("THCS subject selection", () => {
     assert.deepEqual(shown, [{ name: "Toán", slug: "toan" }]);
   });
 
-  it("does not change the available subjects for other education levels", () => {
-    assert.deepEqual(getDashboardSubjects(subjects, "high-school"), subjects);
+  it("shows exactly three entrance-exam subjects even if the database has many", () => {
+    const selected = getDashboardSubjects(subjects, "grade-10");
+    assert.equal(getSubjectCatalogSize("grade-10"), 3);
+    assert.deepEqual(selected.map((item) => item.name), ["Toán", "Ngữ văn", "Tiếng Anh"]);
+    assert.deepEqual(selected.map((item) => item.slug), ["toan", "ngu-van", "tieng-anh"]);
+  });
+
+  it("shows the same twelve specific subjects for THPT and THPTQG", () => {
+    const names = [
+      "Toán", "Ngữ văn", "Tiếng Anh", "Địa lý", "Lịch sử", "Hóa học",
+      "Sinh học", "Vật lý", "KT&PL", "Công nghệ Công nghiệp",
+      "Công nghệ Nông nghiệp", "Tin học",
+    ];
+    for (const group of ["high-school", "national-exam"]) {
+      const selected = getDashboardSubjects(subjects, group);
+      assert.equal(getSubjectCatalogSize(group), 12);
+      assert.deepEqual(selected.map((item) => item.name), names);
+      assert.equal(selected.find((item) => item.name === "KT&PL")?.slug, "kt-va-phap-luat");
+      assert.equal(selected.find((item) => item.name === "Công nghệ Công nghiệp")?.slug, "cong-nghe-cong-nghiep");
+      assert.equal(selected.find((item) => item.name === "Công nghệ Nông nghiệp")?.slug, "cong-nghe-nong-nghiep");
+      assert.equal(selected.some((item) => item.name === "Công nghệ"), false);
+      assert.equal(selected.some((item) => item.name === "Giáo dục công dân"), false);
+    }
+  });
+
+  it("keeps high school technology electives distinct rather than duplicating generic Công nghệ", () => {
+    const selected = getDashboardSubjects([
+      { name: "Công nghệ", slug: "cong-nghe" },
+      { name: "Công nghệ Nông nghiệp", slug: "cong-nghe-nong-nghiep" },
+    ], "high-school");
+    assert.deepEqual(selected.map((item) => item.name), ["Công nghệ Nông nghiệp"]);
+  });
+
+  it("does not invent missing subjects in the entrance-exam catalog", () => {
+    const selected = getDashboardSubjects([{ name: "Toán", slug: "toan" }], "grade-10");
+    assert.deepEqual(selected, [{ name: "Toán", slug: "toan" }]);
+  });
+
+  it("retains the original subject list for unexpected group identifiers", () => {
+    assert.deepEqual(getDashboardSubjects(subjects, "unknown"), subjects);
   });
 });
