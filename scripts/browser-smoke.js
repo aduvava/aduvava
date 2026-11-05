@@ -34,7 +34,7 @@ async function main() {
 
     await page.goto(base + "/register");
     await page.getByRole("heading", { name: "Tạo tài khoản học sinh" }).waitFor();
-    // Google is offered first but must be disabled until OAuth credentials exist.
+    // Google remains available as an alternative registration method.
     assert.equal(await page.getByRole("button", { name: "Đăng ký nhanh bằng Google" }).isDisabled(), true);
     await page.locator('input[name="name"]').fill("Browser Tester");
     await page.locator('input[name="email"]').fill(email);
@@ -89,23 +89,32 @@ async function main() {
     await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15000 });
     await desktop.close();
 
-    // An existing email/password account must be able to authenticate once,
-    // then reach the explicit Google-linking screen without creating a new user.
+    // Existing accounts log in again without re-entering a completed profile.
     const linkContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const linkPage = await linkContext.newPage();
-    await linkPage.goto(base + "/login?role=student&error=OAuthAccountNotLinked&callbackUrl=%2Fdashboard");
-    await linkPage.getByRole("alert").getByText(/Đăng nhập bằng email và mật khẩu cũ/).waitFor();
+    await linkPage.goto(base + "/login?role=student&callbackUrl=%2Fdashboard");
     await linkPage.locator('input[name="email"]').fill(email);
     await linkPage.locator('input[name="password"]').fill(password);
     await linkPage.getByRole("button", { name: "ĐĂNG NHẬP", exact: true }).click();
-    await linkPage.waitForURL(/\/account\/link-google\?callbackUrl=/, { timeout: 15000 });
-    await linkPage.getByRole("heading", { name: "Liên kết Google với tài khoản Educhi cũ" }).waitFor();
-    assert.equal(await linkPage.getByText(email, { exact: true }).count(), 1);
-    // OAuth credentials are deliberately unavailable in CI, so we verify the
-    // protected confirmation screen, not a live Google callback.
-    assert.equal(await linkPage.getByRole("button", { name: "Liên kết tài khoản Google" }).isDisabled(), true);
+    await linkPage.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 20000 });
     const sameUser = await prisma.user.findUniqueOrThrow({ where: { email } });
-    assert.equal(sameUser.id, account.id, "existing Eduva account ID must be preserved");
+    assert.equal(sameUser.id, account.id, "existing Educhi account ID must be preserved");
+
+    // A student can opt into teaching after authenticating, retaining the same account.
+    await linkPage.goto(base + "/auth/select-role?role=teacher&callbackUrl=/teacher");
+    await linkPage.waitForURL(/\/teacher(?:\?|$)/, { timeout: 20000 });
+    const teacherAccount = await prisma.user.findUniqueOrThrow({ where: { email } });
+    assert.equal(teacherAccount.id, account.id, "changing modes cannot create a second account");
+    assert.equal(teacherAccount.role, "TEACHER", "teacher mode opt-in persists eligibility");
+
+    await linkPage.goto(base + "/auth/select-role?role=student&callbackUrl=/dashboard");
+    await linkPage.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 20000 });
+    const studentSession = await (await linkPage.request.get(base + "/api/auth/session")).json();
+    assert.equal(studentSession.user?.role, "STUDENT", "student mode must be active even for a teacher");
+
+    // Selecting an admin mode cannot grant admin to a student/teacher.
+    await linkPage.goto(base + "/auth/select-role?role=admin&callbackUrl=/admin");
+    await linkPage.waitForURL(/\/login\?role=admin/, { timeout: 15000 });
     await linkContext.close();
 
     const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true });
@@ -117,12 +126,16 @@ async function main() {
       await mobilePage.goto(base, { waitUntil: "domcontentloaded" });
       const heading = mobilePage.getByRole("heading", { name: /Luyện Đề Thông Minh/i });
       await heading.waitFor();
-      const headingLines = await heading.evaluate((element) => {
-        const height = element.getBoundingClientRect().height;
-        const lineHeight = parseFloat(getComputedStyle(element).lineHeight);
-        return height / lineHeight;
-      });
-      assert.ok(headingLines <= 1.1, "landing headline must stay on one line at " + width + "px");
+      const headlineSpans = heading.locator("span");
+      assert.equal(await headlineSpans.count(), 2, "landing headline has two separately controlled lines");
+      for (const segment of await headlineSpans.all()) {
+        const lineCount = await segment.evaluate((element) => {
+          const height = element.getBoundingClientRect().height;
+          const lineHeight = parseFloat(getComputedStyle(element).lineHeight);
+          return height / lineHeight;
+        });
+        assert.ok(lineCount <= 1.1, "each headline phrase must stay on one line at " + width + "px");
+      }
       assert.equal(await mobilePage.getByRole("navigation", { name: "Điều hướng chính trên điện thoại" }).count(), 0,
         "landing page must not have fixed bottom nav");
 
@@ -151,10 +164,10 @@ async function main() {
     await mobilePage.getByRole("heading", { name: "Đăng nhập Học sinh" }).waitFor({ timeout: 20000 });
     assert.equal(await mobilePage.locator('input[type="password"]').count(), 1);
     assert.equal(await mobilePage.locator('input[type="email"]').count(), 1);
-    assert.equal(await mobilePage.getByRole("button", { name: "Đăng nhập bằng Google" }).count(), 1);
+    assert.equal(await mobilePage.getByRole("button", { name: "Tiếp tục bằng Google" }).count(), 1);
     await mobile.close();
 
-    console.log("Chromium smoke passed: home, login guard, registration, session, RBAC, mobile bottom tabs and grade subjects, existing-account Google linking page, mobile login.");
+    console.log("Chromium smoke passed: two-line responsive headline, registration, session, role switching, admin protection, mobile navigation and mobile login.");
   } finally {
     await browser.close();
     await prisma.user.deleteMany({ where: { email } });
