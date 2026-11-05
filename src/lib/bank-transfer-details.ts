@@ -15,13 +15,14 @@ type BankEnvironment = Record<string, string | undefined>;
 
 export function configuredReceivingBank(env: BankEnvironment) {
   const bankName = (env.SEPAY_BANK_GATEWAY || env.PAYMENT_BANK_NAME || "").trim().toUpperCase();
-  const accountNumber = (env.PAYMENT_BANK_ACCOUNT_NUMBER || "").trim();
+  // BIDV VA numbers may contain both digits and A-Z, unlike ordinary accounts.
+  const accountNumber = (env.PAYMENT_BANK_ACCOUNT_NUMBER || "").trim().toUpperCase();
   const accountName = (env.PAYMENT_BANK_ACCOUNT_NAME || "").trim();
 
   // A typo here could direct customer funds to the wrong account. Fail
   // closed rather than issuing an invoice with incomplete payment details.
   if (!/^[A-Z0-9]{2,20}$/.test(bankName) ||
-      !/^[0-9]{6,19}$/.test(accountNumber) ||
+      !/^[A-Z0-9]{6,19}$/.test(accountNumber) ||
       accountName.length < 2 || accountName.length > 100) {
     return null;
   }

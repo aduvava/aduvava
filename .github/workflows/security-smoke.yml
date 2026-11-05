@@ -36,7 +36,7 @@ jobs:
       NEXTAUTH_SECRET: isolated-ci-sessions-only-do-not-use-in-production
       NEXT_TELEMETRY_DISABLED: '1'
       SMOKE_BASE_URL: http://127.0.0.1:3000
-      PAYMENT_BANK_ACCOUNT_NUMBER: "1234567890"
+      PAYMENT_BANK_ACCOUNT_NUMBER: "96247AB123"
       PAYMENT_BANK_ACCOUNT_NAME: CI TEST BENEFICIARY
       SEPAY_BANK_GATEWAY: BIDV
       # Scanner behavior is unit-tested with a fake clamd TCP server; isolated
