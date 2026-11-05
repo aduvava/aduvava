@@ -102,7 +102,14 @@ async function main() {
 
     // A student can opt into teaching after authenticating, retaining the same account.
     await linkPage.goto(base + "/auth/select-role?role=teacher&callbackUrl=/teacher");
-    await linkPage.waitForURL(/\/teacher(?:\?|$)/, { timeout: 20000 });
+    const switchDebug = {
+      url: linkPage.url(),
+      dbRole: (await prisma.user.findUniqueOrThrow({ where: { email } })).role,
+      session: await (await linkPage.request.get(base + "/api/auth/session")).json(),
+      cookies: (await linkContext.cookies()).filter((cookie) => cookie.name === "educhi_active_role").map((cookie) => ({ name: cookie.name, value: cookie.value, domain: cookie.domain })),
+    };
+    console.log("Role switch debug", JSON.stringify(switchDebug));
+    await linkPage.waitForURL(/\/teacher(?:\?|$)/, { timeout: 5000 });
     const teacherAccount = await prisma.user.findUniqueOrThrow({ where: { email } });
     assert.equal(teacherAccount.id, account.id, "changing modes cannot create a second account");
     assert.equal(teacherAccount.role, "TEACHER", "teacher mode opt-in persists eligibility");
