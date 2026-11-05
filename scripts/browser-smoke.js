@@ -177,7 +177,19 @@ async function main() {
     assert.equal(await adminPage.getByText("JSON editor").count(), 0, "VIP plan UI hides JSON editor");
     const checkoutResponse = await adminPage.request.post(base + "/api/payments/checkout", { data: { planId } });
     assert.equal(checkoutResponse.status(), 201, "checkout creates pending payment");
-    const paymentId = (await checkoutResponse.json()).payment.id;
+    const checkoutData = await checkoutResponse.json();
+    const transfer = checkoutData.bankTransfer;
+    assert.equal(transfer.bankName, "BIDV");
+    assert.equal(transfer.accountNumber, "1234567890");
+    assert.equal(transfer.accountName, "CI TEST BENEFICIARY");
+    assert.equal(transfer.transferContent, checkoutData.manualTransferCode);
+    assert.equal(transfer.amount, 10000);
+    const qr = new URL(transfer.qrUrl);
+    assert.equal(qr.hostname, "img.vietqr.io");
+    assert.equal(qr.searchParams.get("amount"), "10000");
+    assert.equal(qr.searchParams.get("addInfo"), checkoutData.manualTransferCode);
+    assert.equal(qr.searchParams.get("accountName"), "CI TEST BENEFICIARY");
+    const paymentId = checkoutData.payment.id;
     await adminPage.goto(base + "/admin/payments");
     await adminPage.getByRole("heading", { name: "Thanh toán VIP" }).waitFor();
     assert.equal(await adminPage.getByText("JSON editor").count(), 0, "payment UI hides JSON editor");
@@ -195,7 +207,7 @@ async function main() {
     const webhookPayload = {
       id: 5511902,
       gateway: "BIDV",
-      accountNumber: "CI-TEST-RECEIVER",
+      accountNumber: "1234567890",
       transferType: "in",
       transferAmount: 10000,
       content: "Chuyen tien " + autoOrder.manualTransferCode,
@@ -243,6 +255,27 @@ async function main() {
     );
     const receipt = await prisma.sePayReceipt.findUnique({ where: { eventId: String(webhookPayload.id) } });
     assert.equal(receipt?.paymentId, autoOrder.payment.id, "SePay event ID recorded atomically");
+
+    // Customer-facing mobile/desktop payment details, not merely a reference string.
+    await adminPage.goto(base + "/vip");
+    await adminPage.getByRole("button", { name: "Đăng ký ngay" }).first().click();
+    const transferDialog = adminPage.getByRole("dialog", { name: "Thông tin chuyển khoản VIP Educhi" });
+    await transferDialog.waitFor();
+    await transferDialog.getByText("Số tài khoản", { exact: true }).waitFor();
+    await transferDialog.getByText("1234567890", { exact: true }).waitFor();
+    await transferDialog.getByText("CI TEST BENEFICIARY", { exact: true }).waitFor();
+    await transferDialog.getByText("Nội dung chuyển khoản (giữ nguyên)").waitFor();
+    assert.equal(await transferDialog.getByRole("button", { name: "Sao chép Nội dung chuyển khoản (giữ nguyên)" }).count(), 1);
+    // External VietQR image hosts can be inaccessible on CI runners. The
+    // checkout must still expose usable manual-transfer details in that case.
+    await transferDialog.getByText("Quét mã VietQR").waitFor();
+    const qrImage = transferDialog.getByRole("img", { name: /Mã VietQR nhận/ });
+    if (await qrImage.count()) {
+      assert.match(await qrImage.getAttribute("src") ?? "", /img\.vietqr\.io\/image\/BIDV-1234567890-compact2\.png/);
+    } else {
+      await transferDialog.getByText(/Không tải được ảnh QR/).waitFor();
+    }
+    await transferDialog.getByRole("button", { name: "Đóng thông tin chuyển khoản" }).click();
 
     const deleteLesson = await adminPage.request.delete(base + "/api/admin/theory-lessons/manage", { data: { lessonId } });
     assert.equal(deleteLesson.status(), 200, "admin can delete uploaded lessons");
