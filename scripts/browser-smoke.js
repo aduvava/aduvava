@@ -266,9 +266,15 @@ async function main() {
     await transferDialog.getByText("CI TEST BENEFICIARY", { exact: true }).waitFor();
     await transferDialog.getByText("Nội dung chuyển khoản (giữ nguyên)").waitFor();
     assert.equal(await transferDialog.getByRole("button", { name: "Sao chép Nội dung chuyển khoản (giữ nguyên)" }).count(), 1);
+    // External VietQR image hosts can be inaccessible on CI runners. The
+    // checkout must still expose usable manual-transfer details in that case.
+    await transferDialog.getByText("Quét mã VietQR").waitFor();
     const qrImage = transferDialog.getByRole("img", { name: /Mã VietQR nhận/ });
-    await qrImage.waitFor({ state: "attached" });
-    assert.match(await qrImage.getAttribute("src") ?? "", /img\.vietqr\.io\/image\/BIDV-1234567890-compact2\.png/);
+    if (await qrImage.count()) {
+      assert.match(await qrImage.getAttribute("src") ?? "", /img\.vietqr\.io\/image\/BIDV-1234567890-compact2\.png/);
+    } else {
+      await transferDialog.getByText(/Không tải được ảnh QR/).waitFor();
+    }
     await transferDialog.getByRole("button", { name: "Đóng thông tin chuyển khoản" }).click();
 
     const deleteLesson = await adminPage.request.delete(base + "/api/admin/theory-lessons/manage", { data: { lessonId } });
