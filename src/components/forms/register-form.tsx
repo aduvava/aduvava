@@ -3,11 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import { SCHOOL_GRADES, VIETNAM_PROVINCES } from "@/data/profile-options";
 
 export function RegisterForm() {
   const [message, setMessage] = useState<string | null>(null);
   const [existingAccount, setExistingAccount] = useState(false);
+  const teacher = useSearchParams().get("role") === "teacher";
   const role = "STUDENT" as const;
 
   async function submit(formData: FormData) {
@@ -15,7 +17,7 @@ export function RegisterForm() {
       name: formData.get("name"),
       email: formData.get("email"),
       password: formData.get("password"),
-      grade: formData.get("grade"),
+      grade: teacher ? undefined : formData.get("grade"),
       province: formData.get("province"),
       role
     };
@@ -32,7 +34,7 @@ export function RegisterForm() {
       return;
     }
     await signIn("credentials", { email: payload.email, password: payload.password, role, redirect: false });
-    window.location.assign("/onboarding");
+    window.location.assign("/auth/continue?role=" + (teacher ? "teacher" : "student") + "&callbackUrl=" + encodeURIComponent(teacher ? "/teacher" : "/dashboard"));
   }
 
   return (
@@ -41,10 +43,10 @@ export function RegisterForm() {
       <input name="email" type="email" required placeholder="Email" className="rounded-2xl border border-ink/10 bg-white px-4 py-3 outline-none focus:border-moss" />
       <input name="password" type="password" required minLength={8} placeholder="Mật khẩu (ít nhất 8 ký tự)" className="rounded-2xl border border-ink/10 bg-white px-4 py-3 outline-none focus:border-moss" />
       <div className="grid gap-3 md:grid-cols-2">
-        <select name="grade" required defaultValue="" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100">
+        {!teacher ? <select name="grade" required defaultValue="" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100">
           <option value="" disabled>Chọn lớp</option>
           {SCHOOL_GRADES.map((grade) => <option key={grade} value={grade}>Lớp {grade}</option>)}
-        </select>
+        </select> : null}
         <select name="province" required defaultValue="" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100">
           <option value="" disabled>Chọn tỉnh/thành</option>
           {VIETNAM_PROVINCES.map((province) => <option key={province} value={province}>{province}</option>)}
@@ -53,7 +55,7 @@ export function RegisterForm() {
       <button className="min-h-12 w-full rounded-full px-5 py-3 font-extrabold text-white shadow-md transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2" style={{ backgroundColor: "#f97316", color: "#ffffff", visibility: "visible", opacity: 1 }} type="submit">TẠO TÀI KHOẢN</button>
       {message ? <p role="status" className="text-sm font-semibold text-ink/65">{message}</p> : null}
       {existingAccount ? (
-        <Link href="/login?role=student" className="rounded-xl bg-orange-50 px-4 py-3 text-center text-sm font-bold text-orange-700 underline">
+        <Link href={teacher ? "/login?role=teacher" : "/login?role=student"} className="rounded-xl bg-orange-50 px-4 py-3 text-center text-sm font-bold text-orange-700 underline">
           Đăng nhập tài khoản Educhi đã có
         </Link>
       ) : null}

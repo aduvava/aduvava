@@ -8,11 +8,13 @@ export function GoogleSignInButton({
   callbackUrl = "/dashboard",
   label = "Tiếp tục với Google",
   selectAccount = false,
+  role = "student",
 }: {
   enabled: boolean;
   callbackUrl?: string;
   label?: string;
   selectAccount?: boolean;
+  role?: "student" | "teacher";
 }) {
   const [pending, setPending] = useState(false);
 
@@ -20,7 +22,7 @@ export function GoogleSignInButton({
     setPending(true);
     try {
       await signIn("google", {
-        callbackUrl: "/auth/continue?callbackUrl=" + encodeURIComponent(callbackUrl),
+        callbackUrl: "/auth/continue?role=" + role + "&callbackUrl=" + encodeURIComponent(callbackUrl),
       }, selectAccount ? { prompt: "select_account" } : undefined);
     } catch {
       setPending(false);
