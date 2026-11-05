@@ -21,7 +21,7 @@ export function safePostLoginPath(value: string | null | undefined, fallback = "
   try {
     const parsed = new URL(value, "https://eduva.invalid");
     if (parsed.origin !== "https://eduva.invalid") return fallback;
-    const blocked = ["/api", "/login", "/register", "/onboarding", "/auth/continue"];
+    const blocked = ["/api", "/login", "/register", "/onboarding", "/auth/continue", "/auth/select-role"];
     if (blocked.some((prefix) => parsed.pathname === prefix || parsed.pathname.startsWith(prefix + "/"))) return fallback;
     return parsed.pathname + parsed.search + parsed.hash;
   } catch {
