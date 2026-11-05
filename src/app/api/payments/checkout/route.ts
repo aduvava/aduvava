@@ -12,9 +12,11 @@ export async function POST(request: Request) {
   try {
     const user = await requireUser();
     const { planId } = checkoutSchema.parse(await readJson<unknown>(request));
-    await rateLimitOperation(prisma, "checkout", user.id, request.headers);
-    const checkout = await createManualCheckout(user.id, planId);
-    return jsonOk(checkout, 201);
+    const checkout = await createManualCheckout(
+      user.id, planId,
+      () => rateLimitOperation(prisma, "checkout", user.id, request.headers),
+    );
+    return jsonOk(checkout, checkout.reusedPending ? 200 : 201);
   } catch (error) {
     return handleRouteError(error);
   }
