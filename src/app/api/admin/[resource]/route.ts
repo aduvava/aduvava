@@ -10,7 +10,7 @@ async function listResource(resource: string) {
     case "subjects":
       return prisma.subject.findMany({ include: { _count: { select: { exams: true } } }, orderBy: { createdAt: "desc" } });
     case "exams":
-      return prisma.exam.findMany({ include: { subject: true, _count: { select: { questions: true, attempts: true } } }, orderBy: { createdAt: "desc" } });
+      return prisma.exam.findMany({ where: { ownerId: null }, include: { subject: true, _count: { select: { questions: true, attempts: true } } }, orderBy: { createdAt: "desc" } });
     case "questions":
       return prisma.question.findMany({ include: { exam: true, topic: true, answerOptions: true }, orderBy: [{ examId: "asc" }, { position: "asc" }] });
     case "blogs":
@@ -112,6 +112,7 @@ async function listManagedResource(resource: string, searchParams: URLSearchPara
     const level = searchParams.get("level");
     const subjectId = searchParams.get("subjectId");
     const where: Prisma.ExamWhereInput = {
+      ownerId: null,
       ...(query ? { OR: [
         { title: { contains: query, mode: "insensitive" } },
         { code: { contains: query, mode: "insensitive" } },
