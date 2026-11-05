@@ -11,9 +11,7 @@ export type BankTransferDetails = {
   qrUrl: string;
 };
 
-type BankEnvironment = Partial<Pick<NodeJS.ProcessEnv,
-  "SEPAY_BANK_GATEWAY" | "PAYMENT_BANK_NAME" |
-  "PAYMENT_BANK_ACCOUNT_NUMBER" | "PAYMENT_BANK_ACCOUNT_NAME">>;
+type BankEnvironment = Record<string, string | undefined>;
 
 export function configuredReceivingBank(env: BankEnvironment) {
   const bankName = (env.SEPAY_BANK_GATEWAY || env.PAYMENT_BANK_NAME || "").trim().toUpperCase();
