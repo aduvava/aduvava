@@ -180,7 +180,7 @@ async function main() {
     const checkoutData = await checkoutResponse.json();
     const transfer = checkoutData.bankTransfer;
     assert.equal(transfer.bankName, "BIDV");
-    assert.equal(transfer.accountNumber, "1234567890");
+    assert.equal(transfer.accountNumber, "96247AB123");
     assert.equal(transfer.accountName, "CI TEST BENEFICIARY");
     assert.equal(transfer.transferContent, checkoutData.manualTransferCode);
     assert.equal(transfer.amount, 10000);
@@ -208,6 +208,7 @@ async function main() {
       id: 5511902,
       gateway: "BIDV",
       accountNumber: "1234567890",
+      subAccount: "96247AB123",
       transferType: "in",
       transferAmount: 10000,
       content: "Chuyen tien " + autoOrder.manualTransferCode,
@@ -225,7 +226,7 @@ async function main() {
     });
     assert.equal(wrongAmount.status(), 409, "bank transfer must match full invoice amount");
     const wrongReceiver = await adminPage.request.post(webhookUrl, {
-      data: { ...webhookPayload, accountNumber: "OTHER" }, headers: webhookHeaders,
+      data: { ...webhookPayload, accountNumber: "OTHER", subAccount: "OTHER" }, headers: webhookHeaders,
     });
     assert.equal(wrongReceiver.status(), 400, "another bank account cannot activate VIP");
     const outgoing = await adminPage.request.post(webhookUrl, {
@@ -262,7 +263,7 @@ async function main() {
     const transferDialog = adminPage.getByRole("dialog", { name: "Thông tin chuyển khoản VIP Educhi" });
     await transferDialog.waitFor();
     await transferDialog.getByText("Số tài khoản", { exact: true }).waitFor();
-    await transferDialog.getByText("1234567890", { exact: true }).waitFor();
+    await transferDialog.getByText("96247AB123", { exact: true }).waitFor();
     await transferDialog.getByText("CI TEST BENEFICIARY", { exact: true }).waitFor();
     await transferDialog.getByText("Nội dung chuyển khoản (giữ nguyên)").waitFor();
     assert.equal(await transferDialog.getByRole("button", { name: "Sao chép Nội dung chuyển khoản (giữ nguyên)" }).count(), 1);
@@ -271,7 +272,7 @@ async function main() {
     await transferDialog.getByText("Quét mã VietQR").waitFor();
     const qrImage = transferDialog.getByRole("img", { name: /Mã VietQR nhận/ });
     if (await qrImage.count()) {
-      assert.match(await qrImage.getAttribute("src") ?? "", /img\.vietqr\.io\/image\/BIDV-1234567890-compact2\.png/);
+      assert.match(await qrImage.getAttribute("src") ?? "", /img\.vietqr\.io\/image\/BIDV-96247AB123-compact2\.png/);
     } else {
       await transferDialog.getByText(/Không tải được ảnh QR/).waitFor();
     }

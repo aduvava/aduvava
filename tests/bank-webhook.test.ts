@@ -33,6 +33,13 @@ describe("SePay webhook authentication and matching", () => {
     assert.equal(matchesReceivingAccount(event, "123456780", "BIDV"), false);
     assert.equal(matchesReceivingAccount(event, "123456789", "VCB"), false);
     assert.equal(matchesReceivingAccount(event, undefined, "BIDV"), false);
+    const withVa = { ...event, subAccount: "96247AB123" };
+    assert.equal(matchesReceivingAccount(withVa, "96247AB123", "BIDV"), true);
+    assert.equal(matchesReceivingAccount(withVa, "96247ab123", "BIDV"), true);
+    assert.equal(matchesReceivingAccount(withVa, "96247AB124", "BIDV"), false);
+    assert.equal(matchesReceivingAccount({ ...withVa, gateway: "VCB" }, "96247AB123", "BIDV"), false);
+    assert.equal(matchesReceivingAccount({ ...withVa, subAccount: "" }, "96247AB123", "BIDV"), false);
+    assert.equal(matchesReceivingAccount({ ...withVa, subAccount: "96247AB123X" }, "96247AB123", "BIDV"), false);
   });
 
   it("validates actual SePay transfer fields and rejects invalid amounts", () => {

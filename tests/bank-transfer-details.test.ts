@@ -28,6 +28,15 @@ describe("customer-facing VietQR transfer details", () => {
     assert.equal(url.searchParams.get("accountName"), "CAO TRINH THANH HIEN");
   });
 
+  it("accepts a BIDV official VA containing letters and pre-fills it in VietQR", () => {
+    const va = "96247AB123";
+    const bank = configuredReceivingBank({ ...base, PAYMENT_BANK_ACCOUNT_NUMBER: va.toLowerCase() });
+    assert.ok(bank);
+    const details = makeBankTransferDetails(bank, 39000, reference);
+    assert.equal(details.accountNumber, va);
+    assert.equal(new URL(details.qrUrl).pathname, "/image/BIDV-" + va + "-compact2.png");
+  });
+
   it("does not allow missing, blank, malformed or mismatched account configuration", () => {
     assert.equal(configuredReceivingBank({}), null);
     assert.equal(configuredReceivingBank({ ...base, PAYMENT_BANK_ACCOUNT_NAME: " " }), null);
