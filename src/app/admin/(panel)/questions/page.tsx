@@ -1,26 +1,14 @@
-import { AdminResourceManager } from "@/components/admin/admin-resource-manager";
+import { QuestionManager } from "@/components/admin/question-manager";
 
 export default function AdminQuestionsPage() {
   return (
-    <main className="mx-auto max-w-7xl px-4 py-16 md:px-6">
-      <h1 className="font-display text-4xl font-black text-ink">Admin · Câu hỏi</h1>
-      <div className="mt-8">
-        <AdminResourceManager
-          resource="questions"
-          defaultPayload={{
-            examId: "copy-exam-id",
-            position: 1,
-            type: "SINGLE_CHOICE",
-            prompt: "Câu hỏi mới?",
-            points: 1,
-            explanation: "Giải thích ngắn",
-            answerOptions: [
-              { label: "A", content: "Đáp án A", isCorrect: true },
-              { label: "B", content: "Đáp án B", isCorrect: false },
-            ],
-          }}
-        />
-      </div>
+    <main className="mx-auto max-w-7xl px-4 py-8 md:px-6">
+      <h1 className="font-display text-3xl font-black text-ink sm:text-4xl">Quản lý câu hỏi</h1>
+      <p className="mt-3 text-sm leading-6 text-ink/70">
+        Chọn đề thi để sửa nội dung, đáp án, lời giải, điểm hoặc xóa câu.
+        Với đề THPTQG chính thức đã xuất bản, hãy chuyển về bản nháp trước khi thay đổi câu hỏi.
+      </p>
+      <div className="mt-6"><QuestionManager /></div>
     </main>
   );
 }
