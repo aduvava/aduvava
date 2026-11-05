@@ -107,9 +107,13 @@ export default async function SubjectPage({ params, searchParams }: SubjectPageP
   const units = databaseSubject.topics.length
     ? [{ title: "Chuyên đề", lessons: databaseSubject.topics.map((topic) => topic.name) }]
     : [];
-  const visibleSubjects = requestedEducationLevel === "THCS"
-    ? getDashboardSubjects(allSubjects, "secondary")
+  const visibleSubjects = requestedEducationLevel && query.level
+    ? getDashboardSubjects(allSubjects, query.level)
     : allSubjects;
+  // A direct URL must not bypass the study-level catalog shown on the dashboard.
+  if (requestedEducationLevel && !visibleSubjects.some((item) => item.slug === databaseSubject.slug)) {
+    notFound();
+  }
   const displaySubjectName = visibleSubjects.find((item) => item.slug === databaseSubject.slug)?.name
     ?? databaseSubject.name;
   const subjectItems = visibleSubjects.map((item) => ({
