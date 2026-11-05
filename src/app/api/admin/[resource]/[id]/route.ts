@@ -1,4 +1,7 @@
 import { prisma } from "@/lib/db";
+import { unlink } from "node:fs/promises";
+import { documentStoredPath } from "@/lib/private-document-storage";
+import { gradeToLevel } from "@/lib/theory-admin";
 import { Prisma } from "@prisma/client";
 import { parseAdminInput } from "@/lib/admin-input";
 import { validateOfficialNationalExam } from "@/lib/official-exam-publication";
@@ -88,8 +91,18 @@ async function updateResource(resource: string, id: string, body: Record<string,
       return prisma.plan.update({ where: { id }, data: body as never });
     case "store-items":
       return prisma.storeItem.update({ where: { id }, data: body as never });
-    case "theory-chapters":
+    case "theory-chapters": {
+      if (body.grade !== undefined || body.educationLevel !== undefined) {
+        const current = await prisma.theoryChapter.findUnique({ where: { id }, select: { grade: true, educationLevel: true } });
+        if (!current) throw new HttpError(404, "Không tìm thấy chương.");
+        const grade = body.grade === undefined ? current.grade : body.grade;
+        const level = body.educationLevel === undefined ? current.educationLevel : body.educationLevel;
+        if (typeof grade === "string" && gradeToLevel(grade) !== level) {
+          throw new HttpError(400, "Lớp và cấp học không khớp.");
+        }
+      }
       return prisma.theoryChapter.update({ where: { id }, data: body as never });
+    }
     case "theory-lessons":
       return prisma.theoryLesson.update({ where: { id }, data: body as never });
     default:
@@ -153,10 +166,20 @@ async function deleteResource(resource: string, id: string) {
       return prisma.plan.delete({ where: { id } });
     case "store-items":
       return prisma.storeItem.delete({ where: { id } });
-    case "theory-chapters":
+    case "theory-chapters": {
+      // Prevent cascading deletion of lessons and leaving their private files orphaned.
+      const lessonCount = await prisma.theoryLesson.count({ where: { chapterId: id } });
+      if (lessonCount > 0) throw new HttpError(409, "Chương còn bài lý thuyết. Hãy xóa các bài trước.");
       return prisma.theoryChapter.delete({ where: { id } });
-    case "theory-lessons":
-      return prisma.theoryLesson.delete({ where: { id } });
+    }
+    case "theory-lessons": {
+      const lesson = await prisma.theoryLesson.delete({ where: { id } });
+      if (lesson.fileStoredName) {
+        try { await unlink(documentStoredPath(lesson.fileStoredName)); }
+        catch (error) { console.error("Theory file cleanup failed", error); }
+      }
+      return lesson;
+    }
     default:
       throw new HttpError(404, "Admin resource not found");
   }

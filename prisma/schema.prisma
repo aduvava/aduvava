@@ -261,9 +261,13 @@ model TheoryLesson {
   slug        String
   title       String
   summary     String?
-  content     String      @db.Text
-  position    Int         @default(0)
-  accessLevel AccessLevel @default(FREE)
+  content          String      @db.Text
+  fileStoredName   String?     @unique
+  fileOriginalName String?
+  fileMimeType     String?
+  fileSize         Int?
+  position         Int         @default(0)
+  accessLevel      AccessLevel @default(FREE)
   isPublished Boolean     @default(true)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt

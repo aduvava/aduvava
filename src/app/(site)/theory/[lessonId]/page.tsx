@@ -27,7 +27,7 @@ export default async function TheoryLessonPage({ params }: TheoryLessonPageProps
   if (!user) redirect(`/login?callbackUrl=/theory/${lessonId}`);
 
   const lesson = await prisma.theoryLesson.findFirst({
-    where: { id: lessonId, isPublished: true },
+    where: { id: lessonId, isPublished: true, chapter: { isPublished: true } },
     include: {
       chapter: {
         include: {
@@ -67,7 +67,22 @@ export default async function TheoryLessonPage({ params }: TheoryLessonPageProps
           <h1 className="mt-5 text-3xl font-black leading-tight md:text-5xl">{lesson.title}</h1>
           <p className="mt-3 text-sm font-bold text-slate-400">Chương: {lesson.chapter.title}</p>
           {lesson.summary ? <p className="mt-6 rounded-3xl bg-orange-50 p-5 text-lg font-semibold leading-8 text-orange-700">{lesson.summary}</p> : null}
-          <div className="mt-8 space-y-5">{renderContent(lesson.content)}</div>
+          {lesson.content ? <div className="mt-8 space-y-5 whitespace-pre-wrap">{renderContent(lesson.content)}</div> : null}
+          {lesson.fileStoredName && lesson.fileMimeType === "application/pdf" ? (
+            <section className="mt-8">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-xl font-black text-slate-950">Tài liệu PDF</h2>
+                <a href={`/api/theory/${lesson.id}/file`} target="_blank" rel="noreferrer" className="rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-black text-white hover:bg-orange-600">Mở PDF</a>
+              </div>
+              <iframe title={`PDF: ${lesson.title}`} src={`/api/theory/${lesson.id}/file`} loading="lazy" className="mt-4 h-[75vh] min-h-[480px] w-full rounded-2xl border border-slate-200 bg-slate-50" />
+            </section>
+          ) : null}
+          {lesson.fileStoredName && lesson.fileMimeType !== "application/pdf" ? (
+            <div className="mt-8 rounded-2xl bg-orange-50 p-5">
+              <p className="mb-4 text-sm font-semibold text-slate-600">Bài học có tệp Word đính kèm.</p>
+              <a href={`/api/theory/${lesson.id}/file`} className="inline-flex rounded-xl bg-orange-500 px-5 py-3 text-sm font-black text-white hover:bg-orange-600">Tải tài liệu Word</a>
+            </div>
+          ) : null}
         </article>
       </div>
     </main>

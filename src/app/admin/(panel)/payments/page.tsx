@@ -1,16 +1,14 @@
-import { AdminResourceManager } from "@/components/admin/admin-resource-manager";
+import { PaymentManager } from "@/components/admin/payment-manager";
 
 export default function AdminPaymentsPage() {
   return (
-    <main className="mx-auto max-w-7xl px-4 py-16 md:px-6">
-      <h1 className="font-display text-4xl font-black text-ink">Admin · Thanh toán</h1>
-      <p className="mt-3 text-sm text-ink/65">Theo dõi yêu cầu chuyển khoản và cập nhật trạng thái sau khi đối soát.</p>
-      <div className="mt-8">
-        <AdminResourceManager
-          resource="payments"
-          defaultPayload={{ userId: "", planId: "", amount: 0, status: "PENDING", provider: "manual-bank-transfer", reference: "" }}
-        />
+    <main className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:py-12">
+      <div>
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-500">Đối soát ngân hàng</p>
+        <h1 className="mt-2 text-3xl font-black text-slate-950 sm:text-4xl">Thanh toán VIP</h1>
+        <p className="mt-2 text-sm font-medium leading-6 text-slate-500">Xem mã chuyển khoản, học viên, gói và số tiền; xác nhận đã nhận tiền để kích hoạt VIP. Không cần nhập JSON.</p>
       </div>
+      <PaymentManager />
     </main>
   );
 }
