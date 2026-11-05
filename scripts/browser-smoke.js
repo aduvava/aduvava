@@ -117,6 +117,78 @@ async function main() {
     await linkPage.waitForURL(/\/login\?role=admin/, { timeout: 15000 });
     await linkContext.close();
 
+    // Test the redesigned Admin editor against a disposable database and real
+    // production build. No requests here reach an actual bank or public site.
+    await prisma.user.update({ where: { id: account.id }, data: { role: "ADMIN" } });
+    const adminContext = await browser.newContext({ viewport: { width: 1366, height: 850 } });
+    const adminPage = await adminContext.newPage();
+    await adminPage.goto(base + "/login?role=admin&callbackUrl=%2Fadmin");
+    await adminPage.locator('input[name="email"]').fill(email);
+    await adminPage.locator('input[name="password"]').fill(password);
+    await adminPage.getByRole("button", { name: "ĐĂNG NHẬP", exact: true }).click();
+    await adminPage.waitForURL(/\/admin(?:\?|$)/, { timeout: 20000 });
+
+    const unique = Date.now().toString(36);
+    const subjectResponse = await adminPage.request.post(base + "/api/admin/subjects", { data: {
+      slug: "ci-theory-" + unique, name: "Môn kiểm thử " + unique, description: "Chỉ cho môi trường CI",
+      family: "THPTQG", icon: "book-open", color: "#f97316",
+    } });
+    assert.equal(subjectResponse.status(), 201, "admin creates a subject");
+    const subjectId = (await subjectResponse.json()).item.id;
+    const chapterResponse = await adminPage.request.post(base + "/api/admin/theory-chapters", { data: {
+      subjectId, educationLevel: "THCS", grade: "Lớp 6",
+      slug: "lop-6-chuong-ci-" + unique, title: "Chương thực hành CI", description: "Chương mẫu",
+      position: 1, isPublished: true,
+    } });
+    assert.equal(chapterResponse.status(), 201, "admin creates a chapter");
+    const chapterId = (await chapterResponse.json()).item.id;
+    await adminPage.goto(base + "/admin/theory-chapters");
+    await adminPage.getByRole("heading", { name: "Chương lý thuyết" }).waitFor();
+    assert.equal(await adminPage.getByText("JSON editor").count(), 0, "chapter UI hides JSON editor");
+
+    const pdfBytes = Buffer.from("%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n");
+    const lessonResponse = await adminPage.request.post(base + "/api/admin/theory-lessons/manage", {
+      multipart: {
+        chapterId, title: "Bài có PDF", summary: "Tệp kiểm thử nội bộ", content: "",
+        position: "1", accessLevel: "FREE", isPublished: "true", removeFile: "false", lessonId: "",
+        file: { name: "lesson.pdf", mimeType: "application/pdf", buffer: pdfBytes },
+      },
+    });
+    assert.equal(lessonResponse.status(), 201, "admin uploads verified PDF with lesson");
+    const lessonId = (await lessonResponse.json()).item.id;
+    const publicFile = await adminPage.request.get(base + "/api/theory/" + lessonId + "/file");
+    assert.equal(publicFile.status(), 200, "signed-in lesson viewers can open allowed PDF");
+    assert.match(publicFile.headers()["content-type"], /application\/pdf/);
+    assert.ok((await publicFile.body()).subarray(0, 5).equals(Buffer.from("%PDF-")));
+    const guestFile = await fetch(base + "/api/theory/" + lessonId + "/file");
+    assert.equal(guestFile.status, 401, "no anonymous access to lesson PDF");
+    await adminPage.goto(base + "/admin/theory-lessons");
+    await adminPage.getByRole("heading", { name: "Bài lý thuyết" }).waitFor();
+    assert.equal(await adminPage.getByText("JSON editor").count(), 0, "lesson UI hides JSON editor");
+
+    const planResponse = await adminPage.request.post(base + "/api/admin/plans", { data: {
+      slug: "ci-vip-" + unique, name: "VIP kiểm thử", description: "Gói CI",
+      price: 10000, interval: "MONTH", features: ["Đề VIP", "Lý thuyết nâng cao"], isActive: true,
+    } });
+    assert.equal(planResponse.status(), 201, "admin creates VIP plan");
+    const planId = (await planResponse.json()).item.id;
+    await adminPage.goto(base + "/admin/plans");
+    await adminPage.getByRole("heading", { name: "Gói thành viên" }).waitFor();
+    assert.equal(await adminPage.getByText("JSON editor").count(), 0, "VIP plan UI hides JSON editor");
+    const checkoutResponse = await adminPage.request.post(base + "/api/payments/checkout", { data: { planId } });
+    assert.equal(checkoutResponse.status(), 201, "checkout creates pending payment");
+    const paymentId = (await checkoutResponse.json()).payment.id;
+    await adminPage.goto(base + "/admin/payments");
+    await adminPage.getByRole("heading", { name: "Thanh toán VIP" }).waitFor();
+    assert.equal(await adminPage.getByText("JSON editor").count(), 0, "payment UI hides JSON editor");
+    const paymentResponse = await adminPage.request.put(base + "/api/admin/payments/" + paymentId, { data: { status: "PAID" } });
+    assert.equal(paymentResponse.status(), 200, "admin bank reconciliation activates VIP");
+    assert.equal((await prisma.subscription.count({ where: { userId: account.id, planId, status: "ACTIVE" } })), 1);
+
+    const deleteLesson = await adminPage.request.delete(base + "/api/admin/theory-lessons/manage", { data: { lessonId } });
+    assert.equal(deleteLesson.status(), 200, "admin can delete uploaded lessons");
+    await adminContext.close();
+
     const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true });
     const mobilePage = await mobile.newPage();
     // Intro is intentionally free of fixed bottom navigation; inner pages retain
