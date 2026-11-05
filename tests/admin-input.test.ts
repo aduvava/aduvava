@@ -46,6 +46,36 @@ describe("admin payload allowlists", () => {
     }, "create"));
   });
 
+  it("edits exam metadata while rejecting unauthorized exam fields", () => {
+    assert.deepEqual(parseAdminInput("exams", {
+      title: "Đề luyện tập mới", durationMinutes: 60, isPublished: false,
+      educationLevel: "THCS", accessLevel: "FREE",
+    }, "update"), {
+      title: "Đề luyện tập mới", durationMinutes: 60, isPublished: false,
+      educationLevel: "THCS", accessLevel: "FREE",
+    });
+    assert.throws(() => parseAdminInput("exams", { ownerId: "attacker" }, "update"));
+    assert.throws(() => parseAdminInput("exams", { sharePasswordHash: "secret" }, "update"));
+    assert.throws(() => parseAdminInput("exams", { durationMinutes: -1 }, "update"));
+  });
+
+  it("saves edited answer options but blocks forged question ownership", () => {
+    assert.deepEqual(parseAdminInput("questions", {
+      prompt: "Một câu hỏi mới",
+      answerOptions: [
+        { label: "A", content: "Đúng", isCorrect: true },
+        { label: "B", content: "Sai", isCorrect: false },
+      ],
+    }, "update"), {
+      prompt: "Một câu hỏi mới",
+      answerOptions: [
+        { label: "A", content: "Đúng", isCorrect: true },
+        { label: "B", content: "Sai", isCorrect: false },
+      ],
+    });
+    assert.throws(() => parseAdminInput("questions", { exam: { connect: { id: "other" } } }, "update"));
+  });
+
   it("rejects empty or unknown update inputs", () => {
     assert.throws(() => parseAdminInput("questions", {}, "update"));
     assert.throws(() => parseAdminInput("unknown", {}, "update"));
