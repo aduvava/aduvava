@@ -9,6 +9,7 @@ export type BankTransferDetails = {
   amount: number;
   transferContent: string;
   qrUrl: string;
+  fallbackQrUrl: string;
 };
 
 type BankEnvironment = Record<string, string | undefined>;
@@ -37,14 +38,27 @@ export function makeBankTransferDetails(
   if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error("Invalid bank transfer amount");
   if (!/^EDUVA-[A-F0-9]{24}$/.test(reference)) throw new Error("Invalid payment reference");
 
-  // Quick Link is used only for the QR IMAGE; SePay independently verifies
-  // incoming money. accountName is a visual label, not proof of ownership.
-  const url = new URL("https://img.vietqr.io/image/" +
-    bank.bankName + "-" + bank.accountNumber + "-compact2.png");
-  url.searchParams.set("amount", String(amount));
-  url.searchParams.set("addInfo", reference);
-  url.searchParams.set("accountName", bank.accountName.normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "").replace(/Đ/g, "D").replace(/đ/g, "d").toUpperCase());
+  // SePay documents VietQR's supported QR quick-link at vietqr.app/img.
+  // It accepts official alphanumeric VAs. The earlier img.vietqr.io route
+  // is retained strictly as a secondary image provider.
+  const holder = bank.accountName.normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "").replace(/Đ/g, "D").replace(/đ/g, "d").toUpperCase();
+  const primary = new URL("https://vietqr.app/img");
+  primary.searchParams.set("acc", bank.accountNumber);
+  primary.searchParams.set("bank", bank.bankName);
+  primary.searchParams.set("amount", String(amount));
+  primary.searchParams.set("des", reference);
+  primary.searchParams.set("template", "qronly");
+  primary.searchParams.set("holder", holder);
 
-  return { ...bank, amount, transferContent: reference, qrUrl: url.toString() };
+  const fallback = new URL("https://img.vietqr.io/image/" +
+    bank.bankName + "-" + bank.accountNumber + "-compact2.png");
+  fallback.searchParams.set("amount", String(amount));
+  fallback.searchParams.set("addInfo", reference);
+  fallback.searchParams.set("accountName", holder);
+
+  return {
+    ...bank, amount, transferContent: reference,
+    qrUrl: primary.toString(), fallbackQrUrl: fallback.toString(),
+  };
 }

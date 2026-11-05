@@ -21,11 +21,17 @@ describe("customer-facing VietQR transfer details", () => {
         accountName: "Cao Trịnh Thanh Hiền", amount: 39000, transferContent: reference },
     );
     const url = new URL(details.qrUrl);
-    assert.equal(url.hostname, "img.vietqr.io");
-    assert.equal(url.pathname, "/image/BIDV-1234567890-compact2.png");
+    assert.equal(url.hostname, "vietqr.app");
+    assert.equal(url.pathname, "/img");
+    assert.equal(url.searchParams.get("bank"), "BIDV");
+    assert.equal(url.searchParams.get("acc"), "1234567890");
     assert.equal(url.searchParams.get("amount"), "39000");
-    assert.equal(url.searchParams.get("addInfo"), reference);
-    assert.equal(url.searchParams.get("accountName"), "CAO TRINH THANH HIEN");
+    assert.equal(url.searchParams.get("des"), reference);
+    assert.equal(url.searchParams.get("holder"), "CAO TRINH THANH HIEN");
+    assert.equal(url.searchParams.get("template"), "qronly");
+    const fallback = new URL(details.fallbackQrUrl);
+    assert.equal(fallback.hostname, "img.vietqr.io");
+    assert.equal(fallback.searchParams.get("addInfo"), reference);
   });
 
   it("accepts a BIDV official VA containing letters and pre-fills it in VietQR", () => {
@@ -34,7 +40,8 @@ describe("customer-facing VietQR transfer details", () => {
     assert.ok(bank);
     const details = makeBankTransferDetails(bank, 39000, reference);
     assert.equal(details.accountNumber, va);
-    assert.equal(new URL(details.qrUrl).pathname, "/image/BIDV-" + va + "-compact2.png");
+    assert.equal(new URL(details.qrUrl).searchParams.get("acc"), va);
+    assert.equal(new URL(details.fallbackQrUrl).pathname, "/image/BIDV-" + va + "-compact2.png");
   });
 
   it("does not allow missing, blank, malformed or mismatched account configuration", () => {

@@ -15,6 +15,9 @@ describe("HTTP security headers", () => {
     assert.ok(csp.includes("object-src 'none'"));
     assert.ok(csp.includes("frame-ancestors 'none'"));
     assert.ok(csp.includes("img-src 'self'"));
+    // The external QR was previously blocked by production CSP.
+    assert.ok(csp.includes("https://vietqr.app"));
+    assert.ok(csp.includes("https://img.vietqr.io"));
     assert.equal(csp.includes("img-src *"), false);
     assert.equal(csp.includes("unsafe-eval"), false);
   });

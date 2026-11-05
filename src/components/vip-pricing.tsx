@@ -36,6 +36,7 @@ type BankTransferDetails = {
   amount: number;
   transferContent: string;
   qrUrl: string;
+  fallbackQrUrl: string;
 };
 
 function DetailRow({ label, value, onCopy }: { label: string; value: string; onCopy: (text: string) => void }) {
@@ -59,7 +60,7 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
   const [loading, setLoading] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [bankTransfer, setBankTransfer] = useState<BankTransferDetails | null>(null);
-  const [qrFailed, setQrFailed] = useState(false);
+  const [qrSource, setQrSource] = useState<0 | 1 | 2>(0);
 
   async function checkout() {
     if (loading) return;
@@ -90,7 +91,7 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
         return;
       }
       setBankTransfer(data.bankTransfer);
-      setQrFailed(false);
+      setQrSource(0);
       setPaymentOpen(true);
     } catch {
       setMessage("Không thể kết nối máy chủ thanh toán. Vui lòng thử lại.");
@@ -162,15 +163,22 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
                 <p className="mb-3 flex items-center gap-2 text-sm font-black text-slate-900">
                   <QrCode className="h-5 w-5 text-orange-600" /> Quét mã VietQR
                 </p>
-                {qrFailed ? (
-                  <p role="status" className="rounded-xl border bg-white p-4 text-sm text-slate-600">
-                    Không tải được ảnh QR. Hãy dùng thông tin chuyển khoản bên cạnh.
-                  </p>
+                {qrSource === 2 ? (
+                  <div role="status" className="rounded-xl border bg-white p-4 text-sm text-slate-600">
+                    <p>Không tải được ảnh QR. Bạn có thể chuyển khoản bằng thông tin bên cạnh.</p>
+                    <a href={bankTransfer.qrUrl} target="_blank" rel="noopener noreferrer"
+                      className="mt-3 inline-block font-bold text-orange-700 underline">
+                      Thử mở mã QR trong tab mới
+                    </a>
+                  </div>
                 ) : (
-                  <img src={bankTransfer.qrUrl} alt={"Mã VietQR nhận " + formatVnd(bankTransfer.amount)}
+                  <img
+                    src={qrSource === 0 ? bankTransfer.qrUrl : bankTransfer.fallbackQrUrl}
+                    alt={"Mã VietQR nhận " + formatVnd(bankTransfer.amount)}
                     width={270} height={320} referrerPolicy="no-referrer"
-                    onError={() => setQrFailed(true)}
-                    className="h-auto max-h-[300px] w-full max-w-[254px] rounded-xl bg-white object-contain" />
+                    onError={() => setQrSource((current) => current === 0 ? 1 : 2)}
+                    className="h-auto max-h-[300px] w-full max-w-[254px] rounded-xl bg-white object-contain"
+                  />
                 )}
                 <p className="mt-3 text-xs font-semibold text-slate-600">
                   Mở ứng dụng ngân hàng để quét và kiểm tra tên người nhận.
