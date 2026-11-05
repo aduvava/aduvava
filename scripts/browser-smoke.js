@@ -185,10 +185,12 @@ async function main() {
     assert.equal(transfer.transferContent, checkoutData.manualTransferCode);
     assert.equal(transfer.amount, 10000);
     const qr = new URL(transfer.qrUrl);
-    assert.equal(qr.hostname, "img.vietqr.io");
+    assert.equal(qr.hostname, "vietqr.app");
+    assert.equal(qr.searchParams.get("acc"), "96247AB123");
     assert.equal(qr.searchParams.get("amount"), "10000");
-    assert.equal(qr.searchParams.get("addInfo"), checkoutData.manualTransferCode);
-    assert.equal(qr.searchParams.get("accountName"), "CI TEST BENEFICIARY");
+    assert.equal(qr.searchParams.get("des"), checkoutData.manualTransferCode);
+    assert.equal(qr.searchParams.get("holder"), "CI TEST BENEFICIARY");
+    assert.equal(new URL(transfer.fallbackQrUrl).hostname, "img.vietqr.io");
     // A repeat click, page refresh, or recovering from prior configuration
     // errors must display the same unpaid order without consuming another
     // new-invoice quota.
@@ -273,6 +275,14 @@ async function main() {
     const receipt = await prisma.sePayReceipt.findUnique({ where: { eventId: String(webhookPayload.id) } });
     assert.equal(receipt?.paymentId, autoOrder.payment.id, "SePay event ID recorded atomically");
 
+    // Stub SePay's documented QR image while running the real production CSP.
+    // A blocked image host still fails in Chromium even with a mocked reply.
+    await adminPage.route("https://vietqr.app/img?**", (route) =>
+      route.fulfill({
+        status: 200, contentType: "image/svg+xml",
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#000"/></svg>',
+      }),
+    );
     // Customer-facing mobile/desktop payment details, not merely a reference string.
     await adminPage.goto(base + "/vip");
     await adminPage.getByRole("button", { name: "Đăng ký ngay" }).first().click();
@@ -283,15 +293,15 @@ async function main() {
     await transferDialog.getByText("CI TEST BENEFICIARY", { exact: true }).waitFor();
     await transferDialog.getByText("Nội dung chuyển khoản (giữ nguyên)").waitFor();
     assert.equal(await transferDialog.getByRole("button", { name: "Sao chép Nội dung chuyển khoản (giữ nguyên)" }).count(), 1);
-    // External VietQR image hosts can be inaccessible on CI runners. The
-    // checkout must still expose usable manual-transfer details in that case.
     await transferDialog.getByText("Quét mã VietQR").waitFor();
     const qrImage = transferDialog.getByRole("img", { name: /Mã VietQR nhận/ });
-    if (await qrImage.count()) {
-      assert.match(await qrImage.getAttribute("src") ?? "", /img\.vietqr\.io\/image\/BIDV-96247AB123-compact2\.png/);
-    } else {
-      await transferDialog.getByText(/Không tải được ảnh QR/).waitFor();
-    }
+    await qrImage.waitFor({ state: "visible" });
+    assert.match(await qrImage.getAttribute("src") ?? "", /^https:\/\/vietqr\.app\/img\?/);
+    await adminPage.waitForFunction(() => {
+      const qr = document.querySelector('[role="dialog"] img[alt^="Mã VietQR nhận"]');
+      return qr && qr.complete && qr.naturalWidth > 0;
+    });
+    assert.equal(await transferDialog.getByText(/Không tải được ảnh QR/).count(), 0);
     await transferDialog.getByRole("button", { name: "Đóng thông tin chuyển khoản" }).click();
 
     const deleteLesson = await adminPage.request.delete(base + "/api/admin/theory-lessons/manage", { data: { lessonId } });

@@ -10,7 +10,8 @@ const productionCsp = [
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
-  "img-src 'self' data: blob: https://*.googleusercontent.com",
+  // Exact vetted QR image hosts only; no wildcard expansion of img-src.
+  "img-src 'self' data: blob: https://*.googleusercontent.com https://vietqr.app https://img.vietqr.io",
   "connect-src 'self'",
   "frame-src 'self' blob:",
   "worker-src 'self' blob:",
