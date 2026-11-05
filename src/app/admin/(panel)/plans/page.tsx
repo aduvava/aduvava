@@ -1,29 +1,14 @@
-import { AdminResourceManager } from "@/components/admin/admin-resource-manager";
+import { PlanManager } from "@/components/admin/plan-manager";
 
 export default function AdminPlansPage() {
   return (
-    <main className="space-y-8 p-6 lg:p-10">
+    <main className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:py-12">
       <div>
-        <h1 className="text-4xl font-black text-ink">Admin · Gói thành viên</h1>
-        <p className="mt-3 text-sm text-ink/65">Điều chỉnh tên gói, giá bán, trạng thái và quyền lợi hiện trên trang thanh toán.</p>
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-500">VIP Educhi</p>
+        <h1 className="mt-2 text-3xl font-black text-slate-950 sm:text-4xl">Gói thành viên</h1>
+        <p className="mt-2 text-sm font-medium text-slate-500">Tạo và chỉnh sửa các gói VIP, giá bán, thời hạn và quyền lợi. Gói được mở bán sẽ hiển thị ngay trên trang VIP.</p>
       </div>
-      <AdminResourceManager
-        resource="plans"
-        defaultPayload={{
-          slug: "ava-monthly",
-          name: "Toàn Diện",
-          description: "Gói học tập đầy đủ cho học sinh ôn luyện hằng tháng.",
-          price: 99000,
-          interval: "MONTH",
-          features: [
-            "Mở khóa trọn bộ kho đề chuẩn THPT",
-            "Hệ thống đáp án và cơ sở lý thuyết chuyên sâu",
-            "Phân tích năng lực chi tiết",
-            "Tham gia bảng xếp hạng thi đua",
-          ],
-          isActive: true,
-        }}
-      />
+      <PlanManager />
     </main>
   );
 }

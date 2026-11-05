@@ -24,6 +24,13 @@ const educationLevelByQuery: Record<string, "THCS" | "THPT" | "EXAM_10" | "THPTQ
 export default async function SubjectPage({ params, searchParams }: SubjectPageProps) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
   const requestedEducationLevel = query.level ? educationLevelByQuery[query.level] : undefined;
+  // Dashboard uses "Môn thi" for both national-exam selectors. Resolve this
+  // to the corresponding chapter grade so students see uploaded lessons.
+  const requestedGrade = query.grade === "Môn thi" && requestedEducationLevel === "EXAM_10"
+    ? "Ôn thi vào 10"
+    : query.grade === "Môn thi" && requestedEducationLevel === "THPTQG"
+      ? "Ôn thi THPTQG"
+      : query.grade;
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   const [databaseSubject, allSubjects] = await Promise.all([
@@ -41,7 +48,7 @@ export default async function SubjectPage({ params, searchParams }: SubjectPageP
               requestedEducationLevel
                 ? { OR: [{ educationLevel: requestedEducationLevel }, { educationLevel: null }] }
                 : {},
-              query.grade ? { OR: [{ grade: query.grade }, { grade: null }] } : {},
+              requestedGrade ? { OR: [{ grade: requestedGrade }, { grade: null }] } : {},
             ],
           },
           include: {
