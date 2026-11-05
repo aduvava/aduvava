@@ -9,12 +9,13 @@ type MockPayment = {
   provider: string; reference: string; metadata: Record<string, unknown>;
   plan: { id: string; name: string; interval: string };
 };
+type MockSePayReceipt = { eventId: string; paymentId: string };
 type MockSubscription = {
   id: string; userId: string; planId: string; status: string;
   startsAt: Date; endsAt: Date;
 };
 
-function createFakeDb(opts?: { payment?: Partial<MockPayment>; failUpdate?: boolean }) {
+function createFakeDb(opts?: { payment?: Partial<MockPayment>; failUpdate?: boolean; receipts?: MockSePayReceipt[] }) {
   let state = {
     payment: {
       id: "payment-1", userId: "student-1", planId: "plan-1",
@@ -25,6 +26,7 @@ function createFakeDb(opts?: { payment?: Partial<MockPayment>; failUpdate?: bool
     } as MockPayment,
     subscriptions: [] as MockSubscription[],
     notifications: [] as Array<{ userId: string; href: string }>,
+    receipts: opts?.receipts ?? [] as MockSePayReceipt[],
   };
   const db = {
     get state() { return state; },
@@ -32,6 +34,19 @@ function createFakeDb(opts?: { payment?: Partial<MockPayment>; failUpdate?: bool
       assert.equal(txOptions.isolationLevel, "Serializable");
       const snapshot = structuredClone(state);
       const tx = {
+        sePayReceipt: {
+          findUnique: async ({ where }: { where: { eventId: string } }) =>
+            snapshot.receipts.find((record) => record.eventId === where.eventId) ?? null,
+          create: async ({ data }: { data: MockSePayReceipt }) => {
+            if (snapshot.receipts.some((record) => record.eventId === data.eventId || record.paymentId === data.paymentId)) {
+              const error = new Error("Unique constraint violation") as Error & { code: string };
+              error.code = "P2002";
+              throw error;
+            }
+            snapshot.receipts.push(data);
+            return data;
+          },
+        },
         payment: {
           findUnique: async () => snapshot.payment,
           update: async ({ data }: { data: Partial<MockPayment> }) => {
@@ -80,6 +95,37 @@ describe("atomic manual VIP transitions", () => {
     assert.equal(second.activated, false);
     assert.equal(db.state.subscriptions.length, 1);
     assert.equal(db.state.notifications.length, 1);
+  });
+
+  it("activates a SePay webhook once and deduplicates delivery retries", async () => {
+    const db = createFakeDb();
+    const first = await transitionManualPayment(db, "payment-1", "PAID", "551901");
+    assert.equal(first.activated, true);
+    assert.equal(db.state.payment.metadata.sepayEventId, "551901");
+    assert.equal(db.state.receipts.length, 1);
+
+    const repeat = await transitionManualPayment(db, "payment-1", "PAID", "551901");
+    assert.equal(repeat.activated, false);
+    assert.equal(db.state.receipts.length, 1);
+    assert.equal(db.state.subscriptions.length, 1);
+    assert.equal(db.state.notifications.length, 1);
+  });
+
+  it("blocks a SePay event receipt already linked to another payment", async () => {
+    const db = createFakeDb({ receipts: [{ eventId: "999", paymentId: "another-order" }] });
+    await assert.rejects(
+      transitionManualPayment(db, "payment-1", "PAID", "999"),
+      /already belongs to another payment/,
+    );
+    assert.equal(db.state.payment.status, "PENDING");
+    assert.equal(db.state.subscriptions.length, 0);
+  });
+
+  it("rolls back bank event receipt when VIP update fails", async () => {
+    const db = createFakeDb({ failUpdate: true });
+    await assert.rejects(transitionManualPayment(db, "payment-1", "PAID", "9001"), /Simulated database/);
+    assert.equal(db.state.receipts.length, 0);
+    assert.equal(db.state.subscriptions.length, 0);
   });
 
   it("leaves a payment unsettled if the subscription/payment transaction fails", async () => {
