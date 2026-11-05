@@ -34,7 +34,7 @@ export function RegisterForm() {
       return;
     }
     await signIn("credentials", { email: payload.email, password: payload.password, role, redirect: false });
-    window.location.assign("/auth/continue?role=" + (teacher ? "teacher" : "student") + "&callbackUrl=" + encodeURIComponent(teacher ? "/teacher" : "/dashboard"));
+    window.location.assign("/auth/select-role?role=" + (teacher ? "teacher" : "student") + "&callbackUrl=" + encodeURIComponent(teacher ? "/teacher" : "/dashboard"));
   }
 
   return (

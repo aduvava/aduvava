@@ -36,7 +36,7 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
         redirect: false,
       });
       if (result?.ok) {
-        window.location.assign("/auth/continue?role=" + role.toLowerCase() + "&callbackUrl=" + encodeURIComponent(destination));
+        window.location.assign("/auth/select-role?role=" + role.toLowerCase() + "&callbackUrl=" + encodeURIComponent(destination));
       } else {
         setMessage("Email hoặc mật khẩu không đúng. Hãy kiểm tra và thử lại.");
       }

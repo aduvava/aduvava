@@ -1,33 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { safePostLoginPath } from "@/lib/onboarding";
+import { isStudentOnboardingComplete, isTeacherOnboardingComplete, safePostLoginPath } from "@/lib/onboarding";
 
 const selectedRoles = new Set(["student", "teacher", "admin"]);
 
+// A relative Location header keeps the login cookie on the original host.
+// This matters behind reverse proxies and on local preview servers.
+function redirectOnSameHost(path: string) {
+  return new NextResponse(null, {
+    status: 303,
+    headers: { Location: path, "Cache-Control": "no-store" },
+  });
+}
+
 export async function GET(request: NextRequest) {
   const role = request.nextUrl.searchParams.get("role");
-  if (!role || !selectedRoles.has(role)) {
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
+  if (!role || !selectedRoles.has(role)) return redirectOnSameHost("/login");
 
+  const fallback = role === "teacher" ? "/teacher" : role === "admin" ? "/admin" : "/dashboard";
+  const destination = safePostLoginPath(request.nextUrl.searchParams.get("callbackUrl"), fallback);
   const user = await getCurrentUser();
   if (!user) {
-    const login = new URL("/login", request.url);
-    login.searchParams.set("role", role);
-    login.searchParams.set("callbackUrl", safePostLoginPath(request.nextUrl.searchParams.get("callbackUrl"), role === "teacher" ? "/teacher" : "/dashboard"));
-    return NextResponse.redirect(login);
+    return redirectOnSameHost("/login?role=" + encodeURIComponent(role) + "&callbackUrl=" + encodeURIComponent(destination));
   }
 
-  // The stored role is an entitlement, not the chosen mode. A teacher always
-  // remains eligible to use the student dashboard without losing any data.
+  // The stored role is the highest entitlement, never a cookie-based claim.
   const stored = await prisma.user.findUnique({
     where: { id: user.id },
     select: { role: true },
   });
-  if (!stored) return NextResponse.redirect(new URL("/login", request.url));
+  if (!stored) return redirectOnSameHost("/login");
   if (role === "admin" && stored.role !== "ADMIN") {
-    return NextResponse.redirect(new URL("/login?role=admin", request.url));
+    return redirectOnSameHost("/login?role=admin");
   }
   if (role === "teacher" && stored.role === "STUDENT") {
     await prisma.user.updateMany({
@@ -36,12 +41,24 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const fallback = role === "teacher" ? "/teacher" : role === "admin" ? "/admin" : "/dashboard";
-  const destination = safePostLoginPath(request.nextUrl.searchParams.get("callbackUrl"), fallback);
-  const next = new URL("/auth/continue", request.url);
-  next.searchParams.set("callbackUrl", destination);
-
-  const response = NextResponse.redirect(next);
+  // An existing profile is reusable across sessions and roles. Only request
+  // missing fields, without forcing a grade on teachers.
+  const profile = role === "admin" ? null : await prisma.studentProfile.findUnique({
+    where: { userId: user.id },
+    select: { grade: true, school: true, province: true },
+  });
+  const complete = role === "admin" || (role === "teacher"
+    ? isTeacherOnboardingComplete(profile)
+    : isStudentOnboardingComplete(profile));
+  const safeDestination = role === "teacher"
+    ? destination.startsWith("/admin") || destination.startsWith("/dashboard") ? "/teacher" : destination
+    : role === "student"
+      ? destination.startsWith("/admin") || destination.startsWith("/teacher") ? "/dashboard" : destination
+      : destination;
+  const target = complete
+    ? safeDestination
+    : "/onboarding?callbackUrl=" + encodeURIComponent(safeDestination);
+  const response = redirectOnSameHost(target);
   response.cookies.set("educhi_active_role", role.toUpperCase(), {
     httpOnly: true,
     sameSite: "lax",

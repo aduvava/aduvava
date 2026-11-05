@@ -22,7 +22,7 @@ export function GoogleSignInButton({
     setPending(true);
     try {
       await signIn("google", {
-        callbackUrl: "/auth/continue?role=" + role + "&callbackUrl=" + encodeURIComponent(callbackUrl),
+        callbackUrl: "/auth/select-role?role=" + role + "&callbackUrl=" + encodeURIComponent(callbackUrl),
       }, selectAccount ? { prompt: "select_account" } : undefined);
     } catch {
       setPending(false);
