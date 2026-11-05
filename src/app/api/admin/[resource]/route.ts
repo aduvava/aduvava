@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { Prisma } from "@prisma/client";
 import { parseAdminInput } from "@/lib/admin-input";
 import { gradeToLevel } from "@/lib/theory-admin";
 import { prisma } from "@/lib/db";
@@ -98,10 +99,78 @@ async function createResource(resource: string, body: Record<string, unknown>) {
   }
 }
 
+// Paginated, filterable lists for the human-friendly admin editors. The
+// original endpoint remains unchanged for other screens using the v1 API.
+async function listManagedResource(resource: string, searchParams: URLSearchParams) {
+  const page = Math.min(100000, Math.max(1, Number(searchParams.get("page")) || 1));
+  const requested = Number(searchParams.get("pageSize")) || 30;
+  const take = Math.min(100, Math.max(1, Math.trunc(requested)));
+  const skip = (page - 1) * take;
+  const query = (searchParams.get("q") ?? "").trim().slice(0, 120);
+
+  if (resource === "exams") {
+    const level = searchParams.get("level");
+    const subjectId = searchParams.get("subjectId");
+    const where: Prisma.ExamWhereInput = {
+      ...(query ? { OR: [
+        { title: { contains: query, mode: "insensitive" } },
+        { code: { contains: query, mode: "insensitive" } },
+        { slug: { contains: query, mode: "insensitive" } },
+      ] } : {}),
+      ...(level && ["THCS", "THPT", "EXAM_10", "THPTQG"].includes(level)
+        ? { educationLevel: level as "THCS" | "THPT" | "EXAM_10" | "THPTQG" } : {}),
+      ...(subjectId ? { subjectId } : {}),
+    };
+    const [items, total] = await prisma.$transaction([
+      prisma.exam.findMany({
+        where, skip, take, orderBy: { createdAt: "desc" },
+        select: {
+          id: true, code: true, slug: true, title: true, description: true,
+          family: true, type: true, accessLevel: true, year: true,
+          durationMinutes: true, educationLevel: true, targetScore: true,
+          subjectId: true, isPublished: true, ownerId: true, createdAt: true,
+          subject: { select: { id: true, name: true, family: true } },
+          _count: { select: { questions: true, attempts: true } },
+        },
+      }),
+      prisma.exam.count({ where }),
+    ]);
+    return { items, total, page, pageSize: take };
+  }
+
+  if (resource === "questions") {
+    const examId = searchParams.get("examId");
+    if (!examId) return { items: [], total: 0, page, pageSize: take };
+    const where: Prisma.QuestionWhereInput = {
+      examId,
+      ...(query ? { prompt: { contains: query, mode: "insensitive" } } : {}),
+    };
+    const [items, total] = await prisma.$transaction([
+      prisma.question.findMany({
+        where, skip, take, orderBy: [{ position: "asc" }, { id: "asc" }],
+        select: {
+          id: true, examId: true, position: true, type: true,
+          prompt: true, passage: true, points: true, correctText: true,
+          explanation: true,
+          answerOptions: { select: { label: true, content: true, isCorrect: true }, orderBy: { label: "asc" } },
+        },
+      }),
+      prisma.question.count({ where }),
+    ]);
+    return { items, total, page, pageSize: take };
+  }
+
+  throw new HttpError(404, "Admin resource not found");
+}
+
 export async function GET(_request: Request, { params }: { params: Promise<{ resource: string }> }) {
   try {
     const { resource } = await params;
     await requireAdmin();
+    const searchParams = new URL(_request.url).searchParams;
+    if (searchParams.get("managed") === "1" && (resource === "exams" || resource === "questions")) {
+      return jsonOk(await listManagedResource(resource, searchParams));
+    }
     const items = await listResource(resource);
     return jsonOk({ items });
   } catch (error) {
