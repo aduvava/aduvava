@@ -139,12 +139,23 @@ async function getResource(resource: string, id: string) {
   }
 }
 
-async function deleteResource(resource: string, id: string) {
+async function deleteResource(resource: string, id: string, confirmDeleteWithResults = false) {
   switch (resource) {
     case "subjects":
       return prisma.subject.delete({ where: { id } });
-    case "exams":
+    case "exams": {
+      const exam = await prisma.exam.findUnique({
+        where: { id }, select: { title: true, _count: { select: { attempts: true } } },
+      });
+      if (!exam) throw new HttpError(404, "Không tìm thấy đề thi.");
+      if (exam._count.attempts > 0 && !confirmDeleteWithResults) {
+        throw new HttpError(409, "Đề đã có lượt làm. Xác nhận xóa cả lịch sử làm bài hoặc chuyển đề về bản nháp.");
+      }
+      // Prisma's schema cascades questions, answers, attempts and result
+      // summaries. Do not silently delete learner history without the
+      // explicit destructive action above.
       return prisma.exam.delete({ where: { id } });
+    }
     case "questions": {
       const question = await prisma.question.findUnique({
         where: { id }, select: { exam: { select: { ownerId: true, educationLevel: true, isPublished: true } } },
@@ -210,11 +221,12 @@ export async function PUT(request: Request, { params }: { params: Promise<{ reso
   }
 }
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ resource: string; id: string }> }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ resource: string; id: string }> }) {
   try {
     const { resource, id } = await params;
     await requireAdmin();
-    const item = await deleteResource(resource, id);
+    const confirmation = new URL(request.url).searchParams.get("confirm");
+    const item = await deleteResource(resource, id, confirmation === "DELETE_WITH_RESULTS");
     return jsonOk({ item });
   } catch (error) {
     return handleRouteError(error);
