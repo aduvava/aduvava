@@ -1,0 +1,95 @@
+name: Deploy Educhi VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# The deployment is intentionally inactive until the owner creates this
+# repository variable with the exact value 'true'.
+permissions:
+  contents: read
+
+concurrency:
+  group: educhi-production
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: ${{ vars.EDUCHI_AUTO_DEPLOY == 'true' }}
+    name: Validate release before deploy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Generate Prisma client
+        run: npm run db:generate
+      - name: TypeScript check
+        run: npx tsc --noEmit -p tsconfig.ci.json
+      - name: Unit tests
+        run: npm test
+      - name: Production build
+        env:
+          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_SECRET: only-for-github-build-not-for-live-site-2026
+          DATABASE_URL: postgresql://postgres:build-only@127.0.0.1:5432/eduva?schema=public
+        run: npm run build
+      - name: Audit dependencies
+        run: npm audit --audit-level=moderate
+
+  deploy:
+    name: Deploy validated commit to production VPS
+    needs: verify
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    environment: production
+    steps:
+      - name: Configure pinned-host SSH connection
+        env:
+          DEPLOY_HOST: ${{ secrets.EDUCHI_VPS_HOST }}
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.EDUCHI_DEPLOY_PRIVATE_KEY }}
+          DEPLOY_HOST_PUBLIC_KEY: ${{ secrets.EDUCHI_VPS_HOST_PUBLIC_KEY }}
+          DEPLOY_PORT: ${{ vars.EDUCHI_VPS_SSH_PORT }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          : "${DEPLOY_HOST:?Add EDUCHI_VPS_HOST secret}"
+          : "${DEPLOY_SSH_PRIVATE_KEY:?Add EDUCHI_DEPLOY_PRIVATE_KEY secret}"
+          : "${DEPLOY_HOST_PUBLIC_KEY:?Add EDUCHI_VPS_HOST_PUBLIC_KEY secret}"
+          port="${DEPLOY_PORT:-22}"
+          [[ "$port" =~ ^[0-9]+$ ]] && (( port >= 1 && port <= 65535 )) || exit 2
+          umask 077
+          mkdir -p "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$HOME/.ssh/educhi_deploy"
+          chmod 600 "$HOME/.ssh/educhi_deploy"
+          ssh-keygen -y -f "$HOME/.ssh/educhi_deploy" > /dev/null
+          host_for_key="$DEPLOY_HOST"
+          if [[ "$port" != "22" ]]; then host_for_key="[$DEPLOY_HOST]:$port"; fi
+          [[ "$DEPLOY_HOST_PUBLIC_KEY" == ssh-ed25519\ * ]] || { echo "Host key must be the trusted ssh-ed25519 public key from VPS console"; exit 2; }
+          printf '%s %s\n' "$host_for_key" "$DEPLOY_HOST_PUBLIC_KEY" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: Send exact tested commit to VPS
+        env:
+          DEPLOY_HOST: ${{ secrets.EDUCHI_VPS_HOST }}
+          DEPLOY_PORT: ${{ vars.EDUCHI_VPS_SSH_PORT }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          # authorized_keys forces a single root-owned deploy script.
+          # Do not pass a shell command or any secrets over the SSH channel.
+          printf '%s\n' "$GITHUB_SHA" | ssh \
+            -i "$HOME/.ssh/educhi_deploy" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o ConnectTimeout=15 \
+            -p "${DEPLOY_PORT:-22}" \
+            "educhi-deploy@$DEPLOY_HOST" deploy
