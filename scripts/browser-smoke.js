@@ -177,7 +177,19 @@ async function main() {
     assert.equal(await adminPage.getByText("JSON editor").count(), 0, "VIP plan UI hides JSON editor");
     const checkoutResponse = await adminPage.request.post(base + "/api/payments/checkout", { data: { planId } });
     assert.equal(checkoutResponse.status(), 201, "checkout creates pending payment");
-    const paymentId = (await checkoutResponse.json()).payment.id;
+    const checkoutData = await checkoutResponse.json();
+    const transfer = checkoutData.bankTransfer;
+    assert.equal(transfer.bankName, "BIDV");
+    assert.equal(transfer.accountNumber, "1234567890");
+    assert.equal(transfer.accountName, "CI TEST BENEFICIARY");
+    assert.equal(transfer.transferContent, checkoutData.manualTransferCode);
+    assert.equal(transfer.amount, 10000);
+    const qr = new URL(transfer.qrUrl);
+    assert.equal(qr.hostname, "img.vietqr.io");
+    assert.equal(qr.searchParams.get("amount"), "10000");
+    assert.equal(qr.searchParams.get("addInfo"), checkoutData.manualTransferCode);
+    assert.equal(qr.searchParams.get("accountName"), "CI TEST BENEFICIARY");
+    const paymentId = checkoutData.payment.id;
     await adminPage.goto(base + "/admin/payments");
     await adminPage.getByRole("heading", { name: "Thanh toán VIP" }).waitFor();
     assert.equal(await adminPage.getByText("JSON editor").count(), 0, "payment UI hides JSON editor");
@@ -195,7 +207,7 @@ async function main() {
     const webhookPayload = {
       id: 5511902,
       gateway: "BIDV",
-      accountNumber: "CI-TEST-RECEIVER",
+      accountNumber: "1234567890",
       transferType: "in",
       transferAmount: 10000,
       content: "Chuyen tien " + autoOrder.manualTransferCode,
