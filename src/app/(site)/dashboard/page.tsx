@@ -61,6 +61,7 @@ export default async function DashboardPage() {
     ? await prisma.exam.findMany({
         where: {
           isPublished: true,
+          ownerId: null,
           id: { notIn: attemptedExamIds },
           ...(weakSubjectIds.length ? { subjectId: { in: weakSubjectIds } } : {}),
         },
@@ -75,6 +76,7 @@ export default async function DashboardPage() {
     ? await prisma.exam.findMany({
         where: {
           isPublished: true,
+          ownerId: null,
           id: { notIn: [...attemptedExamIds, ...personalizedExams.map((exam) => exam.id)] },
           educationLevel: "THPTQG",
         },
