@@ -92,6 +92,7 @@ export default async function DashboardPage() {
         status: "SUBMITTED" as const,
         submittedAt: { not: null },
         exam: {
+          ownerId: null,
           subjectId: {
             in: weakSubjectIds.length
               ? weakSubjectIds
@@ -107,7 +108,7 @@ export default async function DashboardPage() {
     : {
         status: "SUBMITTED" as const,
         submittedAt: { not: null },
-        exam: { educationLevel: "THPTQG" as const },
+        exam: { educationLevel: "THPTQG" as const, ownerId: null },
       };
 
   const rankingAttempts = await prisma.attempt.findMany({
