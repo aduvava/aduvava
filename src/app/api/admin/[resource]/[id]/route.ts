@@ -71,10 +71,14 @@ async function updateResource(resource: string, id: string, body: Record<string,
       }
       const { answerOptions, ...question } = body;
       if (Array.isArray(answerOptions)) {
-        await prisma.answerOption.deleteMany({ where: { questionId: id } });
-        return prisma.question.update({
-          where: { id },
-          data: { ...question, answerOptions: { create: answerOptions as never } } as never
+        // Keep option replacement atomic. A failed update cannot leave a
+        // partially edited question without its answer choices.
+        return prisma.$transaction(async (tx) => {
+          await tx.answerOption.deleteMany({ where: { questionId: id } });
+          return tx.question.update({
+            where: { id },
+            data: { ...question, answerOptions: { create: answerOptions as never } } as never,
+          });
         });
       }
       return prisma.question.update({ where: { id }, data: question as never });
