@@ -185,6 +185,65 @@ async function main() {
     assert.equal(paymentResponse.status(), 200, "admin bank reconciliation activates VIP");
     assert.equal((await prisma.subscription.count({ where: { userId: account.id, planId, status: "ACTIVE" } })), 1);
 
+    // Verify real HTTP SePay webhook flow with disposable PostgreSQL data.
+    // No genuine bank event or real API key is used in CI.
+    const checkoutAuto = await adminPage.request.post(base + "/api/payments/checkout", {
+      data: { planId },
+    });
+    assert.equal(checkoutAuto.status(), 201, "create a separate pending VIP order for webhook");
+    const autoOrder = await checkoutAuto.json();
+    const webhookPayload = {
+      id: 5511902,
+      gateway: "BIDV",
+      accountNumber: "CI-TEST-RECEIVER",
+      transferType: "in",
+      transferAmount: 10000,
+      content: "Chuyen tien " + autoOrder.manualTransferCode,
+      code: null,
+    };
+    const webhookUrl = base + "/api/payments/sepay";
+    const webhookHeaders = { Authorization: "Apikey " + process.env.SEPAY_WEBHOOK_API_KEY };
+    const beforeAuto = await prisma.subscription.count({ where: { userId: account.id, planId } });
+    const unauthorizedWebhook = await adminPage.request.post(webhookUrl, {
+      data: webhookPayload, headers: { Authorization: "Apikey wrong" },
+    });
+    assert.equal(unauthorizedWebhook.status(), 401, "untrusted callers cannot activate VIP");
+    const wrongAmount = await adminPage.request.post(webhookUrl, {
+      data: { ...webhookPayload, transferAmount: 5000 }, headers: webhookHeaders,
+    });
+    assert.equal(wrongAmount.status(), 409, "bank transfer must match full invoice amount");
+    const wrongReceiver = await adminPage.request.post(webhookUrl, {
+      data: { ...webhookPayload, accountNumber: "OTHER" }, headers: webhookHeaders,
+    });
+    assert.equal(wrongReceiver.status(), 400, "another bank account cannot activate VIP");
+    const outgoing = await adminPage.request.post(webhookUrl, {
+      data: { ...webhookPayload, transferType: "out" }, headers: webhookHeaders,
+    });
+    assert.equal(outgoing.status(), 200, "outbound transfers are safely ignored");
+    const testWebhook = await adminPage.request.post(webhookUrl, {
+      data: { ...webhookPayload, id: 0 }, headers: webhookHeaders,
+    });
+    assert.equal(testWebhook.status(), 200, "SePay test ping is harmless");
+    assert.equal((await prisma.subscription.count({ where: { userId: account.id, planId } })), beforeAuto);
+
+    const bankConfirmed = await adminPage.request.post(webhookUrl, {
+      data: webhookPayload, headers: webhookHeaders,
+    });
+    assert.equal(bankConfirmed.status(), 200, "verified incoming SePay transfer activates VIP");
+    assert.equal((await bankConfirmed.json()).activated, true);
+    const replayed = await adminPage.request.post(webhookUrl, {
+      data: webhookPayload, headers: webhookHeaders,
+    });
+    assert.equal(replayed.status(), 200, "SePay retries are idempotent");
+    assert.equal((await replayed.json()).activated, false);
+    assert.equal(
+      (await prisma.subscription.count({ where: { userId: account.id, planId } })),
+      beforeAuto + 1,
+      "bank delivery + replay grants exactly one subscription",
+    );
+    const receipt = await prisma.sePayReceipt.findUnique({ where: { eventId: String(webhookPayload.id) } });
+    assert.equal(receipt?.paymentId, autoOrder.payment.id, "SePay event ID recorded atomically");
+
     const deleteLesson = await adminPage.request.delete(base + "/api/admin/theory-lessons/manage", { data: { lessonId } });
     assert.equal(deleteLesson.status(), 200, "admin can delete uploaded lessons");
     await adminContext.close();

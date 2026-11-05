@@ -42,8 +42,11 @@ function asMetadata(value) {
  * concurrent confirmations from granting VIP twice. Serialization conflicts
  * are retried, but other errors are rethrown without changing payment state.
  */
-async function transitionManualPayment(db, paymentId, nextStatus) {
+async function transitionManualPayment(db, paymentId, nextStatus, sepayEventId = /** @type {string | null} */ (null)) {
   if (!VALID_STATUSES.has(nextStatus)) throw new PaymentTransitionError(400, "Invalid payment status");
+  if (sepayEventId !== null && (!/^[1-9][0-9]{0,15}$/.test(sepayEventId) || nextStatus !== "PAID")) {
+    throw new PaymentTransitionError(400, "Invalid SePay event ID or payment transition");
+  }
 
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
@@ -58,6 +61,19 @@ async function transitionManualPayment(db, paymentId, nextStatus) {
         }
 
         const metadata = asMetadata(current.metadata);
+        if (sepayEventId !== null) {
+          // A webhook receipt is written inside the same SERIALIZABLE
+          // transaction as the activation, never before or after it.
+          const existingReceipt = await tx.sePayReceipt.findUnique({
+            where: { eventId: sepayEventId },
+          });
+          if (existingReceipt && existingReceipt.paymentId !== paymentId) {
+            throw new PaymentTransitionError(409, "SePay transaction already belongs to another payment");
+          }
+          if (existingReceipt && current.status !== "PAID") {
+            throw new PaymentTransitionError(409, "SePay event was processed but payment is inconsistent");
+          }
+        }
         if (current.status === "PAID") {
           if (nextStatus !== "PAID") {
             throw new PaymentTransitionError(409, "Settled payments cannot be reset or reversed");
@@ -77,7 +93,7 @@ async function transitionManualPayment(db, paymentId, nextStatus) {
           return { payment: current, activated: false, subscriptionId: linked.id };
         }
 
-        if (metadata.adminVipActivatedAt || metadata.vipSubscriptionId) {
+        if (metadata.adminVipActivatedAt || metadata.sepayVipActivatedAt || metadata.vipSubscriptionId) {
           throw new PaymentTransitionError(409, "Payment already has an activation marker; reconcile manually");
         }
 
@@ -112,11 +128,16 @@ async function transitionManualPayment(db, paymentId, nextStatus) {
             status: "PAID",
             metadata: {
               ...metadata,
-              adminVipActivatedAt: now.toISOString(),
+              ...(sepayEventId
+                ? { sepayVipActivatedAt: now.toISOString(), sepayEventId }
+                : { adminVipActivatedAt: now.toISOString() }),
               vipSubscriptionId: subscription.id,
             },
           },
         });
+        if (sepayEventId !== null) {
+          await tx.sePayReceipt.create({ data: { eventId: sepayEventId, paymentId } });
+        }
         await tx.notification.create({
           data: {
             userId: current.userId,
@@ -129,6 +150,11 @@ async function transitionManualPayment(db, paymentId, nextStatus) {
       }, { isolationLevel: "Serializable", maxWait: 10000, timeout: 20000 });
     } catch (error) {
       if (error?.code === "P2034" && attempt < 3) continue;
+      if (sepayEventId !== null && error?.code === "P2002") {
+        // A concurrent event may have been committed first. Do not retry
+        // activation under another payment; the unique receipt is authoritative.
+        throw new PaymentTransitionError(409, "SePay event or payment was already reconciled");
+      }
       throw error;
     }
   }

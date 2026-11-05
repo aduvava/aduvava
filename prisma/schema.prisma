@@ -482,6 +482,14 @@ model Subscription {
   @@index([userId, status])
 }
 
+// Recorded only when a SePay transfer has atomically activated a VIP payment.
+// Event ID is unique globally so a retried/replayed event cannot activate a second order.
+model SePayReceipt {
+  eventId   String   @id
+  paymentId String   @unique
+  createdAt DateTime @default(now())
+}
+
 model Payment {
   id          String        @id @default(cuid())
   userId      String
