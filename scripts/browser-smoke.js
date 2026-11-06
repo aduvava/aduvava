@@ -77,14 +77,14 @@ async function main() {
     await page.goto(base + "/dashboard", { waitUntil: "domcontentloaded" });
     assert.equal(new URL(page.url()).pathname, "/dashboard", "completed students should not be sent back to onboarding");
 
-    // Authenticated users can reach the restored grade/subject selector from the bottom bar.
+    // The mobile subject tab was intentionally removed. The exam tab
+    // remains visible and navigates directly to the exam catalogue.
     await page.setViewportSize({ width: 390, height: 844 });
     const studentTabs = page.getByRole("navigation", { name: "Điều hướng chính trên điện thoại" });
-    await studentTabs.getByRole("link", { name: "Môn học" }).click();
-    await page.waitForURL(/#mon-hoc$/);
-    await page.getByRole("button", { name: "Trung học phổ thông" }).click();
-    await page.getByRole("button", { name: "Lớp 12" }).click();
-    assert.equal(await page.locator("#mon-hoc").count(), 1, "grade and subject section should remain on dashboard");
+    assert.equal(await studentTabs.getByRole("link", { name: "Môn học" }).count(), 0,
+      "mobile navigation must not restore the removed subject tab");
+    await studentTabs.getByRole("link", { name: "Đề thi" }).click();
+    await page.waitForURL(/\\/exams(?:\\?|$)/, { timeout: 15000 });
     await page.setViewportSize({ width: 1280, height: 800 });
 
     await page.goto(base + "/teacher");
@@ -494,7 +494,7 @@ async function main() {
       await mobilePage.goto(base + "/login?role=student", { waitUntil: "domcontentloaded" });
       const tabs = mobilePage.getByRole("navigation", { name: "Điều hướng chính trên điện thoại" });
       const itemRects = [];
-      for (const label of ["Trang chủ", "Môn học", "Đề thi", "Tài liệu", "Cửa hàng", "Xếp hạng", "Lớp học", "Đăng nhập"]) {
+      for (const label of ["Trang chủ", "Đề thi", "Tài liệu", "Cửa hàng", "Xếp hạng", "Lớp học", "Đăng nhập"]) {
         const link = tabs.getByRole("link", { name: label, exact: true });
         await link.waitFor();
         itemRects.push(await link.boundingBox());
