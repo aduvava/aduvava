@@ -282,16 +282,16 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
     return (
       <div className="exam-runner-page min-h-[calc(100vh-76px)] bg-[#fffdf6]">
         {effectVisible ? <SubmitEffectOverlay effect={submitEffect} /> : null}
-        <div className="sticky top-[76px] z-30 flex flex-wrap items-center justify-between gap-3 border-b border-orange-100 bg-white px-4 py-2.5 lg:px-6">
-          <div>
+        <div className="sticky top-[76px] z-30 flex flex-wrap items-center justify-center gap-3 border-b border-orange-100 bg-white px-4 py-2.5 lg:justify-between lg:px-6">
+          <div className="sr-only lg:not-sr-only">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-500">Bài làm Ngữ Văn</p>
             <h1 className="max-w-5xl text-base font-black leading-6 text-slate-900 lg:text-xl">{examTitle}</h1>
           </div>
           <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 rounded-2xl bg-orange-50 px-3.5 py-2 text-base font-black text-orange-600">
+            <span className="inline-flex items-center gap-1.5 rounded-2xl bg-orange-50 px-3.5 py-2 text-base font-black text-orange-600" data-testid="exam-countdown">
               <Clock3 className="h-5 w-5" /> {minutes}:{seconds}
             </span>
-            <button onClick={() => setConfirmOpen(true)} className="rounded-2xl bg-slate-900 px-4 py-2 font-black text-white transition hover:bg-orange-500">
+            <button type="button" data-testid="exam-submit-header" onClick={() => setConfirmOpen(true)} className="hidden items-center rounded-2xl bg-slate-900 px-4 py-2 font-black text-white transition hover:bg-orange-500 lg:inline-flex">
               Nộp bài
             </button>
           </div>
@@ -315,7 +315,7 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
             </div>
           </aside>
 
-          <main className="bg-[#fffdf6] p-4 lg:h-full lg:overflow-y-auto lg:p-6">
+          <main className="bg-[#fffdf6] p-4 pb-28 lg:h-full lg:overflow-y-auto lg:p-6">
             <div className="mx-auto max-w-4xl space-y-5">
               {questions.map((question, questionIndex) => {
                 const value = answers[question.id];
@@ -414,8 +414,8 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
                 );
               })}
 
-              <div className="sticky bottom-[calc(7.5rem+env(safe-area-inset-bottom))] z-20 flex justify-center lg:bottom-4">
-                <button onClick={() => setConfirmOpen(true)} className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-7 py-3 font-black text-white shadow-lg shadow-orange-200 transition hover:bg-orange-600">
+              <div className="flex justify-center pt-5 lg:sticky lg:bottom-4 lg:z-20 lg:pt-0">
+                <button type="button" data-testid="exam-submit-final" disabled={submitting} onClick={() => setConfirmOpen(true)} className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-7 py-3 font-black text-white shadow-lg shadow-orange-200 transition hover:bg-orange-600 disabled:opacity-60">
                   <Send className="h-5 w-5" /> Nộp bài
                 </button>
               </div>
@@ -452,13 +452,13 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
   return (
     <div className="exam-runner-page min-h-[calc(100vh-76px)] bg-white">
       {effectVisible ? <SubmitEffectOverlay effect={submitEffect} /> : null}
-      <div className="sticky top-[76px] z-30 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-2.5 lg:px-6">
-        <h1 className="max-w-5xl text-base font-black leading-6 text-slate-900 lg:text-xl">{examTitle}</h1>
+      <div className="sticky top-[76px] z-30 flex flex-wrap items-center justify-center gap-3 border-b border-slate-200 bg-white px-4 py-2.5 lg:justify-between lg:px-6">
+        <h1 className="sr-only max-w-5xl text-base font-black leading-6 text-slate-900 lg:not-sr-only lg:text-xl">{examTitle}</h1>
         <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 rounded-2xl bg-orange-50 px-3.5 py-2 text-base font-black text-orange-600">
+          <span className="inline-flex items-center gap-1.5 rounded-2xl bg-orange-50 px-3.5 py-2 text-base font-black text-orange-600" data-testid="exam-countdown">
             <Clock3 className="h-5 w-5" /> {minutes}:{seconds}
           </span>
-          <button onClick={() => setConfirmOpen(true)} className="rounded-2xl bg-slate-900 px-4 py-2 font-black text-white transition hover:bg-orange-500">
+          <button type="button" data-testid="exam-submit-header" onClick={() => setConfirmOpen(true)} className="hidden items-center rounded-2xl bg-slate-900 px-4 py-2 font-black text-white transition hover:bg-orange-500 lg:inline-flex">
             Nộp bài
           </button>
         </div>
@@ -500,7 +500,7 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
       </details>
 
       <div className="grid min-h-[calc(100vh-145px)] lg:grid-cols-[minmax(0,1fr)_380px]">
-        <main className="px-4 py-6 lg:px-8 xl:px-12">
+        <main className="px-4 py-6 pb-28 lg:px-8 lg:pb-6 xl:px-12">
           <div className="mx-auto max-w-4xl space-y-5">
             {questions.map((question, questionIndex) => {
               const value = answers[question.id];
@@ -604,8 +604,8 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
               );
             })}
 
-            <div className="sticky bottom-[calc(7.5rem+env(safe-area-inset-bottom))] z-20 flex justify-center lg:bottom-4">
-              <button onClick={() => setConfirmOpen(true)} className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-7 py-3 font-black text-white shadow-lg shadow-orange-200 transition hover:bg-orange-600">
+            <div className="flex justify-center pt-5 lg:sticky lg:bottom-4 lg:z-20 lg:pt-0">
+              <button type="button" data-testid="exam-submit-final" disabled={submitting} onClick={() => setConfirmOpen(true)} className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-7 py-3 font-black text-white shadow-lg shadow-orange-200 transition hover:bg-orange-600 disabled:opacity-60">
                 <Send className="h-5 w-5" /> {submitting ? "Đang nộp..." : "Nộp bài"}
               </button>
             </div>
