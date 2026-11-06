@@ -484,6 +484,25 @@ model Subscription {
 
 // Recorded only when a SePay transfer has atomically activated a VIP payment.
 // Event ID is unique globally so a retried/replayed event cannot activate a second order.
+// Immutable audit for administrator-granted VIP: never creates a fake bank payment.
+// requestId prevents duplicate grants from double-clicks or network retries.
+model AdminVipGrant {
+  id             String   @id @default(cuid())
+  requestId      String   @unique @db.VarChar(36)
+  adminId        String
+  userId         String
+  planId         String
+  days           Int
+  note           String   @db.VarChar(250)
+  subscriptionId String   @unique
+  startsAt       DateTime
+  endsAt         DateTime
+  createdAt      DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([adminId, createdAt])
+}
+
 model SePayReceipt {
   eventId   String   @id
   paymentId String   @unique
