@@ -132,7 +132,7 @@ function Avatar({
   const sizes = {
     sm: "h-11 w-11 text-xs",
     md: "h-16 w-16 text-base",
-    lg: "h-20 w-20 text-lg sm:h-24 sm:w-24 sm:text-xl",
+    lg: "h-14 w-14 text-lg sm:h-20 sm:w-20 sm:text-xl lg:h-24 lg:w-24",
   };
   const frameClass = student.cosmetics?.avatarFrame ? avatarFrameClasses[student.cosmetics.avatarFrame] : "";
   const avatarStyle = student.cosmetics?.avatarStyle ? avatarStyleClasses[student.cosmetics.avatarStyle] : "";
@@ -191,44 +191,66 @@ function PodiumPlace({
 }) {
   if (!student) return null;
 
-  const podiumStyles = {
-    1: "h-24 border-amber-300 bg-gradient-to-b from-amber-50 to-yellow-200 text-amber-600 sm:h-28",
-    2: "h-20 border-slate-200 bg-gradient-to-b from-slate-50 to-slate-200 text-slate-400 sm:h-24",
-    3: "h-16 border-orange-200 bg-gradient-to-b from-orange-50 to-orange-200 text-orange-600 sm:h-20",
-  };
-  const ringStyles = {
-    1: "ring-4 ring-amber-400 shadow-[0_0_32px_rgba(251,191,36,0.32)]",
-    2: "ring-4 ring-slate-300",
-    3: "ring-4 ring-orange-500",
-  };
+  const tones = {
+    1: {
+      card: "border-amber-300 bg-gradient-to-b from-amber-50 via-white to-white shadow-[0_18px_50px_rgba(245,158,11,0.14)] sm:-translate-y-4",
+      ring: "ring-4 ring-amber-300 shadow-[0_12px_28px_rgba(251,191,36,0.22)]",
+      badge: "border-amber-200 bg-amber-100 text-amber-800",
+      score: "text-amber-600",
+      stripe: "from-amber-300 via-yellow-400 to-orange-400",
+    },
+    2: {
+      card: "border-slate-200 bg-gradient-to-b from-slate-50 via-white to-white shadow-[0_12px_38px_rgba(100,116,139,0.09)]",
+      ring: "ring-4 ring-slate-200",
+      badge: "border-slate-200 bg-slate-100 text-slate-600",
+      score: "text-slate-700",
+      stripe: "from-slate-200 via-slate-300 to-slate-400",
+    },
+    3: {
+      card: "border-orange-200 bg-gradient-to-b from-orange-50 via-white to-white shadow-[0_12px_38px_rgba(234,88,12,0.08)]",
+      ring: "ring-4 ring-orange-200",
+      badge: "border-orange-200 bg-orange-100 text-orange-700",
+      score: "text-orange-600",
+      stripe: "from-orange-200 via-orange-300 to-amber-400",
+    },
+  }[rank];
 
   return (
-    <div className="flex min-w-0 flex-col items-center">
-      <div className="relative">
-        {rank === 1 ? (
-          <Trophy className="absolute -top-8 left-1/2 h-7 w-7 -translate-x-1/2 text-amber-400" strokeWidth={2.4} />
-        ) : null}
-        <div className={clsx("rounded-full bg-white p-1", ringStyles[rank])}>
+    <article
+      data-testid="leaderboard-podium-place"
+      data-rank={rank}
+      aria-label={`Hạng ${rank}: ${student.name}, ${student.score} điểm trên 100`}
+      className={clsx(
+        "relative flex min-w-0 flex-col items-center overflow-hidden rounded-[1.35rem] border px-2.5 pb-3 pt-4 text-center transition-transform sm:rounded-[2rem] sm:px-5 sm:pb-5 sm:pt-6",
+        tones.card,
+      )}
+    >
+      <span className={clsx("mb-4 inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-wide sm:px-3 sm:py-1.5 sm:text-xs", tones.badge)}>
+        {rank === 1 ? <Trophy className="h-3.5 w-3.5" aria-hidden="true" /> : <Medal className="h-3.5 w-3.5" aria-hidden="true" />}
+        Hạng {rank}
+      </span>
+      <div className="relative mt-0.5">
+        <div className={clsx("rounded-full bg-white p-1", tones.ring)}>
           <Avatar student={student} size="lg" />
         </div>
-        {rank !== 1 ? (
-          <span className="absolute -bottom-1 -right-2 grid h-8 w-8 place-items-center rounded-full border-[3px] border-[#fffdf0] bg-white">
-            <Medal className={clsx("h-5 w-5", rank === 2 ? "text-slate-400" : "text-orange-600")} />
-          </span>
+        {rank === 1 ? (
+          <Trophy aria-hidden="true" className="absolute -right-3 -top-4 h-6 w-6 text-amber-500 drop-shadow-sm sm:h-8 sm:w-8" />
         ) : null}
       </div>
-      <p className="mt-4 max-w-full truncate text-center text-sm font-black text-slate-900 sm:text-base"><StudentName student={student} /></p>
-      <StudentTitle student={student} />
-      <p className="mt-1 text-lg font-black text-orange-600 sm:text-xl">{student.score} đ</p>
-      <div
-        className={clsx(
-          "mt-3 flex w-full max-w-[150px] items-start justify-center rounded-t-[1.15rem] border pt-3 text-3xl font-black shadow-sm sm:text-4xl",
-          podiumStyles[rank],
-        )}
-      >
-        {rank}
+      <p className="mt-4 line-clamp-2 min-h-10 w-full break-words text-center text-xs font-black leading-5 text-slate-900 sm:min-h-12 sm:text-base sm:leading-6" title={student.name}>
+        <StudentName student={student} />
+      </p>
+      <StudentTitle student={student} className="max-w-full break-words text-[9px] sm:text-[10px]" />
+      <div className="mt-2 flex flex-wrap items-baseline justify-center gap-x-1 sm:mt-3">
+        <strong className={clsx("text-2xl font-black tracking-tight sm:text-4xl", tones.score)}>{student.score}</strong>
+        <span className="text-[10px] font-extrabold text-slate-500 sm:text-xs">/ 100 điểm</span>
       </div>
-    </div>
+      <div className="mt-3 inline-flex max-w-full items-center justify-center gap-1 text-[10px] font-semibold text-slate-500 sm:text-xs">
+        <Clock3 className="h-3 w-3 shrink-0" aria-hidden="true" />
+        <span>{formatDuration(student.durationSeconds)}</span>
+      </div>
+      <div className={clsx("absolute inset-x-0 bottom-0 h-1.5 bg-gradient-to-r", tones.stripe)} aria-hidden="true" />
+    </article>
   );
 }
 
@@ -333,7 +355,13 @@ export function Leaderboard({ currentUser, subjects, attempts }: LeaderboardProp
   const currentIndex = ranking.findIndex((student) => student.isCurrentUser);
   const currentStudent = currentIndex >= 0 ? ranking[currentIndex] : undefined;
   const targetStudent = currentIndex > 0 ? ranking[currentIndex - 1] : undefined;
-  const podium = [ranking[1], ranking[0], ranking[2]];
+  const podium = ranking.length === 2
+    ? [{ student: ranking[0], rank: 1 as const }, { student: ranking[1], rank: 2 as const }]
+    : [
+        { student: ranking[1], rank: 2 as const },
+        { student: ranking[0], rank: 1 as const },
+        { student: ranking[2], rank: 3 as const },
+      ].filter((place) => Boolean(place.student));
 
   return (
     <div className="leaderboard-page min-h-screen bg-[#fffdf0] pb-24">
@@ -499,10 +527,23 @@ export function Leaderboard({ currentUser, subjects, attempts }: LeaderboardProp
         ) : null}
 
         {ranking.length ? (
-          <section className="mx-auto mt-14 grid max-w-2xl grid-cols-3 items-end gap-3 sm:gap-7">
-            <PodiumPlace student={podium[0]} rank={2} />
-            <PodiumPlace student={podium[1]} rank={1} />
-            <PodiumPlace student={podium[2]} rank={3} />
+          <section className="mt-10 sm:mt-14" aria-label="Top học viên nổi bật">
+            <div className="mb-7 text-center sm:mb-9">
+              <span className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-amber-700">
+                <Trophy className="h-4 w-4" aria-hidden="true" />
+                Vinh danh học viên
+              </span>
+              <h2 className="mt-3 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">Những vị trí dẫn đầu</h2>
+              <p className="mt-1 text-xs text-slate-500 sm:text-sm">Xếp theo thành tích tốt nhất trong bộ lọc đang chọn</p>
+            </div>
+            <div className={clsx(
+              "mx-auto grid items-stretch gap-2 sm:gap-5",
+              podium.length === 1 ? "max-w-[280px] grid-cols-1" :
+              podium.length === 2 ? "max-w-[590px] grid-cols-2" :
+              "max-w-[990px] grid-cols-3",
+            )}>
+              {podium.map((place) => <PodiumPlace key={place.rank} student={place.student} rank={place.rank} />)}
+            </div>
           </section>
         ) : (
           <section className="mt-8 rounded-[1.75rem] border-2 border-dashed border-orange-200 bg-white/70 px-6 py-14 text-center">
