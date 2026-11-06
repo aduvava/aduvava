@@ -33,8 +33,6 @@ export const completeStudentProfileSchema = z.object({
   grade: z.string().trim().refine((value) => SCHOOL_GRADES.includes(value), "Vui lòng chọn lớp hợp lệ"),
   school: z.string().trim().min(2).max(160),
   province: z.string().trim().refine((value) => VIETNAM_PROVINCES.includes(value as (typeof VIETNAM_PROVINCES)[number]), "Vui lòng chọn tỉnh/thành hợp lệ"),
-  aspiration: z.string().trim().max(500).optional(),
-  targetScore: z.string().trim().max(100).optional(),
   source: z.literal("onboarding"),
 }).strict();
 

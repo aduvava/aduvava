@@ -10,8 +10,6 @@ type OnboardingFormProps = {
     grade?: string | null;
     school?: string | null;
     province?: string | null;
-    aspiration?: string | null;
-    targetScore?: string | null;
   } | null;
 };
 
@@ -32,8 +30,6 @@ export function OnboardingForm({ initialProfile, nextPath = "/dashboard", role =
           grade: formData.get("grade"),
           school: formData.get("school"),
           province: formData.get("province"),
-          aspiration: formData.get("aspiration"),
-          targetScore: formData.get("targetScore"),
           source: "onboarding",
         };
       const response = await fetch("/api/profile", {
@@ -76,18 +72,6 @@ export function OnboardingForm({ initialProfile, nextPath = "/dashboard", role =
           {VIETNAM_PROVINCES.map((province) => <option key={province} value={province}>{province}</option>)}
         </select>
       </label>
-      {!teacher ? (
-        <>
-          <label className="grid gap-2 text-sm font-bold text-ink/70">
-            Điểm số mong muốn
-            <input name="targetScore" defaultValue={initialProfile?.targetScore ?? ""} placeholder="Ví dụ: 27+ điểm" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100" />
-          </label>
-          <label className="grid gap-2 text-sm font-bold text-ink/70">
-            Trường đại học mong muốn (không bắt buộc)
-            <textarea name="aspiration" defaultValue={initialProfile?.aspiration ?? ""} placeholder="Ví dụ: Đại học Bách khoa Hà Nội" className="min-h-24 rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100" />
-          </label>
-        </>
-      ) : null}
       <button disabled={pending} className="min-h-12 w-full rounded-2xl bg-orange-500 px-5 py-3 font-extrabold text-white shadow-md transition hover:bg-orange-600 disabled:opacity-60" type="submit">
         {pending ? "ĐANG LƯU..." : "HOÀN TẤT & TIẾP TỤC"}
       </button>

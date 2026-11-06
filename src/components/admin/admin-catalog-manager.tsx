@@ -1,14 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { Pencil, RefreshCw, Search, Trash2, X } from "lucide-react";
+import { Crown, Pencil, RefreshCw, Search, Trash2, X } from "lucide-react";
 
 type Resource = "subjects" | "store-items" | "users";
 type FieldKind = "text" | "textarea" | "number" | "select" | "checkbox" | "password" | "email";
 type FieldDef = { key: string; title: string; kind: FieldKind; required?: boolean; max?: number; options?: [string, string][]; tip?: string };
 type Item = { id: string; name?: string | null; email?: string; role?: string; slug?: string; family?: string; category?: string; price?: number; currency?: string;
+  subscriptions?: Array<{ id: string; endsAt: string; startsAt: string; plan: { name: string } }>;
   isActive?: boolean; metadata?: unknown; _count?: { exams?: number; topics?: number; theoryChapters?: number; theoryArticles?: number; purchases?: number } } & Record<string, unknown>;
 type FormValues = Record<string, string | boolean>;
+type VipPlan = { id: string; name: string; interval: "MONTH" | "QUARTER" | "YEAR"; isActive: boolean };
 
 const families: [string, string][] = [["THPTQG", "Học tập và thi THPT"], ["DGNL", "Đánh giá năng lực"]];
 const categories: [string, string][] = [["EQUIPMENT", "Trang bị"], ["HELP", "Hỗ trợ"], ["STUDY_PACK", "Gói học tập"], ["GIFT", "Quà tặng"], ["AVATAR", "Ảnh đại diện"]];
@@ -82,6 +84,12 @@ export function AdminCatalogManager({ resource }: { resource: Resource }) {
   const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [vipPlans, setVipPlans] = useState<VipPlan[]>([]);
+  const [vipTarget, setVipTarget] = useState<Item | null>(null);
+  const [vipPlanId, setVipPlanId] = useState("");
+  const [vipDays, setVipDays] = useState("30");
+  const [vipNote, setVipNote] = useState("Tặng VIP qua quản trị Educhi");
+  const [vipRequestId, setVipRequestId] = useState("");
   const pageSize = 30;
 
   const load = useCallback(async () => {
@@ -99,6 +107,61 @@ export function AdminCatalogManager({ resource }: { resource: Resource }) {
   }, [resource, page, query]);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    if (resource !== "users") return;
+    void fetch("/api/admin/plans", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(await responseError(response));
+        return response.json();
+      })
+      .then((data: { items?: VipPlan[] }) => setVipPlans((data.items ?? []).filter((plan) => plan.isActive)))
+      .catch(() => setMessage("Không tải được gói VIP; hãy kiểm tra mục Gói thành viên."));
+  }, [resource]);
+  useEffect(() => {
+    if (resource !== "users") return;
+    const timeout = window.setTimeout(() => {
+      setPage(1);
+      setQuery(search.trim());
+    }, 350);
+    return () => window.clearTimeout(timeout);
+  }, [search, resource]);
+
+  function openVip(item: Item) {
+    setVipTarget(item);
+    setVipPlanId(vipPlans[0]?.id ?? "");
+    setVipDays("30");
+    setVipNote("Tặng VIP qua quản trị Educhi");
+    setVipRequestId(crypto.randomUUID());
+    setMessage("");
+  }
+
+  async function giveVip(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!vipTarget?.email) return setMessage("Bạn cần chọn tài khoản hợp lệ.");
+    if (!vipPlanId || !vipPlans.some((plan) => plan.id === vipPlanId)) return setMessage("Hãy chọn gói VIP đang hoạt động.");
+    const days = Number(vipDays);
+    if (!Number.isInteger(days) || days < 1 || days > 365) return setMessage("Số ngày phải từ 1 đến 365.");
+    if (vipNote.trim().length < 4) return setMessage("Vui lòng ghi lý do cấp VIP.");
+    if (!window.confirm(`Xác nhận cấp ${days} ngày VIP cho ${vipTarget.email}? Nếu đang có VIP, thời gian sẽ được cộng nối tiếp.`)) return;
+    setBusy(true); setMessage("Đang cấp VIP và lưu nhật ký...");
+    try {
+      const response = await fetch("/api/admin/users/" + encodeURIComponent(vipTarget.id) + "/vip", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId: vipRequestId, planId: vipPlanId, days, note: vipNote.trim() }),
+      });
+      if (!response.ok) throw new Error(await responseError(response));
+      const result = await response.json();
+      setMessage("Đã ghi nhận VIP cho " + vipTarget.email + " đến " +
+        new Date(result.endsAt).toLocaleDateString("vi-VN") +
+        (result.activated ? "." : " (không cộng lại yêu cầu trước)."));
+      setVipTarget(null);
+      await load();
+    } catch (error) {
+      // Keep the exact requestId so retrying an uncertain response cannot
+      // grant a second subscription.
+      setMessage(error instanceof Error ? error.message : "Không cấp được VIP. Vui lòng thử lại.");
+    } finally { setBusy(false); }
+  }
 
   function setField(key: string, value: string | boolean) {
     setValues((current) => ({ ...current, [key]: value }));
@@ -271,7 +334,7 @@ export function AdminCatalogManager({ resource }: { resource: Resource }) {
         </div>
         <form className="mt-4 flex gap-2" onSubmit={(event) => { event.preventDefault(); setPage(1); setQuery(search.trim()); }}>
           <input className={inputStyle} aria-label={"Tìm " + titles[resource][1]} value={search}
-            onChange={(event) => setSearch(event.target.value)} placeholder="Tìm theo tên, email hoặc mã..." />
+            onChange={(event) => setSearch(event.target.value)} placeholder={resource === "users" ? "Nhập Gmail để tìm tài khoản..." : "Tìm theo tên hoặc mã..."} />
           <button type="submit" aria-label="Tìm kiếm" className="rounded-xl bg-slate-950 px-4 text-white"><Search className="h-4 w-4" /></button>
         </form>
         <div className="mt-5 space-y-3">
@@ -281,7 +344,14 @@ export function AdminCatalogManager({ resource }: { resource: Resource }) {
                 <div className="min-w-0 flex-1">
                   <h3 className="break-words font-black text-slate-950">{item.name || item.email || "Chưa đặt tên"}</h3>
                   {resource === "users" ? (
-                    <p className="mt-1 break-all text-sm text-slate-600">{item.email} · {roles.find(([key]) => key === item.role)?.[1] ?? item.role}</p>
+                    <div className="mt-1">
+                      <p className="break-all text-sm font-semibold text-slate-600">{item.email} · {roles.find(([key]) => key === item.role)?.[1] ?? item.role}</p>
+                      {item.subscriptions?.[0] ? (
+                        <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-orange-100 px-2.5 py-1 text-xs font-extrabold text-orange-700">
+                          <Crown className="h-3.5 w-3.5" /> {item.subscriptions[0].plan.name} · VIP đến {new Date(item.subscriptions[0].endsAt).toLocaleDateString("vi-VN")}
+                        </p>
+                      ) : <p className="mt-2 text-xs font-semibold text-slate-500">Chưa có VIP còn hiệu lực</p>}
+                    </div>
                   ) : resource === "subjects" ? (
                     <p className="mt-1 text-sm text-slate-600">{item.slug} · {item.family === "DGNL" ? "ĐGNL" : "THPT"} · {item._count?.exams ?? 0} đề thi</p>
                   ) : (
@@ -293,6 +363,12 @@ export function AdminCatalogManager({ resource }: { resource: Resource }) {
                     className="inline-flex items-center gap-1 rounded-xl bg-white px-3 py-2 text-xs font-black text-blue-700 shadow-sm disabled:opacity-50">
                     <Pencil className="h-4 w-4" /> Sửa
                   </button>
+                  {resource === "users" ? (
+                    <button type="button" disabled={busy} onClick={() => openVip(item)}
+                      className="inline-flex items-center gap-1 rounded-xl bg-orange-500 px-3 py-2 text-xs font-black text-white hover:bg-orange-600 disabled:opacity-50">
+                      <Crown className="h-4 w-4" /> Cấp VIP
+                    </button>
+                  ) : null}
                   {resource !== "users" ? (
                     <button type="button" disabled={busy} onClick={() => void remove(item)}
                       className="inline-flex items-center gap-1 rounded-xl bg-red-50 px-3 py-2 text-xs font-black text-red-700 disabled:opacity-50">
@@ -301,6 +377,41 @@ export function AdminCatalogManager({ resource }: { resource: Resource }) {
                   ) : null}
                 </div>
               </div>
+              {resource === "users" && vipTarget?.id === item.id ? (
+                <form onSubmit={(event) => void giveVip(event)} className="mt-4 grid gap-3 rounded-2xl border border-orange-200 bg-orange-50/70 p-4">
+                  <p className="text-sm font-black text-slate-900">Tặng VIP cho {item.email}</p>
+                  <label className="grid gap-1 text-xs font-bold text-slate-700">
+                    Chọn gói VIP
+                    <select className={inputStyle} required value={vipPlanId} onChange={(event) => {
+                      const value = event.target.value;
+                      setVipPlanId(value);
+                      const plan = vipPlans.find((p) => p.id === value);
+                      setVipDays(plan?.interval === "YEAR" ? "365" : plan?.interval === "QUARTER" ? "90" : "30");
+                    }}>
+                      <option value="">Chọn gói</option>
+                      {vipPlans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
+                    </select>
+                  </label>
+                  <label className="grid gap-1 text-xs font-bold text-slate-700">
+                    Số ngày VIP (1–365)
+                    <input type="number" min={1} max={365} required className={inputStyle}
+                      value={vipDays} onChange={(event) => setVipDays(event.target.value)} />
+                  </label>
+                  <label className="grid gap-1 text-xs font-bold text-slate-700">
+                    Lý do cấp VIP (lưu trong nhật ký)
+                    <input className={inputStyle} maxLength={250} minLength={4} required
+                      value={vipNote} onChange={(event) => setVipNote(event.target.value)} />
+                  </label>
+                  <p className="text-xs leading-5 text-orange-800">VIP được cộng nối tiếp nếu còn hạn. Thao tác này không tạo thanh toán hay sửa số dư tài khoản.</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button disabled={busy || !vipPlans.length} className="rounded-xl bg-orange-600 px-4 py-2.5 text-sm font-black text-white disabled:opacity-50">
+                      {busy ? "Đang xử lý..." : "Xác nhận cấp VIP"}
+                    </button>
+                    <button type="button" disabled={busy} onClick={() => setVipTarget(null)}
+                      className="rounded-xl border bg-white px-4 py-2.5 text-sm font-bold text-slate-600">Hủy</button>
+                  </div>
+                </form>
+              ) : null}
             </article>
           ))}
           {!items.length ? <p className="rounded-xl bg-slate-50 p-5 text-sm text-slate-500">Không tìm thấy dữ liệu phù hợp.</p> : null}

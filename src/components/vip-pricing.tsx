@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Copy, Crown, QrCode, X } from "lucide-react";
 import { clsx } from "clsx";
 
@@ -59,8 +59,39 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [paymentId, setPaymentId] = useState<string | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<"PENDING" | "PAID" | "FAILED" | null>(null);
   const [bankTransfer, setBankTransfer] = useState<BankTransferDetails | null>(null);
   const [qrSource, setQrSource] = useState<0 | 1 | 2>(0);
+
+  async function checkPayment(paymentIdToCheck: string) {
+    try {
+      const response = await fetch("/api/payments/status?paymentId=" +
+        encodeURIComponent(paymentIdToCheck), { cache: "no-store" });
+      if (!response.ok) return;
+      const result = await response.json();
+      setPaymentStatus(result.status);
+      if (result.status === "PAID" && result.vipActivated) {
+        setMessage("Thanh toán đã được xác nhận. VIP đã kích hoạt thành công!");
+        setPaymentOpen(false);
+        setBankTransfer(null);
+        // Refresh server-rendered VIP expiration and account permissions.
+        window.location.reload();
+      } else if (result.status === "PAID") {
+        setMessage("Đã ghi nhận thanh toán. Hãy liên hệ hỗ trợ để đối soát quyền VIP.");
+      } else if (result.status === "FAILED") {
+        setMessage("Yêu cầu thanh toán đã bị hủy hoặc thất bại. Hãy tạo giao dịch mới.");
+      }
+    } catch { /* Transient network error: keep the pending QR and retry later. */ }
+  }
+
+  // Poll only the signed-in user's own invoice. This endpoint is read-only,
+  // never a user-driven VIP activation.
+  useEffect(() => {
+    if (!paymentId || paymentStatus !== "PENDING") return;
+    const timer = window.setInterval(() => { void checkPayment(paymentId); }, 8000);
+    return () => window.clearInterval(timer);
+  }, [paymentId, paymentStatus]);
 
   async function checkout() {
     if (loading) return;
@@ -91,6 +122,8 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
         return;
       }
       setBankTransfer(data.bankTransfer);
+      setPaymentId(data.payment?.id ?? null);
+      setPaymentStatus("PENDING");
       setQrSource(0);
       setPaymentOpen(true);
     } catch {
@@ -196,6 +229,17 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
               Vui lòng chuyển đúng số tiền và giữ nguyên nội dung chuyển khoản.
               Chỉ thanh toán khi tên người nhận trong ứng dụng ngân hàng khớp với thông tin đã xác minh.
               Gói VIP chỉ kích hoạt sau khi hệ thống đối soát nhận được tiền, không phải sau khi bấm nút.
+            </div>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-orange-100 bg-orange-50 px-4 py-3">
+              <p role="status" className="text-sm font-semibold text-orange-800">
+                {paymentStatus === "PENDING" ? "Đang chờ SePay xác nhận tiền vào — hệ thống sẽ tự cấp VIP khi giao dịch khớp." :
+                 paymentStatus === "PAID" ? "Đã nhận giao dịch; đang kiểm tra quyền VIP." :
+                 paymentStatus === "FAILED" ? "Thanh toán chưa thành công." : "Kiểm tra trạng thái thanh toán."}
+              </p>
+              {paymentId ? <button type="button" onClick={() => void checkPayment(paymentId)}
+                className="rounded-xl bg-white px-3 py-2 text-xs font-black text-orange-700 shadow-sm">
+                Kiểm tra thanh toán
+              </button> : null}
             </div>
             {message ? <p role="status" className="mt-3 text-sm font-semibold text-slate-600">{message}</p> : null}
             <button type="button" onClick={() => setPaymentOpen(false)}

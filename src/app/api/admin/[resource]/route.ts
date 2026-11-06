@@ -144,13 +144,24 @@ async function listManagedResource(resource: string, searchParams: URLSearchPara
   }
 
   if (resource === "users") {
-    const where: Prisma.UserWhereInput = query ? { OR: [
-      { name: { contains: query, mode: "insensitive" } },
-      { email: { contains: query, mode: "insensitive" } },
-    ] } : {};
+    // A full Gmail address searches the email directly; partial names
+    // still support friendly discovery, without returning credentials.
+    const where: Prisma.UserWhereInput = !query ? {}
+      : query.includes("@") ? { email: { contains: query, mode: "insensitive" } }
+      : { OR: [
+          { name: { contains: query, mode: "insensitive" } },
+          { email: { contains: query, mode: "insensitive" } },
+        ] };
     const [items, total] = await prisma.$transaction([
       prisma.user.findMany({ where, skip, take, orderBy: { createdAt: "desc" },
-        select: { id: true, name: true, email: true, role: true, createdAt: true },
+        select: {
+          id: true, name: true, email: true, role: true, createdAt: true,
+          subscriptions: {
+            where: { status: "ACTIVE", endsAt: { gt: new Date() } },
+            orderBy: { endsAt: "desc" }, take: 1,
+            select: { id: true, endsAt: true, startsAt: true, plan: { select: { name: true } } },
+          },
+        },
       }),
       prisma.user.count({ where }),
     ]);

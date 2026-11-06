@@ -20,6 +20,12 @@ describe("Google and email onboarding", () => {
     assert.equal(completeStudentProfileSchema.safeParse({ ...valid, role: "ADMIN" }).success, false);
   });
 
+  it("no longer collects university aspirations or target scores", () => {
+    const base = { grade: "10", school: "THPT A", province: "Hà Nội", source: "onboarding" };
+    assert.equal(completeStudentProfileSchema.safeParse({ ...base, aspiration: "A" }).success, false);
+    assert.equal(completeStudentProfileSchema.safeParse({ ...base, targetScore: "28" }).success, false);
+  });
+
   it("requires teacher school and province, but not a student grade", () => {
     assert.equal(isTeacherOnboardingComplete(null), false);
     assert.equal(isTeacherOnboardingComplete({ school: "THPT A", province: "Hà Nội" }), true);

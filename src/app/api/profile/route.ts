@@ -7,10 +7,8 @@ const profileSchema = z.object({
   grade: z.string().optional(),
   school: z.string().optional(),
   province: z.string().optional(),
-  aspiration: z.string().optional(),
-  targetScore: z.string().optional(),
   source: z.string().optional()
-});
+}).strict();
 
 export async function GET() {
   try {
