@@ -21,7 +21,7 @@ export function PricingCheckoutButton({ planId }: { planId: string }) {
     }
 
     const data = await response.json();
-    setMessage(response.ok ? `Mã chuyển khoản: ${data.manualTransferCode}. Admin sẽ kích hoạt gói sau khi xác nhận giao dịch.` : data.error ?? "Không tạo được thanh toán.");
+    setMessage(response.ok ? `Mã chuyển khoản: ${data.manualTransferCode}. Hệ thống tự kích hoạt VIP khi nhận và xác minh đúng giao dịch từ SePay.` : data.error ?? "Không tạo được thanh toán.");
   }
 
   return (
