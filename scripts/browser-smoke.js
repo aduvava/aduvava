@@ -18,6 +18,7 @@ if (process.env.BROWSER_SMOKE_CI_ONLY !== "yes" ||
 
 async function main() {
   const email = "browser-smoke-" + Date.now() + "@example.test";
+  const leaderboardPeerEmail = "podium-" + Date.now() + "@example.test";
   const password = "BrowserSmokeCI-Only-2026!";
   const prisma = new PrismaClient();
   const browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
@@ -404,6 +405,7 @@ async function main() {
       description: "Chỉ dùng trong Chromium CI", family: "THPTQG",
       icon: "book-open", color: "#f97316",
     } });
+    let leaderboardExamId;
     for (const scenario of [
       { label: "multiple-choice", subjectId, title: "Trắc nghiệm CI mobile" },
       { label: "literature", subjectId: literatureSubject.id, title: "Ngữ Văn CI mobile" },
@@ -425,6 +427,7 @@ async function main() {
           ] },
         })) },
       } });
+      if (scenario.label === "multiple-choice") leaderboardExamId = exam.id;
       const attempt = await prisma.attempt.create({
         data: { userId: account.id, examId: exam.id, maxScore: 12 },
       });
@@ -470,6 +473,61 @@ async function main() {
         scenario.label + ": desktop keeps its original top submit button");
       assert.equal(await adminPage.getByTestId("exam-submit-final").locator("..").evaluate((element) => getComputedStyle(element).position),
         "sticky", scenario.label + ": desktop keeps its sticky submit button");
+    }
+
+    // Podium and account-header design regression using real submitted results.
+    // Two students must render two cards: never reserve a blank third-place column.
+    const podiumPeer = await prisma.user.create({
+      data: { email: leaderboardPeerEmail, name: "Học viên bảng xếp hạng CI", role: "STUDENT" },
+    });
+    await prisma.attempt.createMany({
+      data: [
+        {
+          userId: account.id, examId: leaderboardExamId, status: "SUBMITTED",
+          score: 11.4, maxScore: 12, durationSeconds: 840, submittedAt: new Date(),
+        },
+        {
+          userId: podiumPeer.id, examId: leaderboardExamId, status: "SUBMITTED",
+          score: 9.6, maxScore: 12, durationSeconds: 1020, submittedAt: new Date(),
+        },
+      ],
+    });
+
+    for (const width of [320, 390, 1366]) {
+      await adminPage.setViewportSize({ width, height: 844 });
+      await adminPage.goto(base + "/leaderboard");
+      await adminPage.getByRole("heading", { name: "Bảng Xếp Hạng" }).waitFor();
+      const cards = adminPage.getByTestId("leaderboard-podium-place");
+      assert.equal(await cards.count(), 2, "only two ranked students must create two podium cards");
+      assert.equal(await cards.nth(0).getAttribute("data-rank"), "1", "first card is leader");
+      assert.equal(await cards.nth(1).getAttribute("data-rank"), "2", "second card is runner-up");
+      assert.match(await cards.nth(0).getAttribute("aria-label"), /95 điểm trên 100/);
+      const cardRect = await cards.nth(0).boundingBox();
+      assert.ok(cardRect && cardRect.width > 100, "podium card stays usable at " + width + "px");
+
+      const menuButton = adminPage.getByRole("button", { name: "Mở menu tài khoản" });
+      await menuButton.waitFor();
+      await menuButton.click();
+      const accountMenu = adminPage.getByTestId("header-account-menu");
+      await accountMenu.waitFor({ state: "visible" });
+      await accountMenu.getByText(email, { exact: true }).waitFor();
+      assert.equal(await accountMenu.getByRole("button", { name: "Thông tin cá nhân" }).count(), 1);
+      await menuButton.click();
+      assert.equal(await accountMenu.count(), 0, "account menu closes without losing controls");
+
+      if (width >= 640) {
+        const expBadge = adminPage.getByTestId("header-exp");
+        assert.equal(await expBadge.isVisible(), true, "EXP remains available on wide screens");
+      } else {
+        assert.equal(await adminPage.getByTestId("header-exp").isVisible(), false);
+      }
+      if (width >= 768) {
+        assert.equal(await adminPage.locator('header a[href="/admin"]').isVisible(), true);
+        assert.equal(await adminPage.locator('header a[href="/vip"]').isVisible(), true);
+      }
+      const scrollWidth = await adminPage.evaluate(() => document.documentElement.scrollWidth);
+      assert.ok(scrollWidth <= width + 1,
+        "redesigned leaderboard must not overflow horizontally at " + width + "px, actual " + scrollWidth);
     }
 
     const deleteLesson = await adminPage.request.delete(base + "/api/admin/theory-lessons/manage", { data: { lessonId } });
@@ -527,6 +585,7 @@ async function main() {
     console.log("Chromium smoke passed: two-line responsive headline, registration, session, role switching, admin protection, mobile navigation and mobile login.");
   } finally {
     await browser.close();
+    await prisma.user.deleteMany({ where: { email: leaderboardPeerEmail } });
     await prisma.user.deleteMany({ where: { email } });
     await prisma.$disconnect();
   }
