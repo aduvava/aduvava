@@ -147,7 +147,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="tinh-nang" className="mx-auto max-w-[1440px] px-4 pb-14 pt-10 sm:px-6 lg:px-8 lg:pt-14">
+      <section id="tinh-nang" className="mx-auto max-w-[1440px] px-4 pb-8 pt-8 sm:px-6 sm:pb-14 sm:pt-10 lg:px-8 lg:pt-14">
         <div className="mx-auto max-w-3xl text-center">
           <span className="text-xs font-black uppercase tracking-[0.24em] text-orange-500">Tính năng nổi bật</span>
           <h2 className="mt-3 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">Một nơi cho toàn bộ việc học</h2>
@@ -156,43 +156,43 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-7 grid gap-3 sm:mt-10 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
           {coreFeatures.map(({ icon: Icon, title, text }) => (
-            <article key={title} className="rounded-[2rem] border border-orange-100 bg-white p-6 shadow-[0_12px_35px_rgba(72,48,26,0.06)] transition hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(72,48,26,0.1)]">
-              <span className="grid h-14 w-14 place-items-center rounded-2xl bg-orange-50 text-orange-500">
+            <article key={title} className="rounded-[2rem] border border-orange-100 bg-white p-4 sm:p-6 shadow-[0_12px_35px_rgba(72,48,26,0.06)] transition hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(72,48,26,0.1)]">
+              <span className="grid h-12 w-12 place-items-center rounded-2xl bg-orange-50 text-orange-500 sm:h-14 sm:w-14">
                 <Icon className="h-7 w-7" />
               </span>
-              <h3 className="mt-5 text-xl font-black text-slate-950">{title}</h3>
-              <p className="mt-3 text-sm font-medium leading-6 text-slate-500">{text}</p>
+              <h3 className="mt-3 text-xl font-black text-slate-950 sm:mt-5">{title}</h3>
+              <p className="mt-2 text-sm font-medium leading-6 text-slate-500 sm:mt-3">{text}</p>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-8">
-        <div className="grid gap-6 rounded-[2.5rem] border border-orange-100 bg-white p-6 shadow-[0_20px_70px_rgba(72,48,26,0.08)] lg:grid-cols-[0.95fr_1.05fr] lg:p-8">
-          <div className="rounded-[2rem] bg-slate-950 p-8 text-white">
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-orange-100">
+      <section className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
+        <div className="grid gap-4 rounded-[2.5rem] border border-orange-100 bg-white p-4 shadow-[0_20px_70px_rgba(72,48,26,0.08)] sm:gap-6 sm:p-6 lg:grid-cols-[0.95fr_1.05fr] lg:p-8">
+          <div className="rounded-[2rem] bg-slate-950 p-5 text-white sm:p-8">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-black uppercase tracking-[0.18em] sm:px-4 sm:py-2 text-orange-100">
               <School className="h-4 w-4" />
               Không gian giáo viên
             </span>
-            <h2 className="mt-5 text-4xl font-black leading-tight">Dạy học, giao bài và xem báo cáo gọn hơn.</h2>
-            <p className="mt-4 text-base leading-7 text-slate-300">
+            <h2 className="mt-4 text-4xl font-black leading-tight sm:mt-5">Dạy học, giao bài và xem báo cáo gọn hơn.</h2>
+            <p className="mt-3 text-base leading-7 text-slate-300 sm:mt-4">
               Giáo viên có khu vực riêng để quản lý lớp, tạo đề, theo dõi bài nộp và nhìn nhanh tình hình học tập của học sinh.
             </p>
-            <Link href="/login?role=teacher&callbackUrl=/teacher" className="mt-7 inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-6 py-4 text-sm font-black text-white transition hover:bg-orange-600">
+            <Link href="/login?role=teacher&callbackUrl=/teacher" className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-2xl bg-orange-500 px-4 py-2.5 text-sm font-black text-white sm:mt-7 sm:px-6 sm:py-4 transition hover:bg-orange-600">
               Vào không gian giáo viên
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
             {teacherFeatures.map((feature, index) => (
-              <div key={feature} className="rounded-[1.75rem] border border-orange-100 bg-orange-50/60 p-5">
+              <div key={feature} className="rounded-[1.75rem] border border-orange-100 bg-orange-50/60 p-4 sm:p-5">
                 <span className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-sm font-black text-orange-500 shadow-sm">
                   {String(index + 1).padStart(2, "0")}
                 </span>
-                <p className="mt-5 text-lg font-black text-slate-900">{feature}</p>
+                <p className="mt-3 text-lg font-black text-slate-900 sm:mt-5">{feature}</p>
               </div>
             ))}
           </div>
