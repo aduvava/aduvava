@@ -84,7 +84,7 @@ async function main() {
     assert.equal(await studentTabs.getByRole("link", { name: "Môn học" }).count(), 0,
       "mobile navigation must not restore the removed subject tab");
     await studentTabs.getByRole("link", { name: "Đề thi" }).click();
-    await page.waitForURL(/\\/exams(?:\\?|$)/, { timeout: 15000 });
+    await page.waitForURL((url) => url.pathname === "/exams", { timeout: 15000 });
     await page.setViewportSize({ width: 1280, height: 800 });
 
     await page.goto(base + "/teacher");
