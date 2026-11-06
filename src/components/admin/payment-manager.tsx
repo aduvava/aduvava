@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BadgeCheck, Clock3, CreditCard, RefreshCw, Search, XCircle } from "lucide-react";
 
+type SePayHealth = { apiKeyConfigured: boolean; receivingAccountConfigured: boolean; lastSuccessfulAutoPaymentAt: string | null };
+
 type Payment = {
   id: string; amount: number; status: "PENDING" | "PAID" | "FAILED";
   reference: string; provider: string; createdAt: string; updatedAt: string;
@@ -19,6 +21,7 @@ export function PaymentManager() {
   const [query, setQuery] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [sepayHealth, setSepayHealth] = useState<SePayHealth | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -29,6 +32,12 @@ export function PaymentManager() {
     } catch (error) { setMessage(error instanceof Error ? error.message : "Không tải được dữ liệu."); }
   }, []);
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void fetch("/api/admin/payments/sepay-health", { cache: "no-store" })
+      .then(async (response) => response.ok ? response.json() : null)
+      .then((data: SePayHealth | null) => setSepayHealth(data))
+      .catch(() => { /* Status is advisory only; payment controls remain usable. */ });
+  }, []);
 
   const visible = useMemo(() => payments.filter((payment) => {
     const hasStatus = filter === "ALL" || payment.status === filter;
@@ -61,6 +70,21 @@ export function PaymentManager() {
 
   return (
     <div className="space-y-6">
+      <div className="rounded-2xl border border-orange-100 bg-orange-50/75 p-4 text-sm leading-6 text-slate-800">
+        <p className="font-black text-slate-950">Tự động kích hoạt VIP qua SePay</p>
+        <p>Hệ thống tự cấp quyền khi có tiền vào <strong>đúng tài khoản, đúng số tiền và đúng mã</strong>.
+          Chỉ dùng nút “Đã nhận tiền” nếu bạn đã kiểm tra giao dịch thật trong ứng dụng ngân hàng.</p>
+        {sepayHealth ? (
+          <div className="mt-2 space-y-1 text-xs font-semibold">
+            <p>Khóa xác thực webhook trên server: {sepayHealth.apiKeyConfigured ? "Đã cấu hình" : "Chưa cấu hình"}</p>
+            <p>Tài khoản nhận tiền trên server: {sepayHealth.receivingAccountConfigured ? "Đã cấu hình" : "Chưa cấu hình"}</p>
+            <p>Lần cuối tự kích hoạt VIP từ SePay: {sepayHealth.lastSuccessfulAutoPaymentAt
+              ? new Date(sepayHealth.lastSuccessfulAutoPaymentAt).toLocaleString("vi-VN")
+              : "Chưa ghi nhận thành công"}</p>
+            <p className="font-normal">Lưu ý: Có cấu hình trên server không chứng minh webhook đã bật trong tài khoản SePay. Hãy kiểm tra Delivery logs trong SePay.</p>
+          </div>
+        ) : <p className="mt-2 text-xs text-slate-500">Đang kiểm tra cấu hình trên máy chủ...</p>}
+      </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-orange-100 bg-white p-4"><p className="text-sm font-bold text-slate-500">Chờ đối soát</p><p className="mt-1 text-3xl font-black text-orange-500">{pending.length}</p></div>
         <div className="rounded-2xl border border-emerald-100 bg-white p-4"><p className="text-sm font-bold text-slate-500">Đã thanh toán</p><p className="mt-1 text-3xl font-black text-emerald-600">{paid.length}</p></div>
