@@ -105,7 +105,7 @@ export default function HomePage() {
                     <p className="mt-3 text-xl font-black leading-tight sm:text-2xl">Mỗi câu đúng, một bước tiến!</p>
                     <p className="mt-1 text-xs font-medium text-orange-50 sm:text-sm">Toán học · Luyện tập theo chương</p>
                   </div>
-                  <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-white p-1.5 shadow-lg sm:h-24 sm:w-24 sm:rounded-3xl">
+                  <div className="grid h-16 w-16 shrink-0 place-items-center sm:h-24 sm:w-24">
                     <MascotAvatar />
                   </div>
                 </div>

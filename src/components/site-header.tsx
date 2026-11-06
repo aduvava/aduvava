@@ -65,7 +65,7 @@ export async function SiteHeader() {
       <header className="fixed inset-x-0 top-0 z-[70] border-b border-orange-100/80 bg-white/95 shadow-sm backdrop-blur-xl">
         <div className="mx-auto flex h-[64px] max-w-[1440px] items-center justify-between px-4 sm:px-6 lg:h-[76px] lg:px-8">
           <Link href="/" className="flex items-center gap-2">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-orange-50 p-1 shadow-lg shadow-orange-200 sm:h-12 sm:w-12 sm:rounded-2xl">
+            <span className="grid h-10 w-10 shrink-0 place-items-center sm:h-12 sm:w-12">
               <MascotAvatar />
             </span>
             <span className="text-lg font-black tracking-tight text-orange-500 sm:text-2xl">Educhi</span>
@@ -117,7 +117,7 @@ export async function SiteHeader() {
     <header className="fixed inset-x-0 top-0 z-[70] border-b border-orange-100/80 bg-white/95 shadow-sm backdrop-blur-xl">
       <div className="mx-auto flex h-[64px] max-w-[1440px] items-center justify-between gap-2 px-4 sm:gap-5 sm:px-6 lg:h-[76px] lg:px-8">
         <Link href={homeHref} title="Về trang chủ" className="flex shrink-0 items-center gap-2">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-orange-50 p-1 shadow-md shadow-orange-200 sm:h-11 sm:w-11 sm:rounded-2xl">
+          <span className="grid h-10 w-10 shrink-0 place-items-center sm:h-11 sm:w-11">
             <MascotAvatar />
           </span>
           <span className="text-lg font-black tracking-tight text-orange-500 sm:text-xl">Educhi</span>
