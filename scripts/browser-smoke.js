@@ -50,6 +50,8 @@ async function main() {
     // Completing the post-authentication profile is required before dashboard access.
     await page.goto(base + "/dashboard");
     await page.waitForURL(/\/onboarding(?:\?|$)/, { timeout: 15000 });
+    assert.equal(await page.locator('[name="aspiration"]').count(), 0);
+    assert.equal(await page.locator('[name="targetScore"]').count(), 0);
     await page.locator('input[name="school"]').fill("THPT Nguyễn Trãi");
     const profileResponsePromise = page.waitForResponse(
       (response) => new URL(response.url()).pathname === "/api/profile" && response.request().method() === "POST",
@@ -58,6 +60,8 @@ async function main() {
     await page.getByRole("button", { name: /HOÀN TẤT.*TIẾP TỤC/ }).click();
     const profileResponse = await profileResponsePromise;
     const postedProfile = profileResponse.request().postDataJSON();
+    assert.equal(postedProfile.aspiration, undefined, "onboarding should not ask for university choices");
+    assert.equal(postedProfile.targetScore, undefined, "onboarding should not ask for target score");
     assert.equal(postedProfile.school, "THPT Nguyễn Trãi", "browser must post the entered school");
     assert.equal(profileResponse.status(), 200, "onboarding API must save profile successfully");
     await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15000 });
@@ -247,6 +251,9 @@ async function main() {
       "repeated checkout must not create duplicate unpaid invoices",
     );
     const paymentId = checkoutData.payment.id;
+    const pendingStatus = await adminPage.request.get(base + "/api/payments/status?paymentId=" + paymentId);
+    assert.equal(pendingStatus.status(), 200);
+    assert.equal((await pendingStatus.json()).status, "PENDING", "opening checkout is not a payment");
     await adminPage.goto(base + "/admin/payments");
     await adminPage.getByRole("heading", { name: "Thanh toán VIP" }).waitFor();
     assert.equal(await adminPage.getByText("JSON editor").count(), 0, "payment UI hides JSON editor");
@@ -311,6 +318,50 @@ async function main() {
       beforeAuto + 1,
       "bank delivery + replay grants exactly one subscription",
     );
+    const confirmedStatus = await adminPage.request.get(base + "/api/payments/status?paymentId=" + autoOrder.payment.id);
+    assert.equal(confirmedStatus.status(), 200);
+    assert.equal((await confirmedStatus.json()).vipActivated, true, "customer status reports verified VIP only");
+    const guestPaymentStatus = await fetch(base + "/api/payments/status?paymentId=" + autoOrder.payment.id);
+    assert.equal(guestPaymentStatus.status, 401, "a stranger cannot inspect a customer's payment");
+    const health = await adminPage.request.get(base + "/api/admin/payments/sepay-health");
+    assert.equal(health.status(), 200, "admins can inspect webhook health flags");
+    const healthResult = await health.json();
+    assert.equal(healthResult.apiKeyConfigured, true);
+    assert.equal(healthResult.receivingAccountConfigured, true);
+    assert.ok(healthResult.lastSuccessfulAutoPaymentAt);
+
+    const grantRequestId = "aaaaaaaa-aaaa-4aaa-8aaa-" + Date.now().toString(16).padStart(12, "0").slice(-12);
+    const gift = { requestId: grantRequestId, planId, days: 7, note: "Test gift from administrator" };
+    const beforeGift = await prisma.subscription.count({ where: { userId: account.id, planId } });
+    const unauthenticatedGift = await fetch(base + "/api/admin/users/" + account.id + "/vip", {
+      method: "POST", headers: { "Content-Type": "application/json", Origin: base }, body: JSON.stringify(gift),
+    });
+    assert.equal(unauthenticatedGift.status, 401);
+    const crossOriginGift = await adminPage.request.post(base + "/api/admin/users/" + account.id + "/vip", {
+      headers: { Origin: "https://another-origin.test" }, data: gift,
+    });
+    assert.equal(crossOriginGift.status(), 403, "block cross-origin privilege changes");
+    const gifted = await adminPage.request.post(base + "/api/admin/users/" + account.id + "/vip", {
+      headers: { Origin: base }, data: gift,
+    });
+    assert.equal(gifted.status(), 201, "admin can grant VIP independently of a bank transfer");
+    assert.equal((await gifted.json()).activated, true);
+    const giftedAgain = await adminPage.request.post(base + "/api/admin/users/" + account.id + "/vip", {
+      headers: { Origin: base }, data: gift,
+    });
+    assert.equal(giftedAgain.status(), 200, "replayed gift returns idempotent response");
+    assert.equal((await giftedAgain.json()).activated, false);
+    assert.equal(await prisma.subscription.count({ where: { userId: account.id, planId } }), beforeGift + 1);
+    assert.equal(await prisma.adminVipGrant.count({ where: { userId: account.id } }), 1);
+    const gmailLookup = await adminPage.request.get(base + "/api/admin/users?managed=1&q=" + encodeURIComponent(email));
+    assert.equal((await gmailLookup.json()).items[0].subscriptions.length, 1);
+    await adminPage.goto(base + "/admin/users");
+    const gmailInput = adminPage.getByRole("textbox", { name: "Tìm tài khoản" });
+    await gmailInput.fill(email);
+    const targetCard = adminPage.locator("article").filter({ hasText: email }).last();
+    await targetCard.getByRole("button", { name: "Cấp VIP" }).waitFor();
+    await targetCard.getByText(/VIP đến/).waitFor();
+
     const receipt = await prisma.sePayReceipt.findUnique({ where: { eventId: String(webhookPayload.id) } });
     assert.equal(receipt?.paymentId, autoOrder.payment.id, "SePay event ID recorded atomically");
 
