@@ -39,14 +39,6 @@ const coreFeatures = [
   },
 ];
 
-const teacherFeatures = [
-  "Tạo và quản lý lớp học",
-  "Soạn đề thi nhanh hoặc thủ công",
-  "Theo dõi bài nộp, điểm số, tiến độ",
-  "Quản lý tài liệu và báo cáo học tập",
-];
-
-
 export default function HomePage() {
   return (
     <main className="hide-site-header overflow-hidden bg-[#fffaf0] text-slate-950">
@@ -57,9 +49,14 @@ export default function HomePage() {
             <Sparkles className="h-4 w-4" />
             Học vui mỗi ngày cùng Educhi
           </span>
-          <h1 className="mt-5 font-black leading-[1.18] tracking-[-0.055em] text-slate-950 [font-size:clamp(15px,4.3vw,62px)] sm:mt-6">
-            <span className="block whitespace-nowrap">Luyện Đề Thông Minh,</span>
-            <span className="block whitespace-nowrap text-orange-500">Tự Tin Vượt Ải Cùng Educhi</span>
+          <h1 className="mt-5 flex flex-col items-start gap-1.5 font-black leading-[1.15] sm:mt-6 sm:gap-3">
+            <span className="relative inline-block whitespace-nowrap bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 bg-clip-text pb-2 text-transparent drop-shadow-[0_4px_12px_rgba(249,115,22,0.15)] [font-size:clamp(22px,6.2vw,72px)] [letter-spacing:-0.055em]">
+              Luyện Đề Thông Minh,
+              <span aria-hidden="true" className="absolute bottom-0 left-0 h-1 w-3/4 rounded-full bg-gradient-to-r from-orange-500 via-amber-400 to-transparent sm:h-1.5" />
+            </span>
+            <span className="block whitespace-nowrap text-slate-900 [font-size:clamp(15px,4.1vw,48px)] [letter-spacing:-0.045em]">
+              Tự Tin Vượt Ải Cùng <span className="text-orange-500">Educhi</span>
+            </span>
           </h1>
         </div>
 
@@ -166,36 +163,6 @@ export default function HomePage() {
               <p className="mt-2 text-sm font-medium leading-6 text-slate-500 sm:mt-3">{text}</p>
             </article>
           ))}
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
-        <div className="grid gap-4 rounded-[2.5rem] border border-orange-100 bg-white p-4 shadow-[0_20px_70px_rgba(72,48,26,0.08)] sm:gap-6 sm:p-6 lg:grid-cols-[0.95fr_1.05fr] lg:p-8">
-          <div className="rounded-[2rem] bg-slate-950 p-5 text-white sm:p-8">
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-black uppercase tracking-[0.18em] sm:px-4 sm:py-2 text-orange-100">
-              <School className="h-4 w-4" />
-              Không gian giáo viên
-            </span>
-            <h2 className="mt-4 text-4xl font-black leading-tight sm:mt-5">Dạy học, giao bài và xem báo cáo gọn hơn.</h2>
-            <p className="mt-3 text-base leading-7 text-slate-300 sm:mt-4">
-              Giáo viên có khu vực riêng để quản lý lớp, tạo đề, theo dõi bài nộp và nhìn nhanh tình hình học tập của học sinh.
-            </p>
-            <Link href="/login?role=teacher&callbackUrl=/teacher" className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-2xl bg-orange-500 px-4 py-2.5 text-sm font-black text-white sm:mt-7 sm:px-6 sm:py-4 transition hover:bg-orange-600">
-              Vào không gian giáo viên
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
-            {teacherFeatures.map((feature, index) => (
-              <div key={feature} className="rounded-[1.75rem] border border-orange-100 bg-orange-50/60 p-4 sm:p-5">
-                <span className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-sm font-black text-orange-500 shadow-sm">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <p className="mt-3 text-lg font-black text-slate-900 sm:mt-5">{feature}</p>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
