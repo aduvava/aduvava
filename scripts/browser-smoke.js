@@ -446,13 +446,20 @@ async function main() {
       assert.ok(initialButton && initialButton.y > 844,
         scenario.label + ": orange submit must remain below the questions on initial mobile view");
 
-      await adminPage.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-      await adminPage.waitForFunction(() => window.scrollY > 300);
+      await adminPage.evaluate(() => {
+        const scrollable = document.scrollingElement || document.documentElement;
+        scrollable.scrollTo({ top: scrollable.scrollHeight, behavior: "instant" });
+      });
+      await adminPage.waitForFunction(() => {
+        const scrollable = document.scrollingElement || document.documentElement;
+        return Math.abs(scrollable.scrollTop + window.innerHeight - scrollable.scrollHeight) <= 4;
+      });
       const finalButton = await finalSubmit.boundingBox();
       const navRect = await adminPage.getByRole("navigation", { name: "Điều hướng chính trên điện thoại" }).boundingBox();
       assert.ok(finalButton && navRect && finalButton.y >= 0 &&
-        finalButton.y + finalButton.height < navRect.y,
-        scenario.label + ": end-of-exam submit must be visible above the fixed mobile nav");
+        finalButton.y + finalButton.height <= navRect.y - 4,
+        scenario.label + ": end-of-exam submit must be visible above the fixed mobile nav. " +
+        JSON.stringify({ finalButton, navRect }));
       await finalSubmit.click();
       await adminPage.getByRole("heading", { name: "Xác nhận nộp bài" }).waitFor();
       await adminPage.getByRole("button", { name: "Quay lại làm tiếp" }).click();
