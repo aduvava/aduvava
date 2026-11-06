@@ -29,7 +29,7 @@ export default async function DashboardPage() {
     }),
     prisma.user.findUnique({
       where: { id: user.id },
-      select: { equippedDashboardImageId: true },
+      select: { equippedAvatarItemId: true, equippedDashboardImageId: true },
     }),
     prisma.subject.findMany({
       select: { slug: true, name: true },
@@ -37,10 +37,13 @@ export default async function DashboardPage() {
     }),
   ]);
 
-  const equippedDashboardImage = account?.equippedDashboardImageId
+  // The shop writes the selected avatar to equippedAvatarItemId.
+  // Keep the older dashboard image selection as a fallback for existing accounts.
+  const selectedImageId = account?.equippedAvatarItemId ?? account?.equippedDashboardImageId;
+  const equippedDashboardImage = selectedImageId
     ? await prisma.storeItem.findFirst({
         where: {
-          id: account.equippedDashboardImageId,
+          id: selectedImageId,
           category: "AVATAR",
           isActive: true,
         },
