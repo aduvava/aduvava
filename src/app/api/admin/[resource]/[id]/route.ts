@@ -145,8 +145,19 @@ async function getResource(resource: string, id: string) {
 
 async function deleteResource(resource: string, id: string, confirmDeleteWithResults = false) {
   switch (resource) {
-    case "subjects":
+    case "subjects": {
+      const subject = await prisma.subject.findUnique({
+        where: { id },
+        select: { _count: { select: {
+          exams: true, topics: true, theoryChapters: true, theoryArticles: true,
+        } } },
+      });
+      if (!subject) throw new HttpError(404, "Không tìm thấy môn học.");
+      if (Object.values(subject._count).some((count) => count > 0)) {
+        throw new HttpError(409, "Môn học đã có đề thi hoặc nội dung học tập. Không thể xóa để tránh mất dữ liệu; hãy sửa thông tin môn.");
+      }
       return prisma.subject.delete({ where: { id } });
+    }
     case "exams": {
       const exam = await prisma.exam.findUnique({
         where: { id }, select: { title: true, _count: { select: { attempts: true } } },
@@ -179,8 +190,13 @@ async function deleteResource(resource: string, id: string, confirmDeleteWithRes
       throw new HttpError(409, "Payment audit records cannot be deleted");
     case "plans":
       return prisma.plan.delete({ where: { id } });
-    case "store-items":
+    case "store-items": {
+      const purchases = await prisma.storePurchase.count({ where: { itemId: id } });
+      if (purchases > 0) {
+        throw new HttpError(409, "Vật phẩm đã có người mua. Hãy ngừng bán thay vì xóa để giữ lịch sử giao dịch.");
+      }
       return prisma.storeItem.delete({ where: { id } });
+    }
     case "theory-chapters": {
       // Prevent cascading deletion of lessons and leaving their private files orphaned.
       const lessonCount = await prisma.theoryLesson.count({ where: { chapterId: id } });
