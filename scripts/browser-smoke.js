@@ -436,7 +436,7 @@ async function main() {
       const headerSubmit = adminPage.getByTestId("exam-submit-header");
       const finalSubmit = adminPage.getByTestId("exam-submit-final");
       await countdown.waitFor({ state: "visible" });
-      assert.match(await countdown.innerText(), /\\d{2}:\\d{2}/);
+      assert.match(await countdown.innerText(), /[0-9]{2}:[0-9]{2}/);
       assert.equal(await headerSubmit.isVisible(), false,
         scenario.label + ": mobile should not show a dark submit button in the top toolbar");
       assert.equal(await finalSubmit.locator("..").evaluate((element) => getComputedStyle(element).position),
