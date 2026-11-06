@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { signOut } from "next-auth/react";
-import { Crown, Gem, GraduationCap, History, LogOut, School, Target, Trophy, UserRound, X } from "lucide-react";
+import { Crown, Gem, GraduationCap, History, LogOut, School, UserRound, X } from "lucide-react";
 
 type HeaderAccountControlsProps = {
   initialExp: number;
@@ -16,22 +16,16 @@ type HeaderAccountControlsProps = {
 type StudentProfileForm = {
   grade: string;
   school: string;
-  aspiration: string;
-  targetScore: string;
 };
 
 const emptyProfile: StudentProfileForm = {
   grade: "",
   school: "",
-  aspiration: "",
-  targetScore: "",
 };
 
 const profileFields = [
   { key: "grade", label: "Lớp", placeholder: "Ví dụ: Lớp 12A1", Icon: GraduationCap },
   { key: "school", label: "Trường đang học", placeholder: "Ví dụ: THPT Nguyễn Trãi", Icon: School },
-  { key: "aspiration", label: "Trường đại học mong muốn", placeholder: "Ví dụ: Đại học Bách khoa Hà Nội", Icon: Target },
-  { key: "targetScore", label: "Điểm số mong muốn", placeholder: "Ví dụ: 27+ điểm", Icon: Trophy },
 ] as const;
 
 export function HeaderAccountControls({ initialExp, vipDaysLeft, activeRole, canUseAdmin, user }: HeaderAccountControlsProps) {
@@ -63,8 +57,6 @@ export function HeaderAccountControls({ initialExp, vipDaysLeft, activeRole, can
         setProfile({
           grade: savedProfile.grade ?? "",
           school: savedProfile.school ?? "",
-          aspiration: savedProfile.aspiration ?? "",
-          targetScore: savedProfile.targetScore ?? "",
         });
       } catch {
         if (active) setProfileMessage("Chưa tải được thông tin cá nhân.");

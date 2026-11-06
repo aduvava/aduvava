@@ -18,8 +18,6 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
       grade: true,
       school: true,
       province: true,
-      aspiration: true,
-      targetScore: true,
     },
   });
 
