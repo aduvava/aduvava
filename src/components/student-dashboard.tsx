@@ -18,6 +18,7 @@ import {
   Gavel,
   GraduationCap,
   Headphones,
+  Image as ImageIcon,
   Languages,
   Landmark,
   Laptop,
@@ -25,6 +26,7 @@ import {
   MessageCircleMore,
   Play,
   Send,
+  Sparkles,
   Star,
   Trophy,
   X,
@@ -239,21 +241,38 @@ function getItemVisual(item: string, slug: string): SubjectVisual {
   return { icon: GraduationCap, imageSrc: undefined, className: "from-orange-100 to-amber-50 text-orange-600" };
 }
 
+// Match the EXP shop's avatar previews when an item has no standalone image asset.
+const shopAvatarVisuals = {
+  detective: { gradient: "from-amber-100 via-orange-200 to-slate-800", icon: ImageIcon, color: "text-slate-900" },
+  ukulele: { gradient: "from-pink-100 via-rose-200 to-orange-400", icon: ImageIcon, color: "text-rose-700" },
+  "animated-star": { gradient: "from-slate-950 via-violet-700 to-yellow-300", icon: Sparkles, color: "text-white" },
+} as const;
+
 function DashboardImageCard({ imageKey, imageName }: { imageKey: string | null; imageName: string | null }) {
   const image = getDashboardImage(imageKey);
+  const shopVisual = imageKey && imageKey in shopAvatarVisuals
+    ? shopAvatarVisuals[imageKey as keyof typeof shopAvatarVisuals]
+    : null;
+  const ShopIcon = shopVisual?.icon;
+
   return (
-    // Show the chosen image alone, without a speech bubble, overlay or empty-image text.
-    // A mascot illustration is the fallback when no dashboard image is equipped.
-    <section className="h-[210px] min-w-0 w-full overflow-hidden rounded-[1.5rem] sm:h-[190px]">
+    <section className="h-[210px] min-w-0 w-full overflow-hidden rounded-[1.5rem] border border-orange-100/80 bg-white p-4 shadow-[0_10px_22px_rgba(81,52,24,0.05)] sm:h-[190px]">
       <Link
         href="/dich-vu"
-        aria-label={image ? `Đổi ảnh bảng điều khiển: ${imageName ?? image.alt}` : "Chọn ảnh bảng điều khiển"}
-        className="block h-full w-full overflow-hidden rounded-[1.5rem] focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
+        aria-label={imageKey ? `Đổi ảnh đang dùng: ${imageName ?? "Ảnh đã trang bị"}` : "Chọn ảnh trong cửa hàng"}
+        title={imageKey ? "Đổi ảnh trong cửa hàng" : "Chọn ảnh trong cửa hàng"}
+        className="grid h-full w-full place-items-center overflow-hidden rounded-[1.1rem] bg-orange-50/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
       >
         {image ? (
-          <img src={image.src} alt={image.alt} className="block h-full w-full object-cover" />
+          <img src={image.src} alt={image.alt} className="block h-full w-full object-contain" />
+        ) : shopVisual && ShopIcon ? (
+          <div className={clsx("grid h-full w-full place-items-center bg-gradient-to-br", shopVisual.gradient)}>
+            <ShopIcon className={clsx("h-16 w-16 drop-shadow-xl", shopVisual.color)} strokeWidth={1.4} />
+          </div>
         ) : (
-          <MascotAvatar className="block h-full w-full object-contain" />
+          <div className="h-full w-full max-w-[164px]">
+            <MascotAvatar />
+          </div>
         )}
       </Link>
     </section>
