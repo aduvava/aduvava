@@ -142,6 +142,45 @@ async function main() {
     } });
     assert.equal(chapterResponse.status(), 201, "admin creates a chapter");
     const chapterId = (await chapterResponse.json()).item.id;
+
+    // Admin screens use structured forms while preserving existing data.
+    const managedSubjectResponse = await adminPage.request.get(base + "/api/admin/subjects?managed=1&q=" + encodeURIComponent("Môn kiểm thử " + unique));
+    assert.equal(managedSubjectResponse.status(), 200);
+    assert.equal((await managedSubjectResponse.json()).total, 1);
+    assert.equal((await adminPage.request.delete(base + "/api/admin/subjects/" + subjectId)).status(), 409,
+      "subject deletion must not cascade and remove its theory chapters");
+    await adminPage.goto(base + "/admin/subjects");
+    await adminPage.getByRole("heading", { name: "Quản lý môn học" }).waitFor();
+    assert.equal(await adminPage.getByText("JSON editor").count(), 0, "subject form replaces JSON editor");
+
+    const catalogItem = await adminPage.request.post(base + "/api/admin/store-items", { data: {
+      slug: "ci-test-item-" + unique, name: "Vật phẩm CI " + unique,
+      description: "Vật phẩm kiểm thử", category: "AVATAR", price: 200, currency: "EXP",
+      imageKey: "orange", badge: null, isFeatured: false, isConsumable: false,
+      isActive: false, stock: null, sortOrder: 10,
+    } });
+    assert.equal(catalogItem.status(), 201, "create store item via existing API");
+    const catalogId = (await catalogItem.json()).item.id;
+    const itemList = await adminPage.request.get(base + "/api/admin/store-items?managed=1&q=ci-test-item-" + unique);
+    assert.equal((await itemList.json()).total, 1);
+    assert.equal((await adminPage.request.put(base + "/api/admin/store-items/" + catalogId, { data: {
+      price: 240, isActive: false,
+    } })).status(), 200);
+    await adminPage.goto(base + "/admin/store-items");
+    await adminPage.getByRole("heading", { name: "Quản lý vật phẩm" }).waitFor();
+    assert.equal(await adminPage.getByText("JSON editor").count(), 0, "store item form replaces JSON editor");
+    const userList = await adminPage.request.get(base + "/api/admin/users?managed=1&q=" + encodeURIComponent(email));
+    assert.equal(userList.status(), 200);
+    assert.equal((await userList.json()).total, 1);
+    assert.equal((await userList.json()).items[0].passwordHash, undefined);
+    await adminPage.goto(base + "/admin/users");
+    await adminPage.getByRole("heading", { name: "Admin · Người dùng" }).waitFor();
+    assert.equal(await adminPage.getByText("JSON editor").count(), 0, "users form replaces JSON editor");
+    await adminPage.goto(base + "/admin/exams");
+    assert.equal(await adminPage.getByRole("link", { name: "Câu hỏi", exact: true }).count(), 0,
+      "redundant questions nav is removed; question routes remain");
+    assert.equal((await adminPage.request.delete(base + "/api/admin/store-items/" + catalogId)).status(), 200);
+
     await adminPage.goto(base + "/admin/theory-chapters");
     await adminPage.getByRole("heading", { name: "Chương lý thuyết", exact: true }).waitFor();
     assert.equal(await adminPage.getByText("JSON editor").count(), 0, "chapter UI hides JSON editor");
