@@ -344,7 +344,7 @@ async function main() {
     const gifted = await adminPage.request.post(base + "/api/admin/users/" + account.id + "/vip", {
       headers: { Origin: base }, data: gift,
     });
-    assert.equal(gifted.status(), 201, "admin can grant VIP independently of a bank transfer");
+    assert.equal(gifted.status(), 201, "admin can grant VIP independently of a bank transfer: " + (await gifted.text()).slice(0, 300));
     assert.equal((await gifted.json()).activated, true);
     const giftedAgain = await adminPage.request.post(base + "/api/admin/users/" + account.id + "/vip", {
       headers: { Origin: base }, data: gift,
