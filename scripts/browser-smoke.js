@@ -485,7 +485,7 @@ async function main() {
       await mobilePage.goto(base, { waitUntil: "domcontentloaded" });
       const heading = mobilePage.getByRole("heading", { name: /Luyện Đề Thông Minh/i });
       await heading.waitFor();
-      const headlineSpans = heading.locator("span");
+      const headlineSpans = heading.locator(":scope > span");
       assert.equal(await headlineSpans.count(), 2, "landing headline has two separately controlled lines");
       for (const segment of await headlineSpans.all()) {
         const lineCount = await segment.evaluate((element) => {
