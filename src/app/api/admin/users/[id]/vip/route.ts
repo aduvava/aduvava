@@ -25,7 +25,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     // the internal URL alone. Never allow http origins outside localhost.
     const originUrl = origin ? new URL(origin) : null;
     const allowedHosts = [host, forwardedHost, new URL(request.url).host].filter(Boolean);
-    const localDevelopment = originUrl && /^(localhost|127\\.0\\.0\\.1)(:\\d+)?$/.test(originUrl.host);
+    const localDevelopment = originUrl && /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(originUrl.host);
     if (!originUrl || !allowedHosts.includes(originUrl.host) ||
       (originUrl.protocol !== "https:" && !(localDevelopment && originUrl.protocol === "http:"))) {
       throw new HttpError(403, "Yêu cầu cấp VIP phải xuất phát từ trang quản trị Educhi.");
