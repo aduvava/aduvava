@@ -100,31 +100,31 @@ export default async function ExamDetailPage({
             )}
           </div>
 
-          <div className="mt-7 grid gap-6 text-left lg:grid-cols-2">
-            <section className="rounded-[2rem] border border-orange-100 bg-white p-6 shadow-sm">
-              <h2 className="flex items-center gap-3 text-xl font-black text-slate-900">
-                <ShieldCheck className="h-6 w-6 text-orange-500" /> Lưu ý khi làm bài
+          <div className="mt-5 grid gap-4 text-left sm:mt-7 sm:gap-6 lg:grid-cols-2">
+            <section className="rounded-[1.5rem] border border-orange-100 bg-white p-3 shadow-sm sm:rounded-[2rem] sm:p-6">
+              <h2 className="flex items-center gap-2 text-base font-black text-slate-900 sm:gap-3 sm:text-xl">
+                <ShieldCheck className="h-5 w-5 shrink-0 text-orange-500 sm:h-6 sm:w-6" /> Lưu ý khi làm bài
               </h2>
-              <div className="mt-5 space-y-4 text-sm leading-7 text-slate-600 sm:text-base">
+              <div className="mt-3 space-y-2.5 text-[13px] leading-5 text-slate-600 sm:mt-5 sm:space-y-4 sm:text-base sm:leading-7">
                 {[
                   "Hệ thống sẽ tự động nộp bài khi hết thời gian.",
                   "Hệ thống sẽ tự động lưu bài làm của bạn liên tục.",
                   "Không chuyển tab hoặc thoát toàn màn hình trong quá trình làm bài. Hệ thống có thể ghi nhận vi phạm.",
                   "Kết quả và lời giải chi tiết sẽ hiển thị ngay sau khi nộp bài.",
                 ].map((note) => (
-                  <p key={note} className="flex items-start gap-3 rounded-2xl bg-orange-50/70 px-4 py-3">
-                    <CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-emerald-500" />
+                  <p key={note} className="flex items-start gap-2.5 rounded-xl bg-orange-50/70 px-3 py-2.5 sm:gap-3 sm:rounded-2xl sm:px-4 sm:py-3">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500 sm:mt-1 sm:h-5 sm:w-5" />
                     <span>{note}</span>
                   </p>
                 ))}
               </div>
             </section>
 
-            <section className="rounded-[2rem] border border-blue-100 bg-white p-6 shadow-sm">
-              <h2 className="flex items-center gap-3 text-xl font-black text-slate-900">
-                <Lightbulb className="h-6 w-6 text-amber-500" /> Mẹo để đạt điểm cao
+            <section className="rounded-[1.5rem] border border-blue-100 bg-white p-3 shadow-sm sm:rounded-[2rem] sm:p-6">
+              <h2 className="flex items-center gap-2 text-base font-black text-slate-900 sm:gap-3 sm:text-xl">
+                <Lightbulb className="h-5 w-5 shrink-0 text-amber-500 sm:h-6 sm:w-6" /> Mẹo để đạt điểm cao
               </h2>
-              <div className="mt-5 grid gap-4">
+              <div className="mt-3 grid gap-2.5 sm:mt-5 sm:gap-4">
                 {[
                   {
                     title: "Đọc kỹ từ khóa phủ định",
@@ -145,13 +145,13 @@ export default async function ExamDetailPage({
                     tone: "bg-emerald-50 text-emerald-600",
                   },
                 ].map(({ title, text, Icon, tone }) => (
-                  <div key={title} className="flex gap-4 rounded-2xl bg-slate-50 p-4">
-                    <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${tone}`}>
-                      <Icon className="h-6 w-6" />
+                  <div key={title} className="flex gap-2.5 rounded-xl bg-slate-50 p-3 sm:gap-4 sm:rounded-2xl sm:p-4">
+                    <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl sm:h-12 sm:w-12 sm:rounded-2xl ${tone}`}>
+                      <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
                     </span>
-                    <div>
-                      <h3 className="font-black text-slate-900">{title}</h3>
-                      <p className="mt-1 text-sm leading-6 text-slate-600">{text}</p>
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-black leading-5 text-slate-900 sm:text-base sm:leading-normal">{title}</h3>
+                      <p className="mt-1 text-[13px] leading-5 text-slate-600 sm:text-sm sm:leading-6">{text}</p>
                     </div>
                   </div>
                 ))}
