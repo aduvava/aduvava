@@ -394,6 +394,77 @@ async function main() {
     assert.equal(await transferDialog.getByText(/Không tải được ảnh QR/).count(), 0);
     await transferDialog.getByRole("button", { name: "Đóng thông tin chuyển khoản" }).click();
 
+
+    // Real browser regression: on mobile the timer is the only visible
+    // exam-toolbar control. An orange submit button belongs at the end of
+    // the questions, not floating over answers or the bottom navigation.
+    // Check both multiple-choice and literature variants against isolated CI data.
+    const literatureSubject = await prisma.subject.create({ data: {
+      slug: "ci-ngu-van-" + unique, name: "Ngữ Văn kiểm thử " + unique,
+      description: "Chỉ dùng trong Chromium CI", family: "THPTQG",
+      icon: "book-open", color: "#f97316",
+    } });
+    for (const scenario of [
+      { label: "multiple-choice", subjectId, title: "Trắc nghiệm CI mobile" },
+      { label: "literature", subjectId: literatureSubject.id, title: "Ngữ Văn CI mobile" },
+    ]) {
+      const exam = await prisma.exam.create({ data: {
+        code: "CI-" + scenario.label + "-" + unique,
+        slug: "ci-mobile-" + scenario.label + "-" + unique,
+        title: scenario.title, description: "Đề dài để kiểm tra thao tác cuộn.",
+        family: "THPTQG", type: "MOCK", accessLevel: "FREE",
+        year: 2026, durationMinutes: 60, educationLevel: "THCS",
+        subjectId: scenario.subjectId, isPublished: true,
+        questions: { create: Array.from({ length: 12 }, (_, questionIndex) => ({
+          position: questionIndex + 1, type: "SINGLE_CHOICE",
+          prompt: "Câu hỏi kiểm thử dài số " + (questionIndex + 1),
+          points: 1,
+          answerOptions: { create: [
+            { label: "A", content: "Đáp án A", isCorrect: true },
+            { label: "B", content: "Đáp án B", isCorrect: false },
+          ] },
+        })) },
+      } });
+      const attempt = await prisma.attempt.create({
+        data: { userId: account.id, examId: exam.id, maxScore: 12 },
+      });
+      const attemptUrl = base + "/attempts/" + attempt.id;
+
+      await adminPage.setViewportSize({ width: 390, height: 844 });
+      await adminPage.goto(attemptUrl);
+      const countdown = adminPage.getByTestId("exam-countdown");
+      const headerSubmit = adminPage.getByTestId("exam-submit-header");
+      const finalSubmit = adminPage.getByTestId("exam-submit-final");
+      await countdown.waitFor({ state: "visible" });
+      assert.match(await countdown.innerText(), /\\d{2}:\\d{2}/);
+      assert.equal(await headerSubmit.isVisible(), false,
+        scenario.label + ": mobile should not show a dark submit button in the top toolbar");
+      assert.equal(await finalSubmit.locator("..").evaluate((element) => getComputedStyle(element).position),
+        "static", scenario.label + ": mobile orange submit button must never be sticky");
+      await adminPage.evaluate(() => window.scrollTo(0, 0));
+      const initialButton = await finalSubmit.boundingBox();
+      assert.ok(initialButton && initialButton.y > 844,
+        scenario.label + ": orange submit must remain below the questions on initial mobile view");
+
+      await adminPage.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      await adminPage.waitForFunction(() => window.scrollY > 300);
+      const finalButton = await finalSubmit.boundingBox();
+      const navRect = await adminPage.getByRole("navigation", { name: "Điều hướng chính trên điện thoại" }).boundingBox();
+      assert.ok(finalButton && navRect && finalButton.y >= 0 &&
+        finalButton.y + finalButton.height < navRect.y,
+        scenario.label + ": end-of-exam submit must be visible above the fixed mobile nav");
+      await finalSubmit.click();
+      await adminPage.getByRole("heading", { name: "Xác nhận nộp bài" }).waitFor();
+      await adminPage.getByRole("button", { name: "Quay lại làm tiếp" }).click();
+
+      await adminPage.setViewportSize({ width: 1366, height: 850 });
+      await adminPage.goto(attemptUrl);
+      assert.equal(await adminPage.getByTestId("exam-submit-header").isVisible(), true,
+        scenario.label + ": desktop keeps its original top submit button");
+      assert.equal(await adminPage.getByTestId("exam-submit-final").locator("..").evaluate((element) => getComputedStyle(element).position),
+        "sticky", scenario.label + ": desktop keeps its sticky submit button");
+    }
+
     const deleteLesson = await adminPage.request.delete(base + "/api/admin/theory-lessons/manage", { data: { lessonId } });
     assert.equal(deleteLesson.status(), 200, "admin can delete uploaded lessons");
     await adminContext.close();
