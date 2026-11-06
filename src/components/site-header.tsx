@@ -1,6 +1,6 @@
 ﻿import Link from "next/link";
 import { getServerSession } from "next-auth";
-import { Bell, Crown, Search } from "lucide-react";
+import { Bell, Crown, Search, ShieldCheck } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ButtonLink } from "@/components/ui";
@@ -162,16 +162,20 @@ export async function SiteHeader() {
             ) : null}
           </Link>
           {session.user.role === "ADMIN" ? (
-            <ButtonLink href="/admin" className="hidden bg-orange-500 px-4 py-2 hover:bg-orange-600 md:inline-flex">
+            <Link
+              href="/admin"
+              className="hidden h-10 shrink-0 items-center gap-1.5 rounded-full border border-orange-200 bg-orange-50 px-3.5 text-xs font-black text-orange-700 transition hover:border-orange-300 hover:bg-orange-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500 md:inline-flex xl:text-sm"
+            >
+              <ShieldCheck className="h-4 w-4" aria-hidden="true" />
               Admin
-            </ButtonLink>
+            </Link>
           ) : null}
           <Link
             href="/vip"
-            className="hidden items-center gap-1.5 rounded-full bg-orange-500 px-4 py-2.5 text-sm font-black text-white shadow-md shadow-orange-100 transition hover:bg-orange-600 md:inline-flex"
+            className="hidden h-10 shrink-0 items-center gap-1.5 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-3.5 text-xs font-black text-white shadow-[0_5px_15px_rgba(249,115,22,0.18)] transition hover:from-orange-600 hover:to-amber-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500 md:inline-flex xl:text-sm"
           >
-            <Crown className="h-4 w-4 fill-current" />
-            Nạp vip
+            <Crown className="h-4 w-4 fill-current" aria-hidden="true" />
+            Nâng VIP
           </Link>
           <HeaderAccountControls
             canUseAdmin={account?.role === "ADMIN"}
