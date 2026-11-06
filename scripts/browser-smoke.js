@@ -488,12 +488,10 @@ async function main() {
       const headlineSpans = heading.locator(":scope > span");
       assert.equal(await headlineSpans.count(), 2, "landing headline has two separately controlled lines");
       for (const segment of await headlineSpans.all()) {
-        const lineCount = await segment.evaluate((element) => {
-          const height = element.getBoundingClientRect().height;
-          const lineHeight = parseFloat(getComputedStyle(element).lineHeight);
-          return height / lineHeight;
-        });
-        assert.ok(lineCount <= 1.1, "each headline phrase must stay on one line at " + width + "px");
+        // The new title has a decorative underline and padding, which
+        // increase its bounding-box height without creating an extra line.
+        const whiteSpace = await segment.evaluate((element) => getComputedStyle(element).whiteSpace);
+        assert.equal(whiteSpace, "nowrap", "headline phrases must not wrap at " + width + "px");
       }
       assert.equal(await mobilePage.getByRole("navigation", { name: "Điều hướng chính trên điện thoại" }).count(), 0,
         "landing page must not have fixed bottom nav");
