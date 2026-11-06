@@ -20,7 +20,6 @@ const adminNav = [
   { href: "/admin", label: "Tổng quan", Icon: LayoutDashboard },
   { href: "/admin/documents", label: "Tài liệu", Icon: FileClock },
   { href: "/admin/exams", label: "Đề thi", Icon: ClipboardList },
-  { href: "/admin/questions", label: "Câu hỏi", Icon: BookOpenCheck },
   { href: "/admin/subjects", label: "Môn học", Icon: BookOpenCheck },
   { href: "/admin/theory-chapters", label: "Chương lý thuyết", Icon: FileText },
   { href: "/admin/theory-lessons", label: "Bài lý thuyết", Icon: FileText },

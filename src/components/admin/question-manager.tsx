@@ -19,11 +19,11 @@ async function errorFrom(response: Response) {
   const data = await response.json().catch(() => ({}));
   return typeof data.error === "string" ? data.error : "Không thể xử lý yêu cầu.";
 }
-export function QuestionManager() {
+export function QuestionManager({ initialExamId = "" }: { initialExamId?: string }) {
   const [examText, setExamText] = useState("");
   const [examQuery, setExamQuery] = useState("");
   const [exams, setExams] = useState<Exam[]>([]);
-  const [examId, setExamId] = useState("");
+  const [examId, setExamId] = useState(initialExamId);
   const [items, setItems] = useState<Question[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -38,9 +38,20 @@ export function QuestionManager() {
       if (examQuery) qs.set("q", examQuery);
       const response = await fetch("/api/admin/exams?" + qs, { cache: "no-store" });
       if (!response.ok) throw new Error(await errorFrom(response));
-      setExams((await response.json()).items ?? []);
+      const data = await response.json();
+      let result: Exam[] = data.items ?? [];
+      // A direct link from a specific exam must work even if it is older
+      // than the 100 most recent records in the picker.
+      if (initialExamId && !result.some((exam) => exam.id === initialExamId)) {
+        const selectedResponse = await fetch("/api/admin/exams/" + encodeURIComponent(initialExamId), { cache: "no-store" });
+        if (selectedResponse.ok) {
+          const selectedData = await selectedResponse.json();
+          if (selectedData.item) result = [selectedData.item as Exam, ...result];
+        }
+      }
+      setExams(result);
     } catch (error) { setMessage(String(error)); }
-  }, [examQuery]);
+  }, [examQuery, initialExamId]);
   useEffect(() => { void loadExams(); }, [loadExams]);
 
   const load = useCallback(async () => {

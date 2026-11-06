@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { Pencil, Plus, RefreshCw, Search, Trash2, UploadCloud, X } from "lucide-react";
+import { Pencil, Plus, RefreshCw, Search, Trash2, UploadCloud, X, BookOpenCheck } from "lucide-react";
+import Link from "next/link";
 import { importAdminExamFile, type ImportedExamQuestion } from "@/lib/admin-exam-file-import";
 
 type Level = "THCS" | "THPT" | "EXAM_10" | "THPTQG" | null;
@@ -331,6 +332,10 @@ export function ExamManager() {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  <Link href={"/admin/questions?examId=" + encodeURIComponent(exam.id)}
+                    className="inline-flex items-center gap-1 rounded-xl bg-orange-50 px-3 py-2 text-xs font-black text-orange-700 hover:bg-orange-100">
+                    <BookOpenCheck className="h-4 w-4" /> Xem / sửa câu hỏi
+                  </Link>
                   <button type="button" onClick={() => edit(exam)} disabled={busy} className="inline-flex items-center gap-1 rounded-xl bg-white px-3 py-2 text-xs font-black text-blue-700 shadow-sm hover:bg-blue-50"><Pencil className="h-4 w-4" /> Sửa</button>
                   <button type="button" onClick={() => void remove(exam)} disabled={busy} className="inline-flex items-center gap-1 rounded-xl bg-red-50 px-3 py-2 text-xs font-black text-red-700 hover:bg-red-100"><Trash2 className="h-4 w-4" /> Xóa</button>
                 </div>

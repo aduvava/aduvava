@@ -1,4 +1,4 @@
-import { AdminResourceManager } from "@/components/admin/admin-resource-manager";
+import { AdminCatalogManager } from "@/components/admin/admin-catalog-manager";
 import { requireAdmin } from "@/lib/api";
 import { prisma } from "@/lib/db";
 
@@ -126,7 +126,7 @@ export default async function AdminUsersPage() {
       </section>
 
       <div className="mt-8">
-        <AdminResourceManager resource="users" defaultPayload={{ email: "", name: "", password: "", role: "STUDENT" }} />
+        <AdminCatalogManager resource="users" />
       </div>
     </main>
   );
