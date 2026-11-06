@@ -39,6 +39,8 @@ export default async function AdminUsersPage() {
       <p className="text-xs font-black uppercase tracking-[0.2em] text-orange-500">Quản trị Educhi</p>
       <h1 className="mt-3 text-4xl font-black text-slate-950">Admin · Người dùng</h1>
 
+      <div className="mt-6"><AdminCatalogManager resource="users" /></div>
+
       <section className="mt-8 grid gap-4 md:grid-cols-3">
         <article className="rounded-[1.75rem] border border-orange-100 bg-white p-5 shadow-sm">
           <p className="text-sm font-extrabold text-slate-500">Tổng học sinh</p>
@@ -102,9 +104,6 @@ export default async function AdminUsersPage() {
         </div>
       </section>
 
-      <div className="mt-8">
-        <AdminCatalogManager resource="users" />
-      </div>
     </main>
   );
 }
