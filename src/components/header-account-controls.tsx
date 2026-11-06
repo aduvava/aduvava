@@ -119,14 +119,20 @@ export function HeaderAccountControls({ initialExp, vipDaysLeft, activeRole, can
 
   return (
     <>
-      <span className="hidden items-center gap-1.5 rounded-full bg-blue-50 px-3 py-2 text-sm font-extrabold text-blue-600 sm:inline-flex">
-        <Gem className="h-4 w-4 fill-blue-500 text-blue-500" />
-        {initialExp.toLocaleString("vi-VN")}
+      <span
+        data-testid="header-exp"
+        aria-label={`${initialExp.toLocaleString("vi-VN")} điểm EXP`}
+        title="Điểm kinh nghiệm EXP"
+        className="hidden h-10 shrink-0 items-center gap-1.5 rounded-full border border-blue-100 bg-gradient-to-r from-sky-50 to-blue-50 px-3 text-sm font-black text-blue-700 shadow-sm sm:inline-flex"
+      >
+        <Gem className="h-4 w-4 fill-blue-500 text-blue-500" aria-hidden="true" />
+        <span>{initialExp.toLocaleString("vi-VN")}</span>
+        <span className="hidden text-[10px] font-extrabold uppercase tracking-wide text-blue-400 xl:inline">EXP</span>
       </span>
       {vipDaysLeft ? (
-        <span className="hidden items-center gap-1.5 rounded-full bg-orange-50 px-3 py-2 text-sm font-extrabold text-orange-600 lg:inline-flex">
-          <Crown className="h-4 w-4 fill-orange-500 text-orange-500" />
-          VIP còn {vipDaysLeft} ngày
+        <span className="hidden h-10 shrink-0 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 text-xs font-black text-amber-700 lg:inline-flex" title="Thời hạn VIP còn lại">
+          <Crown className="h-4 w-4 fill-amber-500 text-amber-500" aria-hidden="true" />
+          VIP {vipDaysLeft} ngày
         </span>
       ) : null}
 
@@ -136,16 +142,22 @@ export function HeaderAccountControls({ initialExp, vipDaysLeft, activeRole, can
           onClick={() => setMenuOpen((value) => !value)}
           aria-label="Mở menu tài khoản"
           aria-expanded={menuOpen}
-          className="grid h-9 w-9 place-items-center overflow-hidden rounded-full bg-gradient-to-br sm:h-11 sm:w-11 from-orange-400 to-orange-600 text-xs font-black text-white ring-2 ring-orange-100 transition hover:ring-orange-300"
+          className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-white bg-gradient-to-br from-amber-400 to-orange-600 text-sm font-black text-white shadow-[0_3px_13px_rgba(249,115,22,0.2)] ring-2 ring-orange-200 transition hover:scale-[1.04] hover:ring-orange-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500 sm:h-11 sm:w-11"
         >
           {user.image ? <img src={user.image} alt="" className="h-full w-full object-cover" /> : user.initials}
         </button>
 
         {menuOpen ? (
-          <div className="absolute right-0 top-14 z-50 w-72 overflow-hidden rounded-3xl border border-orange-100 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.16)]">
-            <div className="border-b border-slate-100 bg-orange-50/60 p-5">
-              <p className="truncate font-black text-slate-900">{user.name}</p>
-              <p className="mt-1 truncate text-xs text-slate-500">{user.email}</p>
+          <div data-testid="header-account-menu" className="absolute right-0 top-14 z-50 w-[min(88vw,320px)] overflow-hidden rounded-[1.75rem] border border-orange-100 bg-white shadow-[0_22px_65px_rgba(15,23,42,0.18)]">
+            <div className="flex items-center gap-3 border-b border-orange-100 bg-gradient-to-r from-orange-50 to-amber-50 px-4 py-5">
+              <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 text-sm font-black text-white shadow-sm">
+                {user.image ? <img src={user.image} alt="" className="h-full w-full object-cover" /> : user.initials}
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-black text-slate-900">{user.name}</p>
+                <p className="mt-1 truncate text-xs text-slate-500">{user.email}</p>
+                <p className="mt-1.5 text-[10px] font-extrabold uppercase tracking-wide text-orange-500">Tài khoản Educhi</p>
+              </div>
             </div>
             <div className="space-y-1 p-2">
               <div className="px-4 pb-1 pt-2 text-[11px] font-black uppercase tracking-wider text-slate-400">Chuyển vai trò</div>
@@ -162,8 +174,8 @@ export function HeaderAccountControls({ initialExp, vipDaysLeft, activeRole, can
               <button type="button" onClick={openProfile} className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-extrabold text-slate-700 transition hover:bg-orange-50 hover:text-orange-600">
                 <UserRound className="h-5 w-5" /> Thông tin cá nhân
               </button>
-              <button type="button" onClick={openPlans} className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-extrabold text-slate-700 transition hover:bg-orange-50 hover:text-orange-600">
-                <Crown className="h-5 w-5" /> Nạp vip
+              <button type="button" onClick={openPlans} className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-extrabold text-orange-600 transition hover:bg-orange-50">
+                <Crown className="h-5 w-5" /> Nâng cấp VIP
               </button>
               <button type="button" onClick={openTransactionHistory} className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-extrabold text-slate-700 transition hover:bg-orange-50 hover:text-orange-600">
                 <History className="h-5 w-5" /> Lịch sử giao dịch
