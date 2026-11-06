@@ -242,22 +242,20 @@ function getItemVisual(item: string, slug: string): SubjectVisual {
 function DashboardImageCard({ imageKey, imageName }: { imageKey: string | null; imageName: string | null }) {
   const image = getDashboardImage(imageKey);
   return (
-    <section className="group relative h-[175px] w-full max-w-[270px] overflow-hidden rounded-[1.5rem] border border-orange-100 bg-white p-1 shadow-[0_4px_10px_rgba(81,52,24,0.06)]">
-      <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-2/3 rounded-md bg-white px-2 py-1 text-[9px] font-extrabold text-slate-600 shadow-[0_4px_10px_rgba(15,23,42,0.08)]">
-        Cố gắng lên!
-        <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-white" />
-      </div>
-      {image ? (
-        <img src={image.src} alt={image.alt} className="h-full w-full rounded-[1.25rem] bg-orange-50 object-cover" />
-      ) : (
-        <div className="grid h-full place-items-center rounded-[1.25rem] bg-orange-50 px-6 text-center text-xs font-bold text-slate-500">
-          Chưa chọn ảnh bảng điều khiển
-        </div>
-      )}
-      <div className="absolute inset-x-1.5 bottom-1.5 flex items-center justify-between gap-1.5 rounded bg-slate-950/70 px-2 py-1 text-white opacity-0 backdrop-blur-sm transition group-hover:opacity-100">
-        <span className="truncate text-[10px] font-bold">{imageName ?? "Chưa có ảnh"}</span>
-        <Link href="/dich-vu" className="shrink-0 text-xs font-extrabold text-orange-300 hover:text-white">Đổi ảnh</Link>
-      </div>
+    // Show the chosen image alone, without a speech bubble, overlay or empty-image text.
+    // A mascot illustration is the fallback when no dashboard image is equipped.
+    <section className="h-[210px] min-w-0 w-full overflow-hidden rounded-[1.5rem] sm:h-[190px]">
+      <Link
+        href="/dich-vu"
+        aria-label={image ? `Đổi ảnh bảng điều khiển: ${imageName ?? image.alt}` : "Chọn ảnh bảng điều khiển"}
+        className="block h-full w-full overflow-hidden rounded-[1.5rem] focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
+      >
+        {image ? (
+          <img src={image.src} alt={image.alt} className="block h-full w-full object-cover" />
+        ) : (
+          <MascotAvatar className="block h-full w-full object-contain" />
+        )}
+      </Link>
     </section>
   );
 }
@@ -266,37 +264,37 @@ function StreakCard({ learningStreak, weekActivity }: { learningStreak: number; 
   const days = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
   return (
-    <section className="relative h-[175px] overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-orange-500 to-[#ff6508] p-3 text-white shadow-[0_10px_22px_rgba(249,115,22,0.14)]">
-      <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-white/10" />
-      <div className="absolute -bottom-10 -left-8 h-28 w-28 rounded-full bg-amber-300/15" />
-      <div className="relative">
+    <section className="relative h-[210px] min-w-0 overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-orange-500 to-[#ff6508] p-4 text-white shadow-[0_10px_22px_rgba(249,115,22,0.14)] sm:h-[190px]">
+      <div aria-hidden="true" className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-white/10" />
+      <div aria-hidden="true" className="absolute -bottom-10 -left-8 h-28 w-28 rounded-full bg-amber-300/15" />
+      <div className="relative flex h-full flex-col">
         <div className="flex items-center gap-2">
-          <Flame className="h-4 w-4 fill-orange-100 text-orange-100" />
-          <p className="text-xs font-extrabold tracking-[0.18em] text-orange-50">CHUỖI NGÀY HỌC</p>
+          <Flame className="h-5 w-5 fill-orange-100 text-orange-100" />
+          <p className="text-xs font-extrabold tracking-[0.14em] text-orange-50">CHUỖI NGÀY HỌC</p>
         </div>
         <p className="mt-1.5 flex items-end gap-1.5 text-2xl font-black tracking-tight">
           {learningStreak} <span className="mb-0.5 text-lg">ngày</span>
         </p>
-        <div className="mt-2.5 grid grid-cols-7 gap-1">
+        <div className="mt-3 grid min-w-0 grid-cols-7 gap-1">
           {days.map((day, index) => {
             const complete = weekActivity[index] === true;
             const today = index === (new Date().getDay() || 7) - 1;
             return (
-              <div key={day} className="text-center">
+              <div key={day} className="min-w-0 text-center">
                 <div className={clsx(
-                  "mx-auto grid h-6 w-6 place-items-center rounded-full border text-[8px] font-bold transition",
-                  complete && "border-white bg-white text-orange-500",
-                  today && !complete && "border-white bg-white/15 text-white",
-                  !today && !complete && "border-white/30 bg-white/10 text-white/70",
+                  "mx-auto grid h-8 w-8 place-items-center rounded-full border text-[11px] font-black transition min-[375px]:h-10 min-[375px]:w-10 sm:h-9 sm:w-9",
+                  complete && "border-white bg-white text-orange-600 shadow-sm",
+                  today && !complete && "border-white bg-white/20 text-white",
+                  !today && !complete && "border-white/40 bg-white/10 text-white",
                 )}>
-                  {complete ? <Check className="h-3.5 w-3.5" /> : day}
+                  {complete ? <Check className="h-5 w-5" /> : day}
                 </div>
-                <span className="mt-0.5 block text-[8px] font-semibold text-orange-100">{day}</span>
+                <span className="mt-1 block text-[10px] font-bold text-orange-50">{day}</span>
               </div>
             );
           })}
         </div>
-        <p className="mx-auto mt-2.5 block text-center text-[9px] font-extrabold text-orange-50">
+        <p className="mt-auto pt-2 text-center text-xs font-semibold text-orange-50">
           Tính từ các bài thi đã nộp
         </p>
       </div>
@@ -338,7 +336,7 @@ function ChatSupport() {
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-label="Mở chat hỗ trợ"
-        className="fixed bottom-[calc(7.5rem+env(safe-area-inset-bottom))] right-4 z-50 lg:bottom-6 grid h-16 w-16 place-items-center overflow-hidden rounded-full border-4 border-orange-500 bg-white text-white shadow-[0_12px_30px_rgba(249,115,22,0.4)] transition hover:-translate-y-1 sm:right-6"
+        className="fixed bottom-[calc(7.5rem+env(safe-area-inset-bottom))] right-4 z-50 grid h-16 w-16 place-items-center overflow-visible bg-transparent text-white transition hover:-translate-y-1 sm:right-6 lg:bottom-6"
       >
         {open ? <span className="grid h-full w-full place-items-center bg-orange-500"><X className="h-6 w-6" /></span> : <MascotAvatar variant="chat" />}
       </button>
@@ -441,11 +439,11 @@ export function StudentDashboard({
   return (
     <div className="student-dashboard min-h-screen bg-orange-50/40 pb-20">
       <div className="mx-auto max-w-[1480px] px-4 py-7 sm:px-6 lg:px-8">
-        <div className="grid items-stretch justify-center gap-4 md:grid-cols-[270px_minmax(320px,460px)_minmax(320px,460px)]">
+        <div className="grid w-full min-w-0 grid-cols-1 items-stretch gap-4 md:grid-cols-3">
           <DashboardImageCard imageKey={dashboardImageKey} imageName={dashboardImageName} />
-          <section className="relative flex h-[175px] overflow-hidden rounded-[1.5rem] border border-orange-100/80 bg-white p-4 shadow-[0_10px_22px_rgba(81,52,24,0.05)]">
+          <section className="relative flex h-[210px] min-w-0 overflow-hidden rounded-[1.5rem] border border-orange-100/80 bg-white p-4 shadow-[0_10px_22px_rgba(81,52,24,0.05)] sm:h-[190px]">
             <div className="absolute -right-14 -top-16 h-40 w-40 rounded-full bg-orange-100/60 blur-2xl" />
-            <div className="relative flex flex-1 flex-col justify-center">
+            <div className="relative flex min-w-0 flex-1 flex-col justify-center">
               <h1 className="text-lg font-black leading-tight tracking-tight text-slate-950 sm:text-xl">
                 {greeting}<br /><span className="text-orange-500">{firstName}!</span>
               </h1>
