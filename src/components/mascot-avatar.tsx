@@ -1,10 +1,15 @@
 import { clsx } from "clsx";
 
-export function MascotAvatar({ className }: { className?: string }) {
+type MascotAvatarProps = {
+  className?: string;
+  variant?: "default" | "chat";
+};
+
+export function MascotAvatar({ className, variant = "default" }: MascotAvatarProps) {
   return (
     <img
-      src="/brand/slowedu-mascot-transparent.png"
-      alt="Linh vật chó Shiba của Educhi"
+      src={variant === "chat" ? "/brand/educhi-chat-logo.webp" : "/brand/educhi-logo.webp"}
+      alt="Linh vật chó Shiba Educhi cầm sách và bút chì"
       className={clsx("h-full w-full object-contain", className)}
     />
   );

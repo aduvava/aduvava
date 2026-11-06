@@ -314,7 +314,7 @@ function ChatSupport() {
           <div className="flex items-center justify-between bg-orange-500 px-5 py-4 text-white">
             <div className="flex items-center gap-3">
               <span className="h-10 w-10 overflow-hidden rounded-full border-2 border-white/70 bg-white">
-                <MascotAvatar />
+                <MascotAvatar variant="chat" />
               </span>
               <div>
                 <p className="font-extrabold">Hỗ trợ Educhi</p>
@@ -340,7 +340,7 @@ function ChatSupport() {
         aria-label="Mở chat hỗ trợ"
         className="fixed bottom-[calc(7.5rem+env(safe-area-inset-bottom))] right-4 z-50 lg:bottom-6 grid h-16 w-16 place-items-center overflow-hidden rounded-full border-4 border-orange-500 bg-white text-white shadow-[0_12px_30px_rgba(249,115,22,0.4)] transition hover:-translate-y-1 sm:right-6"
       >
-        {open ? <span className="grid h-full w-full place-items-center bg-orange-500"><X className="h-6 w-6" /></span> : <MascotAvatar />}
+        {open ? <span className="grid h-full w-full place-items-center bg-orange-500"><X className="h-6 w-6" /></span> : <MascotAvatar variant="chat" />}
       </button>
     </>
   );
