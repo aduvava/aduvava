@@ -108,6 +108,55 @@ async function listManagedResource(resource: string, searchParams: URLSearchPara
   const skip = (page - 1) * take;
   const query = (searchParams.get("q") ?? "").trim().slice(0, 120);
 
+  if (resource === "subjects") {
+    const where: Prisma.SubjectWhereInput = query ? { OR: [
+      { name: { contains: query, mode: "insensitive" } },
+      { slug: { contains: query, mode: "insensitive" } },
+    ] } : {};
+    const [items, total] = await prisma.$transaction([
+      prisma.subject.findMany({ where, skip, take, orderBy: { createdAt: "desc" },
+        select: { id: true, name: true, slug: true, family: true, description: true, color: true, icon: true,
+          _count: { select: { exams: true, topics: true, theoryChapters: true, theoryArticles: true } },
+        },
+      }),
+      prisma.subject.count({ where }),
+    ]);
+    return { items, total, page, pageSize: take };
+  }
+
+  if (resource === "store-items") {
+    const where: Prisma.StoreItemWhereInput = query ? { OR: [
+      { name: { contains: query, mode: "insensitive" } },
+      { slug: { contains: query, mode: "insensitive" } },
+    ] } : {};
+    const [items, total] = await prisma.$transaction([
+      prisma.storeItem.findMany({ where, skip, take, orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+        select: { id: true, slug: true, name: true, description: true,
+          category: true, price: true, currency: true, imageKey: true, badge: true,
+          isFeatured: true, isConsumable: true, isActive: true,
+          stock: true, sortOrder: true, metadata: true,
+          _count: { select: { purchases: true } },
+        },
+      }),
+      prisma.storeItem.count({ where }),
+    ]);
+    return { items, total, page, pageSize: take };
+  }
+
+  if (resource === "users") {
+    const where: Prisma.UserWhereInput = query ? { OR: [
+      { name: { contains: query, mode: "insensitive" } },
+      { email: { contains: query, mode: "insensitive" } },
+    ] } : {};
+    const [items, total] = await prisma.$transaction([
+      prisma.user.findMany({ where, skip, take, orderBy: { createdAt: "desc" },
+        select: { id: true, name: true, email: true, role: true, createdAt: true },
+      }),
+      prisma.user.count({ where }),
+    ]);
+    return { items, total, page, pageSize: take };
+  }
+
   if (resource === "exams") {
     const level = searchParams.get("level");
     const subjectId = searchParams.get("subjectId");
@@ -169,7 +218,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ res
     const { resource } = await params;
     await requireAdmin();
     const searchParams = new URL(_request.url).searchParams;
-    if (searchParams.get("managed") === "1" && (resource === "exams" || resource === "questions")) {
+    if (searchParams.get("managed") === "1" && ["exams", "questions", "subjects", "store-items", "users"].includes(resource)) {
       return jsonOk(await listManagedResource(resource, searchParams));
     }
     const items = await listResource(resource);
