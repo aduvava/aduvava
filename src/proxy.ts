@@ -16,18 +16,31 @@ export async function proxy(request: NextRequest) {
   }
   const isProtected = protectedPrefixes.some((prefix) => pathname.startsWith(prefix));
   const isAdminLogin = pathname.startsWith("/admin/login");
-  const isAdmin = (pathname.startsWith("/admin") && !isAdminLogin) || pathname.startsWith("/api/admin");
+  const isAdminApi = pathname.startsWith("/api/admin/");
+  const isAdmin = (pathname.startsWith("/admin") && !isAdminLogin) || isAdminApi;
 
   if (!isProtected && !isAdmin) return NextResponse.next();
 
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
   if (!token) {
+    // API callers must receive an actual authorization failure, not a
+    // login HTML page with status 200 after following a redirect.
+    if (isAdminApi) {
+      return NextResponse.json({ error: "Authentication required" }, {
+        status: 401, headers: { "Cache-Control": "no-store" },
+      });
+    }
     const url = new URL(isAdmin ? "/admin/login" : "/login", request.url);
     url.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(url);
   }
 
   if (isAdmin && token.role !== "ADMIN") {
+    if (isAdminApi) {
+      return NextResponse.json({ error: "Admin access required" }, {
+        status: 403, headers: { "Cache-Control": "no-store" },
+      });
+    }
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
