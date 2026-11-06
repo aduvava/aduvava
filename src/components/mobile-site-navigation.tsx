@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BookOpen,
   ClipboardList,
   Crown,
   FileText,
@@ -27,7 +26,6 @@ function mobileLabel(label: string) {
 
 function mobileIcon(href: string, label: string): LucideIcon {
   // Use labels first because guest links deliberately redirect through /login.
-  if (label === "Môn học") return BookOpen;
   if (label === "Đề thi") return ClipboardList;
   if (label === "Tài liệu") return FileText;
   if (label === "Cửa hàng") return ShoppingBag;
@@ -60,14 +58,12 @@ export function MobileSiteNavigation({
   const links: NavItem[] = isAuthenticated
     ? [
         { href: homeHref, label: "Trang chủ" },
-        ...(!isTeacher ? [{ href: "/dashboard#mon-hoc", label: "Môn học" }] : []),
         ...nav.filter((item) => item.href !== homeHref),
         ...(isTeacher ? [{ href: "/vip", label: "VIP" }] : []),
         ...(isAdmin ? [{ href: "/admin", label: "Quản trị" }] : []),
       ]
     : [
         { href: "/", label: "Trang chủ" },
-        { href: loginFor("/dashboard#mon-hoc"), label: "Môn học" },
         ...nav.map((item) => ({ ...item, href: loginFor(item.href) })),
         { href: "/login?callbackUrl=/dashboard", label: "Đăng nhập" },
       ];
@@ -89,7 +85,6 @@ export function MobileSiteNavigation({
         {links.map((item) => {
           const target = item.href.split("?")[0].split("#")[0];
           const active = isAuthenticated &&
-            item.label !== "Môn học" &&
             (pathname === target || (target !== "/" && pathname.startsWith(target + "/")));
           const Icon = mobileIcon(item.href, item.label);
           return (
