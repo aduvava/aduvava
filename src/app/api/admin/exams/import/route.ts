@@ -20,6 +20,9 @@ export async function POST(request: Request) {
         !metadata.durationMinutes || !metadata.year) {
       throw new HttpError(400, "Thiếu thông tin đề thi: tên, mã, đường dẫn, môn, thời gian hoặc năm.");
     }
+    if (metadata.specialExamTrack && metadata.educationLevel !== null) {
+      throw new HttpError(400, "Đề kỳ thi riêng phải chọn cấp học: Không phân loại.");
+    }
     if (payload.questions.some((question) => question.options.length !== 4 ||
         question.correctIndex >= question.options.length)) {
       throw new HttpError(400, "Mỗi câu cần đúng 4 đáp án và một đáp án đúng.");
