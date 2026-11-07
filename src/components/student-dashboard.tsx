@@ -35,6 +35,7 @@ import { clsx } from "clsx";
 import { getDashboardImage } from "@/data/dashboard-images";
 import { MascotAvatar } from "@/components/mascot-avatar";
 import { getDashboardSubjects, getSubjectCatalogSize } from "@/lib/dashboard-subjects";
+import { specialExamTracks } from "@/lib/special-exam-tracks";
 
 type ExamItem = {
   id: string;
@@ -88,7 +89,7 @@ const studyGroups = [
   {
     id: "national-exam",
     label: "Ôn thi THPTQG",
-    classes: ["Môn thi"],
+    classes: ["Môn thi", "Kỳ thi riêng"],
   },
 ];
 
@@ -418,6 +419,7 @@ export function StudentDashboard({
   const currentGroup = useMemo(() => studyGroups.find((group) => group.id === activeGroup) ?? studyGroups[0], [activeGroup]);
   const [activeClass, setActiveClass] = useState(studyGroups[0].classes[0]);
   const visibleSubjects = useMemo(() => getDashboardSubjects(subjects, activeGroup), [subjects, activeGroup]);
+  const showingSpecialExams = activeGroup === "national-exam" && activeClass === "Kỳ thi riêng";
   const [activeSubject, setActiveSubject] = useState(getDashboardSubjects(subjects, studyGroups[0].id)[0]?.slug ?? "");
   const [communityMessages, setCommunityMessages] = useState<CommunityMessage[]>(initialMessages);
   const [communityDraft, setCommunityDraft] = useState("");
@@ -510,6 +512,28 @@ export function StudentDashboard({
               </button>
             ))}
           </div>
+          {showingSpecialExams ? (
+            <div className="mx-auto mt-5 max-w-[690px]">
+              <p className="mb-4 text-center text-xs font-semibold leading-5 text-slate-500">
+                Chọn kỳ thi để xem đúng kho đề đã xuất bản. Các môn thi THPTQG được giữ ở tab bên cạnh.
+              </p>
+              <nav aria-label="Các kỳ thi riêng" className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
+                {specialExamTracks.map((track) => (
+                  <Link
+                    key={track.id}
+                    data-testid="special-exam-track"
+                    href={`/exams/special/${track.slug}`}
+                    className="group flex min-h-[112px] flex-col items-center justify-center gap-3 rounded-[1.25rem] border border-orange-100 bg-white px-3 py-4 text-center shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 sm:min-h-[124px]"
+                  >
+                    <span className="grid h-11 w-11 place-items-center rounded-2xl bg-blue-50 text-blue-600 transition group-hover:bg-blue-600 group-hover:text-white">
+                      <GraduationCap className="h-6 w-6" aria-hidden="true" />
+                    </span>
+                    <span className="text-sm font-black text-slate-900 group-hover:text-blue-600">{track.label}</span>
+                  </Link>
+                ))}
+              </nav>
+            </div>
+          ) : (
           <div className="mx-auto mt-5 grid max-w-[690px] grid-cols-2 justify-items-center gap-2 sm:grid-cols-3 sm:gap-3">
             {visibleSubjects.map((subject) => {
               const visual = getItemVisual(subject.name, subject.slug);
@@ -547,18 +571,27 @@ export function StudentDashboard({
               );
             })}
           </div>
-          {!visibleSubjects.length ? (
+          )}
+          {!showingSpecialExams && !visibleSubjects.length ? (
             <p className="mx-auto mt-5 max-w-xl rounded-2xl border border-dashed border-orange-200 bg-white px-5 py-8 text-center text-sm font-semibold text-slate-500">
               Chưa có môn học phù hợp trong cơ sở dữ liệu. Quản trị viên có thể bổ sung môn học để hiển thị tại đây.
             </p>
           ) : null}
-          {visibleSubjects.length > 0 && visibleSubjects.length < getSubjectCatalogSize(activeGroup) ? (
+          {!showingSpecialExams && visibleSubjects.length > 0 && visibleSubjects.length < getSubjectCatalogSize(activeGroup) ? (
             <p className="mt-4 text-center text-xs text-slate-500">
               Một số môn của cấp học này chưa có trong cơ sở dữ liệu nên chưa thể mở nội dung.
             </p>
           ) : null}
             </div>
-            <ExamCenter exams={exams} />
+            {showingSpecialExams ? (
+              <aside className="rounded-[1.5rem] border border-blue-100 bg-white p-5 shadow-sm">
+                <h2 className="text-lg font-black text-slate-900">Luyện đề theo kỳ thi riêng</h2>
+                <p className="mt-3 text-sm leading-7 text-slate-600">
+                  HSA, TSA, V-ACT, QDA, BQA và ĐGNL BCA có kho đề riêng, không trộn với môn học THPTQG.
+                  Chọn kỳ thi bên trái để xem danh sách đề thực tế.
+                </p>
+              </aside>
+            ) : <ExamCenter exams={exams} />}
           </div>
         </section>
 
