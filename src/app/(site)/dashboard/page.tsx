@@ -3,7 +3,6 @@ import { StudentDashboard } from "@/components/student-dashboard";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { isStudentOnboardingComplete } from "@/lib/onboarding";
-import { assessmentCodes } from "@/lib/assessment-catalog";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -91,35 +90,6 @@ export default async function DashboardPage() {
     : [];
 
   const recommendedExams = [...personalizedExams, ...fallbackExams];
-
-  // Fetch only public system exams tagged with an assessment code. Personal
-  // uploads and unapproved drafts are never listed in the public catalog.
-  const assessmentGroups = await Promise.all(assessmentCodes.map(async (assessmentCode) => {
-    const items = await prisma.exam.findMany({
-      where: {
-        family: "DGNL",
-        educationLevel: "THPTQG",
-        ownerId: null,
-        isPublished: true,
-        examStructure: { path: ["assessmentCode"], equals: assessmentCode },
-      },
-      select: {
-        id: true, title: true, durationMinutes: true, accessLevel: true,
-        _count: { select: { questions: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 12,
-    });
-    return items.map((exam) => ({
-      id: exam.id,
-      title: exam.title,
-      durationMinutes: exam.durationMinutes,
-      accessLevel: exam.accessLevel,
-      questionCount: exam._count.questions,
-      assessmentCode,
-    }));
-  }));
-  const assessmentExams = assessmentGroups.flat();
   const rankingAttemptWhere = attempts.length
     ? {
         status: "SUBMITTED" as const,
@@ -211,7 +181,6 @@ export default async function DashboardPage() {
       weekActivity={weekActivity}
       continueLearning={continueLearning}
       subjects={subjects}
-      assessmentExams={assessmentExams}
       exams={recommendedExams.map((exam) => ({
         id: exam.id,
         title: exam.title,
