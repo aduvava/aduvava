@@ -18,6 +18,7 @@ import { canAccessExam } from "@/lib/access";
 import { AttemptStartButton } from "@/components/attempt-start-button";
 import { ExamAccessGate } from "@/components/exam-access-gate";
 import { getNationalExamRule, getNationalQuestionCount } from "@/lib/national-exam-rules";
+import { getSpecialExamTrack } from "@/lib/special-exam-tracks";
 
 export default async function ExamDetailPage({
   params,
@@ -42,6 +43,7 @@ export default async function ExamDetailPage({
 
   const allowed = await canAccessExam(user.id, exam);
   const lockedBySharing = Boolean(exam.ownerId && exam.ownerId !== user.id && exam.shareMode !== "PUBLIC");
+  const specialTrack = exam.specialExamTrack ? getSpecialExamTrack(exam.specialExamTrack) : null;
   const nationalRule = exam.educationLevel === "THPTQG" ? getNationalExamRule(exam.subject.slug) : undefined;
   const questionCount = nationalRule ? getNationalQuestionCount(nationalRule) : exam._count.questions;
   const displayedParts = nationalRule?.parts.filter((part) => part.count > 0) ?? [];
@@ -50,13 +52,13 @@ export default async function ExamDetailPage({
   return (
     <div className="exam-intro-page min-h-[calc(100vh-76px)] bg-[#fffdf6] pb-16">
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-        <Link href={`/subjects/${exam.subject.slug}`} className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 transition hover:text-orange-500">
-          <ArrowLeft className="h-5 w-5" /> Quay lại môn học
+        <Link href={specialTrack ? `/exams/special/${specialTrack.slug}` : `/subjects/${exam.subject.slug}`} className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 transition hover:text-orange-500">
+          <ArrowLeft className="h-5 w-5" /> {specialTrack ? `Quay lại đề ${specialTrack.label}` : "Quay lại môn học"}
         </Link>
 
         <section className="mt-6 rounded-[2.5rem] border border-orange-100 bg-white px-5 py-8 text-center shadow-sm sm:px-10 sm:py-12">
           <p className="text-xs font-black uppercase tracking-[0.2em] text-orange-500">
-            {exam.educationLevel === "THPTQG" ? "Đề thi theo cấu trúc THPTQG" : "Đề luyện tập"}
+            {specialTrack ? `Kỳ thi ${specialTrack.label}` : exam.educationLevel === "THPTQG" ? "Đề thi theo cấu trúc THPTQG" : "Đề luyện tập"}
           </p>
           <h1 className="mx-auto mt-3 max-w-4xl text-3xl font-black leading-tight text-slate-950 sm:text-5xl">{displayTitle}</h1>
           <p className="mx-auto mt-4 max-w-3xl text-sm leading-7 text-slate-500 sm:text-base">{exam.description}</p>
