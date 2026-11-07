@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { assessmentCodes } from "@/lib/assessment-catalog";
 
 // Explicit, strict field lists block Prisma mass-assignment and nested writes
 // (including passwordHash, coins, exp, arbitrary relation connects, and IDs).
@@ -30,6 +31,8 @@ const schemas = {
     specialExamTrack: z.enum(["HSA", "TSA", "V_ACT", "QDA", "BQA", "DGNL_BCA"]).nullable(),
     targetScore: z.number().finite().nonnegative().nullable(),
     subjectId: id, isPublished: z.boolean(),
+    // Assessment labels are tightly allowlisted; no arbitrary JSON writes.
+    examStructure: z.object({ assessmentCode: z.enum(assessmentCodes) }).strict().nullable(),
   }),
   questions: z.object({
     examId: id, topicId: id.nullable(),
