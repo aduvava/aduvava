@@ -154,9 +154,21 @@ async function main() {
     assert.equal((await managedSubjectResponse.json()).total, 1);
     assert.equal((await adminPage.request.delete(base + "/api/admin/subjects/" + subjectId)).status(), 409,
       "subject deletion must not cascade and remove its theory chapters");
+    // Remove only the redundant Admin subject-management screen. Never
+    // delete subject records or block APIs needed by exams and theory.
     await adminPage.goto(base + "/admin/subjects");
-    await adminPage.getByRole("heading", { name: "Quản lý môn học" }).waitFor();
-    assert.equal(await adminPage.getByText("JSON editor").count(), 0, "subject form replaces JSON editor");
+    await adminPage.waitForURL((url) => url.pathname === "/admin/exams", { timeout: 15000 });
+    assert.equal(await adminPage.getByRole("link", { name: "Môn học", exact: true }).count(), 0,
+      "desktop Admin navigation must not show the retired subjects menu");
+    const publicSubjects = await adminPage.request.get(base + "/api/subjects?family=THPTQG");
+    assert.equal(publicSubjects.status(), 200, "public subject API must remain available");
+    assert.ok((await publicSubjects.json()).subjects.some((subject) => subject.id === subjectId),
+      "subject records remain available to website flows");
+    await adminPage.setViewportSize({ width: 390, height: 844 });
+    await adminPage.goto(base + "/admin/exams");
+    assert.equal(await adminPage.getByRole("link", { name: "Môn học", exact: true }).count(), 0,
+      "mobile Admin navigation must also hide retired subjects menu");
+    await adminPage.setViewportSize({ width: 1366, height: 850 });
 
     const catalogItem = await adminPage.request.post(base + "/api/admin/store-items", { data: {
       slug: "ci-test-item-" + unique, name: "Vật phẩm CI " + unique,
