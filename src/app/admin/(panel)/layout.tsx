@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import {
-  BookOpenCheck,
   ClipboardList,
   CreditCard,
   FileClock,
@@ -20,7 +19,6 @@ const adminNav = [
   { href: "/admin", label: "Tổng quan", Icon: LayoutDashboard },
   { href: "/admin/documents", label: "Tài liệu", Icon: FileClock },
   { href: "/admin/exams", label: "Đề thi", Icon: ClipboardList },
-  { href: "/admin/subjects", label: "Môn học", Icon: BookOpenCheck },
   { href: "/admin/theory-chapters", label: "Chương lý thuyết", Icon: FileText },
   { href: "/admin/theory-lessons", label: "Bài lý thuyết", Icon: FileText },
   { href: "/admin/users", label: "Người dùng", Icon: Users },
