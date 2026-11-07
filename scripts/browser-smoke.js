@@ -542,6 +542,47 @@ async function main() {
         "redesigned leaderboard must not overflow horizontally at " + width + "px, actual " + scrollWidth);
     }
 
+    // THPTQG special exams: existing ordinary subject navigation remains
+    // untouched, while the second tab finds only explicitly tagged exams.
+    const classify = await adminPage.request.put(base + "/api/admin/exams/" + leaderboardExamId, {
+      data: { specialExamTrack: "HSA", educationLevel: null },
+    });
+    assert.equal(classify.status(), 200, "Admin can classify a published non-official exam as HSA");
+    const hsaResponse = await adminPage.request.get(base + "/api/exams?track=HSA");
+    assert.equal(hsaResponse.status(), 200);
+    assert.ok((await hsaResponse.json()).exams.some((exam) => exam.id === leaderboardExamId),
+      "HSA API includes only published system exams with explicit track");
+    const tsaResponse = await adminPage.request.get(base + "/api/exams?track=TSA");
+    assert.equal(tsaResponse.status(), 200);
+    assert.equal((await tsaResponse.json()).exams.some((exam) => exam.id === leaderboardExamId), false,
+      "HSA exam must not leak into TSA");
+    assert.equal((await adminPage.request.get(base + "/api/exams?track=UNKNOWN")).status(), 400);
+
+    for (const width of [320, 390, 1366]) {
+      await adminPage.setViewportSize({ width, height: 844 });
+      await adminPage.goto(base + "/dashboard");
+      await adminPage.getByRole("button", { name: "Ôn thi THPTQG" }).click();
+      const subjectTab = adminPage.getByRole("button", { name: "Môn thi", exact: true });
+      assert.equal(await subjectTab.getAttribute("class").then((name) => name?.includes("bg-blue-500")), true,
+        "normal THPTQG subject tab remains the default");
+      await adminPage.getByRole("button", { name: "Kỳ thi riêng", exact: true }).click();
+      const tracks = adminPage.getByTestId("special-exam-track");
+      assert.equal(await tracks.count(), 6, "exactly six special exam groups");
+      assert.deepEqual(await tracks.allTextContents(), ["HSA", "TSA", "V-ACT", "QDA", "BQA", "ĐGNL BCA"]);
+      assert.equal(await adminPage.locator('a[href^="/subjects/"]').filter({ hasText: "Toán" }).count(), 0,
+        "subject grid is hidden inside special track tab");
+      const docWidth = await adminPage.evaluate(() => document.documentElement.scrollWidth);
+      assert.ok(docWidth <= width + 1, "special exam categories must not overflow at " + width + "px");
+      await tracks.nth(0).click();
+      await adminPage.waitForURL((url) => url.pathname === "/exams/special/hsa");
+      await adminPage.getByRole("heading", { name: "Ôn thi HSA" }).waitFor();
+      await adminPage.getByText("Trắc nghiệm CI mobile", { exact: true }).waitFor();
+      await adminPage.getByRole("link", { name: "TSA", exact: true }).click();
+      await adminPage.getByText("Chưa có đề TSA được xuất bản").waitFor();
+    }
+    // Explicit classification is required: the default is NOT to infer a
+    // special track from an exam title or the base DGNL/THPTQG family.
+
     const deleteLesson = await adminPage.request.delete(base + "/api/admin/theory-lessons/manage", { data: { lessonId } });
     assert.equal(deleteLesson.status(), 200, "admin can delete uploaded lessons");
     await adminContext.close();
