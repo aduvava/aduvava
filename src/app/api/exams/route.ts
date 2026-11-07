@@ -1,11 +1,13 @@
 import { prisma } from "@/lib/db";
-import { handleRouteError, jsonOk } from "@/lib/api";
+import { handleRouteError, HttpError, jsonOk } from "@/lib/api";
+import { getSpecialExamTrack } from "@/lib/special-exam-tracks";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const family = searchParams.get("family");
     const subject = searchParams.get("subject");
+    const track = searchParams.get("track");
     const year = searchParams.get("year");
     const type = searchParams.get("type");
     const access = searchParams.get("access");
@@ -17,6 +19,11 @@ export async function GET(request: Request) {
     // Direct share links continue to use the exam access rules.
     const where: Record<string, unknown> = { isPublished: true, ownerId: null };
     if (family === "THPTQG" || family === "DGNL") where.family = family;
+    if (track !== null) {
+      const special = getSpecialExamTrack(track);
+      if (!special) throw new HttpError(400, "Kỳ thi riêng không hợp lệ.");
+      where.specialExamTrack = special.id;
+    }
     if (subject) where.subject = { slug: subject };
     if (year && /^\d{4}$/.test(year)) where.year = Number(year);
     if (type === "MOCK" || type === "PREDICTION" || type === "PRACTICE") where.type = type;
@@ -32,7 +39,7 @@ export async function GET(request: Request) {
       select: {
         id: true, code: true, slug: true, title: true, description: true,
         family: true, type: true, accessLevel: true, year: true,
-        durationMinutes: true, educationLevel: true, subjectId: true,
+        durationMinutes: true, educationLevel: true, specialExamTrack: true, subjectId: true,
         ownerId: true, shareMode: true, createdAt: true,
         subject: true, _count: { select: { questions: true, attempts: true } },
       },

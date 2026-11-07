@@ -39,6 +39,9 @@ async function createResource(resource: string, body: Record<string, unknown>) {
     case "subjects":
       return prisma.subject.create({ data: body as never });
     case "exams":
+      if (body.specialExamTrack && body.educationLevel !== null) {
+        throw new HttpError(400, "Đề kỳ thi riêng phải chọn cấp học: Không phân loại (không phải đề THPTQG chính thức).");
+      }
       // Admin enters questions in the separate question editor, so a national
       // exam must start unpublished and be checked on publication.
       if (body.educationLevel === "THPTQG" && body.isPublished !== false) {
@@ -188,7 +191,7 @@ async function listManagedResource(resource: string, searchParams: URLSearchPara
         select: {
           id: true, code: true, slug: true, title: true, description: true,
           family: true, type: true, accessLevel: true, year: true,
-          durationMinutes: true, educationLevel: true, targetScore: true,
+          durationMinutes: true, educationLevel: true, specialExamTrack: true, targetScore: true,
           subjectId: true, isPublished: true, ownerId: true, createdAt: true,
           subject: { select: { id: true, name: true, family: true } },
           _count: { select: { questions: true, attempts: true } },
