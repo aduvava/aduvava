@@ -31,6 +31,11 @@ async function updateResource(resource: string, id: string, body: Record<string,
           ? current.educationLevel : body.educationLevel as string | null;
         const nextPublished = body.isPublished === undefined
           ? current.isPublished : body.isPublished === true;
+        const nextSpecialTrack = body.specialExamTrack === undefined
+          ? current.specialExamTrack : body.specialExamTrack;
+        if (nextSpecialTrack && nextLevel !== null) {
+          throw new HttpError(400, "Đề kỳ thi riêng phải chọn cấp học: Không phân loại.");
+        }
         const nextSubjectId = typeof body.subjectId === "string" ? body.subjectId : current.subjectId;
         const nextSubject = nextSubjectId === current.subjectId
           ? current.subject
