@@ -185,6 +185,28 @@ export function ExamManager() {
     } finally { setBusy(false); }
   }
 
+  async function updateGrade(exam: Exam, grade: string | null) {
+    if (exam.grade === grade) return;
+    setBusy(true);
+    setMessage("Đang cập nhật lớp cho đề...");
+    try {
+      const response = await fetch("/api/admin/exams/" + encodeURIComponent(exam.id), {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ grade }),
+      });
+      if (!response.ok) throw new Error(await apiMessage(response));
+      setMessage("Đã sửa lớp của đề \"" + exam.title + "\". Câu hỏi và lịch sử làm bài được giữ nguyên.");
+      await load();
+      if (editing?.id === exam.id) {
+        setDraft((current) => ({ ...current, grade }));
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Không thể cập nhật lớp.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function remove(exam: Exam) {
     const attempts = exam._count.attempts;
     const answer = window.prompt(
@@ -363,6 +385,15 @@ export function ExamManager() {
                   <h3 className="break-words font-black text-slate-950">{exam.title}</h3>
                   <p className="mt-1 text-xs font-semibold text-slate-500">{exam.subject?.name ?? "Chưa rõ môn"} · {exam.specialExamTrack ? `Kỳ thi ${getSpecialExamTrack(exam.specialExamTrack)?.label ?? exam.specialExamTrack}` : exam.educationLevel ? levelName[exam.educationLevel] : "Chưa phân loại"} · {exam.grade ?? "Chưa chọn lớp"} · {exam.durationMinutes} phút</p>
                   <p className="mt-1 text-xs font-semibold text-slate-500">{exam._count.questions} câu · {exam._count.attempts} lượt làm · {exam.ownerId ? "Do người dùng tạo" : "Đề hệ thống"}</p>
+                  {exam.educationLevel && !exam.specialExamTrack ? (
+                    <label className="mt-3 flex max-w-xs items-center gap-2 text-xs font-bold text-slate-700">
+                      <span className="shrink-0">Đổi lớp:</span>
+                      <select aria-label={"Đổi lớp cho " + exam.title} className={field} value={exam.grade ?? ""} disabled={busy} onChange={(e) => void updateGrade(exam, e.target.value || null)}>
+                        <option value="">Chưa chọn lớp</option>
+                        {gradesForExamLevel(exam.educationLevel).map((grade) => <option key={grade} value={grade}>{grade}</option>)}
+                      </select>
+                    </label>
+                  ) : null}
                   <div className="mt-2 flex flex-wrap gap-2">
                     <span className={"rounded-full px-2.5 py-1 text-xs font-bold " + (exam.isPublished ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700")}>{exam.isPublished ? "Đang hiển thị" : "Đã ẩn"}</span>
                     <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">{exam.accessLevel === "PRO" ? "VIP" : "Miễn phí"}</span>
