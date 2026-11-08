@@ -5,6 +5,7 @@ import { Pencil, Plus, RefreshCw, Search, Trash2, UploadCloud, X, BookOpenCheck 
 import Link from "next/link";
 import { importAdminExamFile, type ImportedExamQuestion } from "@/lib/admin-exam-file-import";
 import { specialExamTracks, type SpecialExamTrack, getSpecialExamTrack } from "@/lib/special-exam-tracks";
+import { defaultGradeForExamLevel, gradesForExamLevel } from "@/lib/exam-grade";
 
 type Level = "THCS" | "THPT" | "EXAM_10" | "THPTQG" | null;
 type Family = "THPTQG" | "DGNL";
@@ -14,7 +15,7 @@ type Subject = { id: string; name: string; family: Family };
 type Exam = {
   id: string; code: string; slug: string; title: string; description: string;
   family: Family; type: ExamType; accessLevel: Access; year: number;
-  durationMinutes: number; educationLevel: Level; specialExamTrack: SpecialExamTrack | null; targetScore: number | null;
+  durationMinutes: number; educationLevel: Level; grade: string | null; specialExamTrack: SpecialExamTrack | null; targetScore: number | null;
   subjectId: string; isPublished: boolean; ownerId: string | null;
   subject: Subject;
   _count: { questions: number; attempts: number };
@@ -22,13 +23,13 @@ type Exam = {
 type Draft = {
   title: string; description: string; code: string; slug: string;
   type: ExamType; accessLevel: Access; year: number; durationMinutes: number;
-  educationLevel: Level; specialExamTrack: SpecialExamTrack | null; targetScore: string; subjectId: string; isPublished: boolean;
+  educationLevel: Level; grade: string | null; specialExamTrack: SpecialExamTrack | null; targetScore: string; subjectId: string; isPublished: boolean;
 };
 
 const newDraft = (): Draft => ({
   title: "", description: "", code: "", slug: "", type: "PRACTICE",
   accessLevel: "FREE", year: new Date().getFullYear(), durationMinutes: 45,
-  educationLevel: "THCS", specialExamTrack: null, targetScore: "", subjectId: "", isPublished: false,
+  educationLevel: "THCS", grade: null, specialExamTrack: null, targetScore: "", subjectId: "", isPublished: false,
 });
 const field = "w-full min-h-11 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100";
 const label = "grid gap-1.5 text-sm font-bold text-slate-700";
@@ -53,6 +54,7 @@ export function ExamManager() {
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
   const [level, setLevel] = useState("");
+  const [gradeFilter, setGradeFilter] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -68,6 +70,7 @@ export function ExamManager() {
       const params = new URLSearchParams({ managed: "1", page: String(page), pageSize: String(pageSize) });
       if (query) params.set("q", query);
       if (level) params.set("level", level);
+      if (gradeFilter) params.set("grade", gradeFilter);
       if (subjectFilter) params.set("subjectId", subjectFilter);
       const response = await fetch("/api/admin/exams?" + params, { cache: "no-store" });
       if (!response.ok) throw new Error(await apiMessage(response));
@@ -77,7 +80,7 @@ export function ExamManager() {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Không thể tải danh sách đề.");
     }
-  }, [page, query, level, subjectFilter]);
+  }, [page, query, level, gradeFilter, subjectFilter]);
 
   useEffect(() => {
     void load();
@@ -127,7 +130,7 @@ export function ExamManager() {
       title: exam.title, description: exam.description, code: exam.code, slug: exam.slug,
       type: exam.type, accessLevel: exam.accessLevel, year: exam.year,
       durationMinutes: exam.durationMinutes, educationLevel: exam.educationLevel,
-      specialExamTrack: exam.specialExamTrack,
+      grade: exam.grade ?? null, specialExamTrack: exam.specialExamTrack,
       targetScore: exam.targetScore === null ? "" : String(exam.targetScore),
       subjectId: exam.subjectId, isPublished: exam.isPublished,
     });
@@ -141,6 +144,7 @@ export function ExamManager() {
     if (!subject) return setMessage("Vui lòng chọn môn học hợp lệ.");
     if (!draft.title.trim()) return setMessage("Vui lòng nhập tên đề thi.");
     if (draft.specialExamTrack && draft.educationLevel !== null) return setMessage("Hãy chọn cấp học: Không phân loại cho kỳ thi riêng.");
+    if (draft.educationLevel && !draft.grade) return setMessage("Hãy chọn lớp cho đề thi.");
     if (!Number.isInteger(draft.year) || draft.year < 2000 || draft.year > 2200 ||
         !Number.isInteger(draft.durationMinutes) || draft.durationMinutes < 1 || draft.durationMinutes > 600) {
       return setMessage("Năm hoặc thời gian làm bài không hợp lệ.");
@@ -154,7 +158,7 @@ export function ExamManager() {
       title: draft.title.trim(), description: draft.description.trim(),
       family: subject.family, type: draft.type, accessLevel: draft.accessLevel,
       year: draft.year, durationMinutes: draft.durationMinutes,
-      educationLevel: draft.educationLevel, specialExamTrack: draft.specialExamTrack, targetScore: score,
+      educationLevel: draft.educationLevel, grade: draft.grade, specialExamTrack: draft.specialExamTrack, targetScore: score,
       subjectId: draft.subjectId, isPublished: draft.isPublished,
       code: editing ? draft.code.trim() : "ADMIN-" + suffix.toUpperCase(),
       slug: editing ? draft.slug.trim() : (slugify(draft.title) || "de-thi") + "-" + suffix,
@@ -230,11 +234,18 @@ export function ExamManager() {
             <label className={label}>Cấp học / kỳ thi
               <select className={field} value={draft.educationLevel ?? ""} onChange={(e) => {
                 const next = (e.target.value || null) as Level;
-                setDraft((current) => ({ ...current, educationLevel: next, specialExamTrack: next ? null : current.specialExamTrack }));
+                setDraft((current) => ({ ...current, educationLevel: next, grade: defaultGradeForExamLevel(next), specialExamTrack: next ? null : current.specialExamTrack }));
               }}>
                 <option value="">Không phân loại</option>
                 {Object.entries(levelName).map(([key, value]) => <option key={key} value={key}>{value}</option>)}
               </select>
+            </label>
+            <label className={label}>Lớp / nhóm thi
+              <select className={field} value={draft.grade ?? ""} required={Boolean(draft.educationLevel)} disabled={!draft.educationLevel || Boolean(draft.specialExamTrack)} onChange={(e) => setValue("grade", e.target.value || null)}>
+                <option value="">{draft.specialExamTrack ? "Không áp dụng" : "Chọn lớp"}</option>
+                {gradesForExamLevel(draft.educationLevel).map((grade) => <option key={grade} value={grade}>{grade}</option>)}
+              </select>
+              <span className="text-xs font-medium text-slate-500">Có thể đổi lớp khi chỉnh sửa đề; câu hỏi và kết quả vẫn được giữ nguyên.</span>
             </label>
             <label className={label}>Môn học
               <select className={field} required value={draft.subjectId} onChange={(e) => setValue("subjectId", e.target.value)}>
@@ -248,6 +259,7 @@ export function ExamManager() {
                 setDraft((current) => ({
                   ...current, specialExamTrack: next,
                   educationLevel: next ? null : current.educationLevel,
+                  grade: next ? null : current.grade,
                 }));
               }}>
                 <option value="">Không thuộc kỳ thi riêng</option>
@@ -325,9 +337,15 @@ export function ExamManager() {
         </form>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <label className={label}>Cấp học
-            <select className={field} value={level} onChange={(e) => { setLevel(e.target.value); setPage(1); }}>
+            <select className={field} value={level} onChange={(e) => { setLevel(e.target.value); setGradeFilter(""); setPage(1); }}>
               <option value="">Tất cả cấp học</option>
               {Object.entries(levelName).map(([key, value]) => <option key={key} value={key}>{value}</option>)}
+            </select>
+          </label>
+          <label className={label}>Lớp
+            <select className={field} value={gradeFilter} disabled={!level} onChange={(e) => { setGradeFilter(e.target.value); setPage(1); }}>
+              <option value="">Tất cả lớp</option>
+              {gradesForExamLevel(level).map((grade) => <option key={grade} value={grade}>{grade}</option>)}
             </select>
           </label>
           <label className={label}>Môn học
@@ -343,7 +361,7 @@ export function ExamManager() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <h3 className="break-words font-black text-slate-950">{exam.title}</h3>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">{exam.subject?.name ?? "Chưa rõ môn"} · {exam.specialExamTrack ? `Kỳ thi ${getSpecialExamTrack(exam.specialExamTrack)?.label ?? exam.specialExamTrack}` : exam.educationLevel ? levelName[exam.educationLevel] : "Chưa phân loại"} · {exam.durationMinutes} phút</p>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">{exam.subject?.name ?? "Chưa rõ môn"} · {exam.specialExamTrack ? `Kỳ thi ${getSpecialExamTrack(exam.specialExamTrack)?.label ?? exam.specialExamTrack}` : exam.educationLevel ? levelName[exam.educationLevel] : "Chưa phân loại"} · {exam.grade ?? "Chưa chọn lớp"} · {exam.durationMinutes} phút</p>
                   <p className="mt-1 text-xs font-semibold text-slate-500">{exam._count.questions} câu · {exam._count.attempts} lượt làm · {exam.ownerId ? "Do người dùng tạo" : "Đề hệ thống"}</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <span className={"rounded-full px-2.5 py-1 text-xs font-bold " + (exam.isPublished ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700")}>{exam.isPublished ? "Đang hiển thị" : "Đã ẩn"}</span>
