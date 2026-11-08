@@ -3,6 +3,7 @@ import { unlink } from "node:fs/promises";
 import { documentStoredPath } from "@/lib/private-document-storage";
 import { gradeToLevel } from "@/lib/theory-admin";
 import { isValidExamGrade } from "@/lib/exam-grade";
+import { typeForContentMode } from "@/lib/exam-content-mode";
 import { Prisma } from "@prisma/client";
 import { parseAdminInput } from "@/lib/admin-input";
 import { validateOfficialNationalExam } from "@/lib/official-exam-publication";
@@ -26,6 +27,16 @@ async function updateResource(resource: string, id: string, body: Record<string,
             throw new HttpError(400, "Lớp không thuộc cấp học đã chọn. Vui lòng chọn lại lớp.");
           }
           return tx.exam.update({ where: { id }, data: { grade: body.grade as string | null } });
+        }
+        // Classification-only updates do not touch questions, answers, or attempt history.
+        if (Object.keys(body).length === 1 && Object.prototype.hasOwnProperty.call(body, "contentMode")) {
+          const currentType = await tx.exam.findUnique({ where: { id }, select: { type: true } });
+          if (!currentType) throw new HttpError(404, "Không tìm thấy đề thi.");
+          const mode = body.contentMode as "TOPIC" | "EXAM";
+          return tx.exam.update({ where: { id }, data: {
+            contentMode: mode,
+            type: typeForContentMode(mode, currentType.type),
+          } });
         }
         const current = await tx.exam.findUnique({
           where: { id },
@@ -78,9 +89,15 @@ async function updateResource(resource: string, id: string, body: Record<string,
             (current.educationLevel === "THPTQG" || nextLevel === "THPTQG")) {
           structure = Prisma.DbNull;
         }
+        const data = {
+          ...body,
+          ...(body.contentMode === "TOPIC" || body.contentMode === "EXAM"
+            ? { type: typeForContentMode(body.contentMode, body.type as string | undefined) }
+            : {}),
+        };
         return tx.exam.update({
           where: { id },
-          data: (structure === undefined ? body : { ...body, examStructure: structure }) as never,
+          data: (structure === undefined ? data : { ...data, examStructure: structure }) as never,
         });
       }, { isolationLevel: "Serializable" });
     case "questions": {
