@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import { parseAdminInput } from "@/lib/admin-input";
 import { gradeToLevel } from "@/lib/theory-admin";
+import { isValidExamGrade } from "@/lib/exam-grade";
 import { prisma } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk, readJson, requireAdmin } from "@/lib/api";
 
@@ -39,6 +40,9 @@ async function createResource(resource: string, body: Record<string, unknown>) {
     case "subjects":
       return prisma.subject.create({ data: body as never });
     case "exams":
+      if (!isValidExamGrade(body.educationLevel as string | null, body.grade, body.specialExamTrack)) {
+        throw new HttpError(400, "Lớp không thuộc cấp học đã chọn. Vui lòng chọn lại lớp.");
+      }
       if (body.specialExamTrack && body.educationLevel !== null) {
         throw new HttpError(400, "Đề kỳ thi riêng phải chọn cấp học: Không phân loại (không phải đề THPTQG chính thức).");
       }
@@ -191,7 +195,7 @@ async function listManagedResource(resource: string, searchParams: URLSearchPara
         select: {
           id: true, code: true, slug: true, title: true, description: true,
           family: true, type: true, accessLevel: true, year: true,
-          durationMinutes: true, educationLevel: true, specialExamTrack: true, targetScore: true,
+          durationMinutes: true, educationLevel: true, grade: true, specialExamTrack: true, targetScore: true,
           subjectId: true, isPublished: true, ownerId: true, createdAt: true,
           subject: { select: { id: true, name: true, family: true } },
           _count: { select: { questions: true, attempts: true } },
