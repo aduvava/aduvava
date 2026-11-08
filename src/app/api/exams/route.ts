@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk } from "@/lib/api";
 import { getSpecialExamTrack } from "@/lib/special-exam-tracks";
+import { EXAM_GRADES_BY_LEVEL } from "@/lib/exam-grade";
 
 export async function GET(request: Request) {
   try {
@@ -9,6 +10,7 @@ export async function GET(request: Request) {
     const subject = searchParams.get("subject");
     const track = searchParams.get("track");
     const year = searchParams.get("year");
+    const grade = searchParams.get("grade");
     const type = searchParams.get("type");
     const access = searchParams.get("access");
     const q = searchParams.get("q")?.slice(0, 160);
@@ -25,6 +27,11 @@ export async function GET(request: Request) {
       where.specialExamTrack = special.id;
     }
     if (subject) where.subject = { slug: subject };
+    if (grade !== null) {
+      const allowed = Object.values(EXAM_GRADES_BY_LEVEL).flat() as readonly string[];
+      if (!allowed.includes(grade)) throw new HttpError(400, "Lớp không hợp lệ.");
+      where.grade = grade;
+    }
     if (year && /^\d{4}$/.test(year)) where.year = Number(year);
     if (type === "MOCK" || type === "PREDICTION" || type === "PRACTICE") where.type = type;
     if (access === "FREE" || access === "PRO") where.accessLevel = access;
@@ -39,7 +46,7 @@ export async function GET(request: Request) {
       select: {
         id: true, code: true, slug: true, title: true, description: true,
         family: true, type: true, accessLevel: true, year: true,
-        durationMinutes: true, educationLevel: true, specialExamTrack: true, subjectId: true,
+        durationMinutes: true, educationLevel: true, grade: true, specialExamTrack: true, subjectId: true,
         ownerId: true, shareMode: true, createdAt: true,
         subject: true, _count: { select: { questions: true, attempts: true } },
       },
