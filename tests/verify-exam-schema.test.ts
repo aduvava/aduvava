@@ -15,8 +15,11 @@ describe("Prisma exam-schema deployment gate", () => {
 
   it("accepts a migrated Exam schema with the generated client", async () => {
     let queried = false;
+    let rawCalls = 0;
     await verifyExamSchema({
-      $queryRaw: async () => [{ column_name: "grade" }, { column_name: "contentMode" }],
+      $queryRaw: async () => ++rawCalls === 1
+        ? [{ column_name: "grade" }, { column_name: "contentMode" }]
+        : [{ udt_name: "ExamContentMode" }],
       exam: { findFirst: async ({ select }: { select: Record<string, boolean> }) => {
         assert.equal(select.contentMode, true);
         queried = true;
@@ -24,6 +27,16 @@ describe("Prisma exam-schema deployment gate", () => {
       } },
     });
     assert.equal(queried, true);
+  });
+
+  it("detects incompatible legacy TEXT category columns even with no exams", async () => {
+    let rawCalls = 0;
+    await assert.rejects(() => verifyExamSchema({
+      $queryRaw: async () => ++rawCalls === 1
+        ? [{ column_name: "grade" }, { column_name: "contentMode" }]
+        : [{ udt_name: "text" }],
+      exam: { findFirst: async () => null },
+    }), /must use PostgreSQL enum/);
   });
 
   it("stops deployment before querying a missing column", async () => {
