@@ -24,6 +24,11 @@ enum ExamType {
   PRACTICE
 }
 
+enum ExamContentMode {
+  TOPIC
+  EXAM
+}
+
 enum AccessLevel {
   FREE
   PRO
@@ -299,6 +304,7 @@ model Exam {
   description       String
   family            ExamFamily
   type              ExamType        @default(MOCK)
+  contentMode       ExamContentMode @default(TOPIC)
   accessLevel       AccessLevel     @default(FREE)
   year              Int
   durationMinutes   Int
@@ -325,6 +331,7 @@ model Exam {
   @@index([family, year, accessLevel])
   @@index([educationLevel, subjectId, isPublished])
   @@index([educationLevel, grade, isPublished])
+  @@index([contentMode, isPublished, ownerId])
   @@index([specialExamTrack, isPublished, ownerId])
   @@index([ownerId, createdAt])
   @@index([shareMode, shareToken])
