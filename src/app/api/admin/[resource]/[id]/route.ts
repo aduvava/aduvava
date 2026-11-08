@@ -46,8 +46,11 @@ async function updateResource(resource: string, id: string, body: Record<string,
           ? current.subject
           : await tx.subject.findUnique({ where: { id: nextSubjectId }, select: { slug: true } });
         if (!nextSubject) throw new HttpError(404, "Không tìm thấy môn học.");
+        // A class-only correction must work even for a legacy published exam
+        // whose old question structure is invalid. It changes no questions.
+        const onlyGradeCorrection = Object.keys(body).length === 1 && Object.prototype.hasOwnProperty.call(body, "grade");
         let structure: unknown | undefined;
-        if (current.ownerId === null && nextPublished && nextLevel === "THPTQG") {
+        if (!onlyGradeCorrection && current.ownerId === null && nextPublished && nextLevel === "THPTQG") {
           try {
             structure = validateOfficialNationalExam({
               educationLevel: nextLevel,
@@ -63,6 +66,7 @@ async function updateResource(resource: string, id: string, body: Record<string,
         // THPTQG transitions should replace/clear the official structure.
         if (structure === undefined &&
             current.ownerId === null &&
+            !onlyGradeCorrection &&
             (current.educationLevel === "THPTQG" || nextLevel === "THPTQG")) {
           structure = Prisma.DbNull;
         }
