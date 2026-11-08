@@ -303,6 +303,7 @@ model Exam {
   year              Int
   durationMinutes   Int
   educationLevel    EducationLevel?
+  grade             String?
   specialExamTrack  String?
   examStructure     Json?
   targetScore       Float?
@@ -323,6 +324,7 @@ model Exam {
 
   @@index([family, year, accessLevel])
   @@index([educationLevel, subjectId, isPublished])
+  @@index([educationLevel, grade, isPublished])
   @@index([specialExamTrack, isPublished, ownerId])
   @@index([ownerId, createdAt])
   @@index([shareMode, shareToken])
