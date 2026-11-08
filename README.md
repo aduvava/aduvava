@@ -88,6 +88,23 @@ The repaired lockfile includes complete optional dependency metadata for Linux a
 
 ### Public deployment security gates
 
+### Separating exam content by chuyên đề / kỳ thi (November 2026)
+
+The Admin exam editor now has two `Loại đề` choices: **Theo chuyên đề** (`TOPIC`) and **Theo kỳ thi** (`EXAM`). The student subject page renders these as separate, independently filtered sections instead of reusing the same exam list for both. Existing exams are classified during an additive migration using the standalone Admin's original `examStructure.contentMode` when available, otherwise `Exam.type` (`MOCK`/`PREDICTION` => kỳ thi; `PRACTICE` => chuyên đề). The Admin can correct a published legacy exam's category without deleting its questions, answers, or attempts.
+
+**Safe production rollout:** Back up the existing PostgreSQL database and any uploaded files. Apply **both** the `20261109001000_exam_grade` and `20261109004500_exam_content_mode` migrations before switching the running web/admin images:
+
+```bash
+cd /opt/eduva
+git pull --ff-only origin main
+docker compose build web admin
+docker compose run --rm web npx prisma migrate deploy
+docker compose up -d --no-build web admin
+docker compose ps
+```
+
+Never run `prisma db push --force-reset` or `docker compose down -v` in production. GitHub updates do not prove the production VPS is updated.
+
 ### Admin exam classes (November 2026)
 
 Admin can select a class when creating or editing a system exam: THCS (Lớp 6–9), THPT (Lớp 10–12), and the dedicated Ôn thi vào 10 / Ôn thi THPTQG groups. Admin lists can be filtered by class; each exam also offers a class-only correction action that does not modify its questions, answers, or attempts. Previously published legacy exams without a stored class can be corrected. Student subject pages use the stored class; legacy unclassified exams remain visible until classified.
