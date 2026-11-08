@@ -54,6 +54,27 @@ BEGIN
       RAISE EXCEPTION 'Unrecognized legacy Exam.contentMode values; no conversion performed';
     END IF;
 
+    -- The earlier schema has a lowercase-only CHECK constraint. Remove
+    -- exactly that obsolete constraint inside this same transaction, after
+    -- verifying it really applies to contentMode. The enum below replaces
+    -- its value restrictions; a failure rolls the constraint removal back.
+    IF EXISTS (
+      SELECT 1 FROM pg_constraint
+      WHERE conrelid = 'public."Exam"'::regclass
+        AND conname = 'Exam_contentMode_check'
+    ) THEN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'public."Exam"'::regclass
+          AND conname = 'Exam_contentMode_check'
+          AND contype = 'c'
+          AND POSITION('contentMode' IN pg_get_constraintdef(oid)) > 0
+      ) THEN
+        RAISE EXCEPTION 'Exam_contentMode_check is not the expected legacy category CHECK; refusing to drop it';
+      END IF;
+      ALTER TABLE "Exam" DROP CONSTRAINT "Exam_contentMode_check";
+    END IF;
+
     ALTER TABLE "Exam" ALTER COLUMN "contentMode" DROP DEFAULT;
     UPDATE "Exam"
     SET "contentMode" = CASE
