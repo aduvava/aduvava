@@ -49,6 +49,9 @@ git merge --ff-only origin/main
 docker compose build web admin
 # Database changes must be additive or coordinated with app upgrades.
 docker compose run --rm web npx prisma migrate deploy
+# Fail before replacing the running containers if the migrations did not
+# actually supply the class and content-mode columns required by the web.
+docker compose run --rm web node scripts/verify-exam-schema.js
 
 # The site requires malware scanning for uploads. Running 'up' is idempotent.
 docker compose --profile malware-scanning up -d clamav
