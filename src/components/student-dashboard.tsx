@@ -462,7 +462,7 @@ export function StudentDashboard({
       <div className="mx-auto max-w-[1480px] px-4 py-7 sm:px-6 lg:px-8">
         <div className="grid w-full min-w-0 grid-cols-1 items-stretch gap-4 md:grid-cols-3">
           <DashboardImageCard imageKey={dashboardImageKey} imageName={dashboardImageName} />
-          <section className="relative flex h-[210px] min-w-0 overflow-hidden rounded-[1.5rem] border border-orange-100/80 bg-white p-4 shadow-[0_10px_22px_rgba(81,52,24,0.05)] sm:h-[190px]">
+          <section className="relative hidden h-[210px] min-w-0 overflow-hidden rounded-[1.5rem] border border-orange-100/80 bg-white p-4 shadow-[0_10px_22px_rgba(81,52,24,0.05)] sm:h-[190px] md:flex">
             <div className="absolute -right-14 -top-16 h-40 w-40 rounded-full bg-orange-100/60 blur-2xl" />
             <div className="relative flex min-w-0 flex-1 flex-col justify-center">
               <h1 className="text-lg font-black leading-tight tracking-tight text-slate-950 sm:text-xl">
