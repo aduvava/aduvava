@@ -196,7 +196,7 @@ async function listManagedResource(resource: string, searchParams: URLSearchPara
         where, skip, take, orderBy: { createdAt: "desc" },
         select: {
           id: true, code: true, slug: true, title: true, description: true,
-          family: true, type: true, accessLevel: true, year: true,
+          family: true, type: true, contentMode: true, accessLevel: true, year: true,
           durationMinutes: true, educationLevel: true, grade: true, specialExamTrack: true, targetScore: true,
           subjectId: true, isPublished: true, ownerId: true, createdAt: true,
           subject: { select: { id: true, name: true, family: true } },
