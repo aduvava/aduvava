@@ -53,6 +53,7 @@ type HotExam = {
   questionCount: number;
   attemptCount: number;
   weeklyParticipants: number;
+  contentMode: "TOPIC" | "EXAM";
 };
 
 type TheoryChapterItem = {
@@ -120,6 +121,8 @@ export function SubjectLearningDetail({
   const [mode, setMode] = useState<LearningMode>("topics");
   const [supportOpen, setSupportOpen] = useState(false);
   const totalLessons = subject.units.reduce((sum, unit) => sum + unit.lessons.length, 0);
+  const topicExams = hotExams.filter((exam) => exam.contentMode === "TOPIC");
+  const periodExams = hotExams.filter((exam) => exam.contentMode === "EXAM");
 
   return (
     <div className="subject-learning-page min-h-screen bg-[#fffdf1] pb-28 text-slate-900">
@@ -186,6 +189,7 @@ export function SubjectLearningDetail({
                   {exam.weeklyParticipants} người thi tuần này
                 </span>
                 <div className="pt-7">
+                  <span className="mb-3 inline-block rounded-full bg-orange-50 px-3 py-1 text-xs font-bold text-orange-700">{exam.contentMode === "TOPIC" ? "Theo chuyên đề" : "Theo kỳ thi"}</span>
                   <h3 className="min-h-14 text-lg font-black leading-7 text-slate-800">{exam.title}</h3>
                   <div className="mt-5 flex flex-wrap gap-4 text-xs font-extrabold uppercase text-slate-400">
                     <span className="inline-flex items-center gap-1.5"><Eye className="h-4 w-4" />{exam.attemptCount.toLocaleString("vi-VN")} lượt thi</span>
@@ -223,41 +227,41 @@ export function SubjectLearningDetail({
                 </div>
               </div>
 
+              <div className="mt-6">
+                <h3 className="text-lg font-black text-slate-800">Đề luyện theo chuyên đề ({topicExams.length})</h3>
+                {topicExams.length ? (
+                  <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                    {topicExams.map((exam) => (
+                      <article key={exam.id} className="rounded-2xl border border-orange-100 bg-white p-5 shadow-sm">
+                        <h4 className="font-black leading-6 text-slate-800">{exam.title}</h4>
+                        <p className="mt-2 text-xs font-bold text-slate-500">{exam.questionCount} câu · {exam.durationMinutes} phút · {exam.attemptCount.toLocaleString("vi-VN")} lượt làm</p>
+                        <Link href={exam.href} className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-orange-50 px-4 py-3 text-sm font-black text-orange-600 hover:bg-orange-100">
+                          <Play className="h-4 w-4" /> Luyện chuyên đề
+                        </Link>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-4 rounded-2xl border border-dashed border-orange-200 bg-white px-5 py-8 text-sm font-semibold text-slate-500">Chưa có đề luyện theo chuyên đề được xuất bản.</p>
+                )}
+              </div>
+
               <div className="mt-6 space-y-6">
                 {subject.units.map((unit, unitIndex) => (
                   <section key={unit.title}>
                     <h3 className="text-xl font-black text-orange-600 sm:text-2xl">
                       Chương {unitIndex + 1}: {unit.title}
-                      <span className="ml-3 text-sm font-bold text-slate-400">({unit.lessons.length * 12} đề luyện)</span>
+                      <span className="ml-3 text-sm font-bold text-slate-400">({unit.lessons.length} nội dung)</span>
                     </h3>
                     <div className="mt-4 space-y-4">
-                      {unit.lessons.map((lesson, lessonIndex) => {
-                        const exam = hotExams.length ? hotExams[(unitIndex + lessonIndex) % hotExams.length] : null;
-                        return (
-                          <article key={lesson} className="rounded-[1.6rem] border border-slate-200/80 bg-white px-5 py-5 shadow-sm sm:px-7">
-                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                              <div className="flex min-w-0 gap-4">
-                                <span className="text-lg font-black text-slate-400">{lessonIndex + 1}.</span>
-                                <div>
-                                  <h4 className="font-bold leading-7 text-slate-700">{lesson}</h4>
-                                  {exam ? (
-                                    <div className="mt-2 flex flex-wrap gap-4 text-xs font-extrabold uppercase text-slate-400">
-                                      <span className="inline-flex items-center gap-1.5"><FileText className="h-4 w-4" /> {exam.questionCount} câu</span>
-                                      <span className="inline-flex items-center gap-1.5"><Clock3 className="h-4 w-4" /> {exam.durationMinutes} phút</span>
-                                      <span className="inline-flex items-center gap-1.5"><Eye className="h-4 w-4" /> {exam.attemptCount.toLocaleString("vi-VN")} lượt thi</span>
-                                    </div>
-                                  ) : null}
-                                </div>
-                              </div>
-                              {exam ? (
-                                <Link href={exam.href} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-orange-50 px-5 py-3 text-sm font-black text-orange-600 transition hover:bg-orange-500 hover:text-white">
-                                  <FileText className="h-4 w-4" /> Làm bài ngay
-                                </Link>
-                              ) : null}
-                            </div>
-                          </article>
-                        );
-                      })}
+                      {unit.lessons.map((lesson, lessonIndex) => (
+                        <article key={lesson} className="rounded-[1.6rem] border border-slate-200/80 bg-white px-5 py-5 shadow-sm sm:px-7">
+                          <div className="flex min-w-0 gap-4">
+                            <span className="text-lg font-black text-slate-400">{lessonIndex + 1}.</span>
+                            <h4 className="font-bold leading-7 text-slate-700">{lesson}</h4>
+                          </div>
+                        </article>
+                      ))}
                     </div>
                   </section>
                 ))}
@@ -278,7 +282,7 @@ export function SubjectLearningDetail({
                 <p className="mt-2 text-sm leading-6 text-slate-500">Chọn đúng loại kì thi để luyện cấu trúc và thời gian làm bài tương ứng.</p>
               </div>
               <div className="mt-6 grid gap-4 lg:grid-cols-2">
-                {hotExams.map((exam) => (
+                {periodExams.map((exam) => (
                   <article key={exam.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-md">
                     <h3 className="font-black leading-6 text-slate-800">{exam.title}</h3>
                     <div className="mt-4 flex flex-wrap gap-4 text-xs font-bold uppercase text-slate-400">
@@ -292,7 +296,7 @@ export function SubjectLearningDetail({
                   </article>
                 ))}
               </div>
-              {!hotExams.length ? <p className="mt-6 rounded-2xl border border-dashed border-orange-200 bg-white px-5 py-10 text-center text-sm font-semibold text-slate-500">Chưa có đề thi được xuất bản.</p> : null}
+              {!periodExams.length ? <p className="mt-6 rounded-2xl border border-dashed border-orange-200 bg-white px-5 py-10 text-center text-sm font-semibold text-slate-500">Chưa có đề theo kỳ thi được xuất bản.</p> : null}
             </>
           ) : null}
 
