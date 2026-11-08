@@ -15,6 +15,18 @@ async function updateResource(resource: string, id: string, body: Record<string,
       return prisma.subject.update({ where: { id }, data: body as never });
     case "exams":
       return prisma.$transaction(async (tx) => {
+        // Class corrections must work even when a legacy exam has invalid questions.
+        // Avoid loading/validating the question bank and never replace its metadata.
+        if (Object.keys(body).length === 1 && Object.prototype.hasOwnProperty.call(body, "grade")) {
+          const currentGradeRecord = await tx.exam.findUnique({
+            where: { id }, select: { educationLevel: true, specialExamTrack: true },
+          });
+          if (!currentGradeRecord) throw new HttpError(404, "Không tìm thấy đề thi.");
+          if (!isValidExamGrade(currentGradeRecord.educationLevel, body.grade, currentGradeRecord.specialExamTrack)) {
+            throw new HttpError(400, "Lớp không thuộc cấp học đã chọn. Vui lòng chọn lại lớp.");
+          }
+          return tx.exam.update({ where: { id }, data: { grade: body.grade as string | null } });
+        }
         const current = await tx.exam.findUnique({
           where: { id },
           include: {
@@ -46,11 +58,8 @@ async function updateResource(resource: string, id: string, body: Record<string,
           ? current.subject
           : await tx.subject.findUnique({ where: { id: nextSubjectId }, select: { slug: true } });
         if (!nextSubject) throw new HttpError(404, "Không tìm thấy môn học.");
-        // A class-only correction must work even for a legacy published exam
-        // whose old question structure is invalid. It changes no questions.
-        const onlyGradeCorrection = Object.keys(body).length === 1 && Object.prototype.hasOwnProperty.call(body, "grade");
         let structure: unknown | undefined;
-        if (!onlyGradeCorrection && current.ownerId === null && nextPublished && nextLevel === "THPTQG") {
+        if (current.ownerId === null && nextPublished && nextLevel === "THPTQG") {
           try {
             structure = validateOfficialNationalExam({
               educationLevel: nextLevel,
@@ -66,7 +75,6 @@ async function updateResource(resource: string, id: string, body: Record<string,
         // THPTQG transitions should replace/clear the official structure.
         if (structure === undefined &&
             current.ownerId === null &&
-            !onlyGradeCorrection &&
             (current.educationLevel === "THPTQG" || nextLevel === "THPTQG")) {
           structure = Prisma.DbNull;
         }
