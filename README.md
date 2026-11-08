@@ -88,6 +88,23 @@ The repaired lockfile includes complete optional dependency metadata for Linux a
 
 ### Public deployment security gates
 
+### Admin exam classes (November 2026)
+
+Admin can select a class when creating or editing a system exam: THCS (Lớp 6–9), THPT (Lớp 10–12), and the dedicated Ôn thi vào 10 / Ôn thi THPTQG groups. Admin lists can be filtered by class; each exam also offers a class-only correction action that does not modify its questions, answers, or attempts. Previously published legacy exams without a stored class can be corrected. Student subject pages use the stored class; legacy unclassified exams remain visible until classified.
+
+**Production upgrade:** Back up PostgreSQL and uploads. The additive `20261109001000_exam_grade` migration creates a nullable Exam.grade field and backfills known class information from older standalone Admin exam metadata. Apply database migrations **before** switching production containers to the rebuilt image:
+
+```bash
+cd /opt/eduva
+git pull --ff-only origin main
+docker compose build web admin
+docker compose run --rm web npx prisma migrate deploy
+docker compose up -d --no-build web admin
+docker compose ps
+```
+
+Do not use database reset or delete volumes. The GitHub commit itself does not guarantee the VPS has been updated.
+
 ### Exam/API security hardening (November 2026)
 
 The exam deadline is calculated from the immutable attempt start time and exam duration **on the server**. The additive `Attempt.extraTimeSeconds` column persists any paid extra-time helper, with at most 60 minutes of extension; expired answers and helper activations are rejected. A late submission may still grade answers saved before the deadline, but cannot introduce late answers.
