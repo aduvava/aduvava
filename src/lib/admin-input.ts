@@ -23,6 +23,7 @@ const schemas = {
     code: text(100), slug: text(200), title: text(250),
     description: text(20000), family: z.enum(["THPTQG", "DGNL"]),
     type: z.enum(["MOCK", "PREDICTION", "PRACTICE"]),
+    contentMode: z.enum(["TOPIC", "EXAM"]),
     accessLevel: z.enum(["FREE", "PRO"]),
     year: z.number().int().min(2000).max(2200),
     durationMinutes: z.number().int().min(1).max(600),
