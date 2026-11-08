@@ -210,6 +210,26 @@ export function ExamManager() {
     }
   }
 
+  async function updateContentMode(exam: Exam, contentMode: ExamContentMode) {
+    if (exam.contentMode === contentMode) return;
+    setBusy(true);
+    setMessage("Đang chuyển nhóm đề thi...");
+    try {
+      const response = await fetch("/api/admin/exams/" + encodeURIComponent(exam.id), {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contentMode }),
+      });
+      if (!response.ok) throw new Error(await apiMessage(response));
+      setMessage("Đã chuyển đề \"" + exam.title + "\" sang " + (contentMode === "TOPIC" ? "Theo chuyên đề." : "Theo kỳ thi."));
+      if (editing?.id === exam.id) {
+        setDraft((current) => ({ ...current, contentMode, type: typeForContentMode(contentMode, current.type) }));
+      }
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Không đổi được loại đề.");
+    } finally { setBusy(false); }
+  }
+
   async function remove(exam: Exam) {
     const attempts = exam._count.attempts;
     const answer = window.prompt(
@@ -396,6 +416,12 @@ export function ExamManager() {
                   <h3 className="break-words font-black text-slate-950">{exam.title}</h3>
                   <p className="mt-1 text-xs font-semibold text-slate-500">{exam.subject?.name ?? "Chưa rõ môn"} · {exam.specialExamTrack ? `Kỳ thi ${getSpecialExamTrack(exam.specialExamTrack)?.label ?? exam.specialExamTrack}` : exam.educationLevel ? levelName[exam.educationLevel] : "Chưa phân loại"} · {exam.grade ?? "Chưa chọn lớp"} · {exam.contentMode === "EXAM" ? "Theo kỳ thi" : "Theo chuyên đề"} · {exam.durationMinutes} phút</p>
                   <p className="mt-1 text-xs font-semibold text-slate-500">{exam._count.questions} câu · {exam._count.attempts} lượt làm · {exam.ownerId ? "Do người dùng tạo" : "Đề hệ thống"}</p>
+                  <label className="mt-3 flex max-w-xs items-center gap-2 text-xs font-bold text-slate-700">
+                    <span className="shrink-0">Phân loại:</span>
+                    <select aria-label={"Phân loại " + exam.title} className={field} value={exam.contentMode} disabled={busy} onChange={(event) => void updateContentMode(exam, event.target.value as ExamContentMode)}>
+                      {EXAM_CONTENT_MODES.map((mode) => <option value={mode.value} key={mode.value}>{mode.label}</option>)}
+                    </select>
+                  </label>
                   {exam.educationLevel && !exam.specialExamTrack ? (
                     <label className="mt-3 flex max-w-xs items-center gap-2 text-xs font-bold text-slate-700">
                       <span className="shrink-0">Đổi lớp:</span>
