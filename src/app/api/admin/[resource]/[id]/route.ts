@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { unlink } from "node:fs/promises";
 import { documentStoredPath } from "@/lib/private-document-storage";
 import { gradeToLevel } from "@/lib/theory-admin";
+import { isValidExamGrade } from "@/lib/exam-grade";
 import { Prisma } from "@prisma/client";
 import { parseAdminInput } from "@/lib/admin-input";
 import { validateOfficialNationalExam } from "@/lib/official-exam-publication";
@@ -33,6 +34,10 @@ async function updateResource(resource: string, id: string, body: Record<string,
           ? current.isPublished : body.isPublished === true;
         const nextSpecialTrack = body.specialExamTrack === undefined
           ? current.specialExamTrack : body.specialExamTrack;
+        const nextGrade = body.grade === undefined ? current.grade : body.grade;
+        if (!isValidExamGrade(nextLevel, nextGrade, nextSpecialTrack)) {
+          throw new HttpError(400, "Lớp không thuộc cấp học đã chọn. Vui lòng chọn lại lớp.");
+        }
         if (nextSpecialTrack && nextLevel !== null) {
           throw new HttpError(400, "Đề kỳ thi riêng phải chọn cấp học: Không phân loại.");
         }
