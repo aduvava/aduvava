@@ -68,13 +68,21 @@ docker compose up -d --no-build web admin ||
 
 echo "Step 8/8: Checking subject page and containers"
 sleep 2
-status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 http://127.0.0.1:3000/subjects/lich-su || true)
+# /subjects/* requires NextAuth. An anonymous curl must be sent to /login
+# instead of rendering the subject page. Follow the redirect and verify that
+# it ends at our login page (not a 500 or an unrelated redirect destination).
+probe=$(curl -sS -L --max-redirs 3 -o /dev/null -w '%{http_code} %{url_effective}' --max-time 30 \
+  http://127.0.0.1:3000/subjects/lich-su || true)
+http_status=${probe%% *}
+final_url=${probe#* }
 docker compose ps
-echo "Subject page HTTP: $status"
-if [[ "$status" != "200" ]]; then
-  echo "The subject page still needs review; recent web logs follow:" >&2
+echo "Anonymous subject-page probe: HTTP $http_status, final URL: $final_url"
+if [[ "$http_status" != "200" ]] || \
+   [[ "$final_url" != "http://127.0.0.1:3000/login?callbackUrl=%2Fsubjects%2Flich-su" ]]; then
+  echo "Unexpected redirect or application error; recent web logs follow:" >&2
   docker compose logs --tail=80 web >&2
-  fail "Subject page is not returning HTTP 200. Database backup is at $backup."
+  fail "Subject-page/auth flow did not reach the login page successfully. Database backup is at $backup."
 fi
-echo "RECOVERY OK: $before existing exams preserved; /subjects/lich-su returned HTTP 200."
+echo "RECOVERY OK: $before existing exams preserved; anonymous subject visit correctly redirects to a working login page."
 echo "Database backup: $backup"
+echo "To confirm the subject itself renders, open /subjects/lich-su in a browser after signing in."
