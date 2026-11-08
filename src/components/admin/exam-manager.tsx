@@ -6,6 +6,7 @@ import Link from "next/link";
 import { importAdminExamFile, type ImportedExamQuestion } from "@/lib/admin-exam-file-import";
 import { specialExamTracks, type SpecialExamTrack, getSpecialExamTrack } from "@/lib/special-exam-tracks";
 import { defaultGradeForExamLevel, gradesForExamLevel } from "@/lib/exam-grade";
+import { EXAM_CONTENT_MODES, type ExamContentMode, typeForContentMode } from "@/lib/exam-content-mode";
 
 type Level = "THCS" | "THPT" | "EXAM_10" | "THPTQG" | null;
 type Family = "THPTQG" | "DGNL";
@@ -14,7 +15,7 @@ type Access = "FREE" | "PRO";
 type Subject = { id: string; name: string; family: Family };
 type Exam = {
   id: string; code: string; slug: string; title: string; description: string;
-  family: Family; type: ExamType; accessLevel: Access; year: number;
+  family: Family; type: ExamType; contentMode: ExamContentMode; accessLevel: Access; year: number;
   durationMinutes: number; educationLevel: Level; grade: string | null; specialExamTrack: SpecialExamTrack | null; targetScore: number | null;
   subjectId: string; isPublished: boolean; ownerId: string | null;
   subject: Subject;
@@ -22,12 +23,12 @@ type Exam = {
 };
 type Draft = {
   title: string; description: string; code: string; slug: string;
-  type: ExamType; accessLevel: Access; year: number; durationMinutes: number;
+  type: ExamType; contentMode: ExamContentMode; accessLevel: Access; year: number; durationMinutes: number;
   educationLevel: Level; grade: string | null; specialExamTrack: SpecialExamTrack | null; targetScore: string; subjectId: string; isPublished: boolean;
 };
 
 const newDraft = (): Draft => ({
-  title: "", description: "", code: "", slug: "", type: "PRACTICE",
+  title: "", description: "", code: "", slug: "", type: "PRACTICE", contentMode: "TOPIC",
   accessLevel: "FREE", year: new Date().getFullYear(), durationMinutes: 45,
   educationLevel: "THCS", grade: null, specialExamTrack: null, targetScore: "", subjectId: "", isPublished: false,
 });
@@ -55,6 +56,7 @@ export function ExamManager() {
   const [query, setQuery] = useState("");
   const [level, setLevel] = useState("");
   const [gradeFilter, setGradeFilter] = useState("");
+  const [modeFilter, setModeFilter] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -71,6 +73,7 @@ export function ExamManager() {
       if (query) params.set("q", query);
       if (level) params.set("level", level);
       if (gradeFilter) params.set("grade", gradeFilter);
+      if (modeFilter) params.set("contentMode", modeFilter);
       if (subjectFilter) params.set("subjectId", subjectFilter);
       const response = await fetch("/api/admin/exams?" + params, { cache: "no-store" });
       if (!response.ok) throw new Error(await apiMessage(response));
@@ -80,7 +83,7 @@ export function ExamManager() {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Không thể tải danh sách đề.");
     }
-  }, [page, query, level, gradeFilter, subjectFilter]);
+  }, [page, query, level, gradeFilter, modeFilter, subjectFilter]);
 
   useEffect(() => {
     void load();
@@ -128,7 +131,7 @@ export function ExamManager() {
     setEditing(exam);
     setDraft({
       title: exam.title, description: exam.description, code: exam.code, slug: exam.slug,
-      type: exam.type, accessLevel: exam.accessLevel, year: exam.year,
+      type: exam.type, contentMode: exam.contentMode, accessLevel: exam.accessLevel, year: exam.year,
       durationMinutes: exam.durationMinutes, educationLevel: exam.educationLevel,
       grade: exam.grade ?? null, specialExamTrack: exam.specialExamTrack,
       targetScore: exam.targetScore === null ? "" : String(exam.targetScore),
@@ -156,7 +159,7 @@ export function ExamManager() {
     const suffix = Date.now().toString(36);
     const data = {
       title: draft.title.trim(), description: draft.description.trim(),
-      family: subject.family, type: draft.type, accessLevel: draft.accessLevel,
+      family: subject.family, type: typeForContentMode(draft.contentMode, draft.type), contentMode: draft.contentMode, accessLevel: draft.accessLevel,
       year: draft.year, durationMinutes: draft.durationMinutes,
       educationLevel: draft.educationLevel, grade: draft.grade, specialExamTrack: draft.specialExamTrack, targetScore: score,
       subjectId: draft.subjectId, isPublished: draft.isPublished,
@@ -290,11 +293,13 @@ export function ExamManager() {
               <span className="text-xs font-medium text-slate-500">Đề HSA, TSA, V-ACT, QDA, BQA, ĐGNL BCA hiển thị trong mục Ôn thi THPTQG → Kỳ thi riêng. Chọn kỳ thi sẽ tự đặt cấp học thành Không phân loại.</span>
             </label>
             <label className={label}>Loại đề
-              <select className={field} value={draft.type} onChange={(e) => setValue("type", e.target.value as ExamType)}>
-                <option value="PRACTICE">Luyện tập</option>
-                <option value="MOCK">Thi thử</option>
-                <option value="PREDICTION">Đề dự đoán</option>
+              <select className={field} value={draft.contentMode} onChange={(e) => {
+                const next = e.target.value as ExamContentMode;
+                setDraft((current) => ({ ...current, contentMode: next, type: typeForContentMode(next, current.type) }));
+              }}>
+                {EXAM_CONTENT_MODES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
               </select>
+              <span className="text-xs font-medium text-slate-500">Chuyên đề và kỳ thi được hiển thị ở hai mục khác nhau bên trang học sinh.</span>
             </label>
             <label className={label}>Quyền truy cập
               <select className={field} value={draft.accessLevel} onChange={(e) => setValue("accessLevel", e.target.value as Access)}>
@@ -370,6 +375,12 @@ export function ExamManager() {
               {gradesForExamLevel(level).map((grade) => <option key={grade} value={grade}>{grade}</option>)}
             </select>
           </label>
+          <label className={label}>Loại đề
+            <select className={field} value={modeFilter} onChange={(e) => { setModeFilter(e.target.value); setPage(1); }}>
+              <option value="">Tất cả loại đề</option>
+              {EXAM_CONTENT_MODES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+            </select>
+          </label>
           <label className={label}>Môn học
             <select className={field} value={subjectFilter} onChange={(e) => { setSubjectFilter(e.target.value); setPage(1); }}>
               <option value="">Tất cả môn</option>
@@ -383,7 +394,7 @@ export function ExamManager() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <h3 className="break-words font-black text-slate-950">{exam.title}</h3>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">{exam.subject?.name ?? "Chưa rõ môn"} · {exam.specialExamTrack ? `Kỳ thi ${getSpecialExamTrack(exam.specialExamTrack)?.label ?? exam.specialExamTrack}` : exam.educationLevel ? levelName[exam.educationLevel] : "Chưa phân loại"} · {exam.grade ?? "Chưa chọn lớp"} · {exam.durationMinutes} phút</p>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">{exam.subject?.name ?? "Chưa rõ môn"} · {exam.specialExamTrack ? `Kỳ thi ${getSpecialExamTrack(exam.specialExamTrack)?.label ?? exam.specialExamTrack}` : exam.educationLevel ? levelName[exam.educationLevel] : "Chưa phân loại"} · {exam.grade ?? "Chưa chọn lớp"} · {exam.contentMode === "EXAM" ? "Theo kỳ thi" : "Theo chuyên đề"} · {exam.durationMinutes} phút</p>
                   <p className="mt-1 text-xs font-semibold text-slate-500">{exam._count.questions} câu · {exam._count.attempts} lượt làm · {exam.ownerId ? "Do người dùng tạo" : "Đề hệ thống"}</p>
                   {exam.educationLevel && !exam.specialExamTrack ? (
                     <label className="mt-3 flex max-w-xs items-center gap-2 text-xs font-bold text-slate-700">
