@@ -62,6 +62,20 @@ const studyFlows = [
   },
 ];
 
+function canonicalExamGrade(level, selected) {
+  const flow = studyFlows.find((item) => item.id === level);
+  if (!flow || !flow.grades.includes(selected)) return null;
+  if (level === "EXAM_10") return "Ôn thi vào 10";
+  if (level === "THPTQG") return "Ôn thi THPTQG";
+  return selected;
+}
+
+function gradesForAdminExam(level) {
+  const flow = studyFlows.find((item) => item.id === level);
+  if (!flow) return [];
+  return level === "EXAM_10" ? ["Ôn thi vào 10"] : level === "THPTQG" ? ["Ôn thi THPTQG"] : flow.grades;
+}
+
 function normalizeText(value) {
   return String(value || "")
     .normalize("NFD")
@@ -1694,6 +1708,10 @@ async function examsPage(user, notice) {
     row([
       `<strong>${escapeHtml(item.title)}</strong><div class="muted">${escapeHtml(item.code)}</div>`,
       escapeHtml(item.subject?.name || "-"),
+      item.educationLevel && !item.specialExamTrack ? `<form class="form" method="post" action="/exams/${escapeHtml(item.id)}/grade" style="min-width:155px;gap:6px">
+        <select name="grade" aria-label="Chỉnh lớp của đề ${escapeHtml(item.title)}">${optionList([{ value: "", label: "Chưa chọn lớp" }, ...gradesForAdminExam(item.educationLevel).map((grade) => ({ value: grade, label: grade }))], item.grade || "")}</select>
+        <button type="submit" class="secondary">Lưu lớp</button>
+      </form>` : badge("Không áp dụng"),
       badge(examContentModeLabel(item.examStructure?.contentMode) || item.type),
       badge(item.accessLevel),
       `${formatNumber(item._count.questions)} câu / ${formatNumber(item._count.attempts)} lượt`,
@@ -1703,7 +1721,7 @@ async function examsPage(user, notice) {
   );
   const body = `${pageHeader("Đề thi", "Tạo đề theo cấp học, lớp/nhóm thi và môn học giống luồng học sinh trên web.", `<a class="button" href="#tao-de-theo-mon">Tạo đề mới</a>`)}
   ${examCreateForm(subjects)}
-  <div style="margin-top:18px">${table(["Đề", "Môn", "Loại", "Quyền", "Thống kê", "Thời gian", "Thao tác"], rows)}</div>`;
+  <div style="margin-top:18px">${table(["Đề", "Môn", "Lớp / chỉnh lớp", "Loại", "Quyền", "Thống kê", "Thời gian", "Thao tác"], rows)}</div>`;
   return layout({ title: "Đề thi", active: "/exams", user, notice, body });
 }
 
@@ -2552,6 +2570,7 @@ async function createExam(req, res) {
   const subjectId = String(form.get("subjectId") || "");
   const educationLevel = String(form.get("educationLevel") || "THCS");
   const grade = String(form.get("grade") || "").trim();
+  const normalizedGrade = canonicalExamGrade(educationLevel, grade);
   const title = String(form.get("title") || "").trim();
   const description = String(form.get("description") || "").trim();
   const type = String(form.get("type") || "PRACTICE");
@@ -2563,6 +2582,10 @@ async function createExam(req, res) {
 
   if (!title || !subjectId || !["THCS", "THPT", "EXAM_10", "THPTQG"].includes(educationLevel)) {
     redirect(res, `/exams?notice=${encodeURIComponent("Thiếu cấp học, môn học hoặc tiêu đề đề thi")}`);
+    return;
+  }
+  if (!normalizedGrade) {
+    redirect(res, `/exams?notice=${encodeURIComponent("Hãy chọn lớp hợp lệ cho cấp học này")}`);
     return;
   }
   if (!["PRACTICE", "MOCK", "PREDICTION"].includes(type) || !["FREE", "PRO"].includes(accessLevel)) {
@@ -2615,10 +2638,11 @@ async function createExam(req, res) {
         year,
         durationMinutes,
         educationLevel,
+        grade: normalizedGrade,
         examStructure: {
           ...(parsed.rule || {}),
           source: "admin-server",
-          grade,
+          grade: normalizedGrade,
           contentMode,
           contentModeLabel: examContentModeLabel(contentMode),
           questionSource: "file-import",
@@ -2652,6 +2676,25 @@ async function createExam(req, res) {
   }, { maxWait: 10000, timeout: 120000 });
 
   redirect(res, `/exams?notice=${encodeURIComponent(`Đã tạo đề "${exam.title}" cho môn ${subject.name}`)}#tao-de-theo-mon`);
+}
+
+async function updateExamGrade(req, res, id) {
+  const form = await readForm(req);
+  const requested = String(form.get("grade") ?? "").trim();
+  const exam = await prisma.exam.findUnique({ where: { id }, select: { educationLevel: true, specialExamTrack: true, examStructure: true } });
+  if (!exam) return redirect(res, `/exams?notice=${encodeURIComponent("Không tìm thấy đề thi")}`);
+  const allowed = !exam.specialExamTrack && gradesForAdminExam(exam.educationLevel);
+  if (!allowed || (requested && !allowed.includes(requested))) {
+    return redirect(res, `/exams?notice=${encodeURIComponent("Lớp không thuộc cấp học đã chọn")}`);
+  }
+  const previousStructure = exam.examStructure;
+  const structure = previousStructure && typeof previousStructure === "object" && !Array.isArray(previousStructure)
+    ? { ...previousStructure, grade: requested || null } : undefined;
+  await prisma.exam.update({
+    where: { id },
+    data: { grade: requested || null, ...(structure ? { examStructure: structure } : {}) },
+  });
+  redirect(res, `/exams?notice=${encodeURIComponent("Đã cập nhật lớp, giữ nguyên câu hỏi và lượt làm")}`);
 }
 
 async function deleteExam(res, id) {
@@ -2750,6 +2793,9 @@ async function router(req, res) {
   }
   if (pathname === "/exams/create" && req.method === "POST") return createExam(req, res);
   if (pathname === "/exams/preview" && req.method === "POST") return previewExamImport(req, res);
+  if (pathname.startsWith("/exams/") && pathname.endsWith("/grade") && req.method === "POST") {
+    return updateExamGrade(req, res, pathname.split("/")[2]);
+  }
   if (pathname.startsWith("/exams/") && pathname.endsWith("/delete") && req.method === "POST") {
     return deleteExam(res, pathname.split("/")[2]);
   }
