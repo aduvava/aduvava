@@ -12,6 +12,7 @@ export async function GET(request: Request) {
     const year = searchParams.get("year");
     const grade = searchParams.get("grade");
     const type = searchParams.get("type");
+    const contentMode = searchParams.get("contentMode");
     const access = searchParams.get("access");
     const q = searchParams.get("q")?.slice(0, 160);
     const sort = searchParams.get("sort") ?? "newest";
@@ -34,6 +35,7 @@ export async function GET(request: Request) {
     }
     if (year && /^\d{4}$/.test(year)) where.year = Number(year);
     if (type === "MOCK" || type === "PREDICTION" || type === "PRACTICE") where.type = type;
+    if (contentMode === "TOPIC" || contentMode === "EXAM") where.contentMode = contentMode;
     if (access === "FREE" || access === "PRO") where.accessLevel = access;
     if (q) where.OR = [
       { title: { contains: q, mode: "insensitive" } },
@@ -45,7 +47,7 @@ export async function GET(request: Request) {
       // No shareToken, sharePasswordHash or answer-key data in list results.
       select: {
         id: true, code: true, slug: true, title: true, description: true,
-        family: true, type: true, accessLevel: true, year: true,
+        family: true, type: true, contentMode: true, accessLevel: true, year: true,
         durationMinutes: true, educationLevel: true, grade: true, specialExamTrack: true, subjectId: true,
         ownerId: true, shareMode: true, createdAt: true,
         subject: true, _count: { select: { questions: true, attempts: true } },
