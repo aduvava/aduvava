@@ -1338,8 +1338,7 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
           <div class="mode-tabs" role="tablist" aria-label="Loại nội dung">
             <button class="mode-tab active" type="button" data-content-mode="topics" data-exam-type="PRACTICE">📖 Theo Chuyên đề</button>
             <button class="mode-tab" type="button" data-content-mode="exams" data-exam-type="MOCK">🗓 Theo Kì thi</button>
-            <button class="mode-tab" type="button" data-content-mode="theory" data-exam-type="PRACTICE">📄 Lý thuyết</button>
-          </div>
+            </div>
           <div class="mode-note" id="contentModeNote">Tạo bộ câu hỏi luyện tập theo chuyên đề của môn học đã chọn.</div>
         </label>
         <label>Quyền truy cập
@@ -1408,7 +1407,6 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
         const modeNotes = {
           topics: "Tạo bộ câu hỏi luyện tập theo chuyên đề của môn học đã chọn.",
           exams: "Tạo đề theo kì thi, kiểm tra giữa kì/cuối kì hoặc đề thi thử.",
-          theory: "Tạo nội dung kiểm tra lý thuyết hoặc câu hỏi đọc hiểu lý thuyết từ file import.",
         };
         let previewTimer = 0;
         function isImageUrl(url) {
@@ -2592,7 +2590,7 @@ async function createExam(req, res) {
     redirect(res, `/exams?notice=${encodeURIComponent("Loại đề hoặc quyền truy cập không hợp lệ")}`);
     return;
   }
-  if (!["topics", "exams", "theory"].includes(contentMode)) {
+  if (!["topics", "exams"].includes(contentMode)) {
     redirect(res, `/exams?notice=${encodeURIComponent("Loại nội dung không hợp lệ")}`);
     return;
   }
@@ -2633,7 +2631,8 @@ async function createExam(req, res) {
         title,
         description: description || `Đề ${subject.name} được tạo từ Educhi Admin theo luồng ${grade || educationLevel}.`,
         family: subject.family,
-        type,
+        type: contentMode === "exams" ? "MOCK" : "PRACTICE",
+        contentMode: contentMode === "exams" ? "EXAM" : "TOPIC",
         accessLevel,
         year,
         durationMinutes,
