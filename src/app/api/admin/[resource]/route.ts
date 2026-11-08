@@ -178,6 +178,7 @@ async function listManagedResource(resource: string, searchParams: URLSearchPara
   if (resource === "exams") {
     const level = searchParams.get("level");
     const subjectId = searchParams.get("subjectId");
+    const grade = searchParams.get("grade");
     const where: Prisma.ExamWhereInput = {
       ownerId: null,
       ...(query ? { OR: [
@@ -188,6 +189,7 @@ async function listManagedResource(resource: string, searchParams: URLSearchPara
       ...(level && ["THCS", "THPT", "EXAM_10", "THPTQG"].includes(level)
         ? { educationLevel: level as "THCS" | "THPT" | "EXAM_10" | "THPTQG" } : {}),
       ...(subjectId ? { subjectId } : {}),
+      ...(grade && isValidExamGrade(level, grade) ? { grade } : {}),
     };
     const [items, total] = await prisma.$transaction([
       prisma.exam.findMany({
