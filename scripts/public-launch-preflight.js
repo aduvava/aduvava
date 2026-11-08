@@ -9,6 +9,7 @@ const crypto = require("node:crypto");
 const { PrismaClient } = require("@prisma/client");
 const { documentStorageDirectory } = require("../src/lib/private-document-storage.js");
 const { scanDocumentBuffer, scanRequired } = require("../src/lib/document-malware-scan.js");
+const { verifyExamSchema } = require("./verify-exam-schema.js");
 
 function validateProductionConfiguration(env, root = process.cwd()) {
   const errors = [];
@@ -66,6 +67,11 @@ async function runPreflight(env = process.env, deps = {}) {
       errors.push("Unable to verify PostgreSQL connectivity and SecurityThrottle migration");
     }
     try {
+      await verifyExamSchema(db);
+    } catch (error) {
+      errors.push("Exam classification migration is missing or invalid: " + (error?.message || "unknown error"));
+    }
+    try {
       // This probe uses only harmless bytes and does not persist an upload.
       const probe = Buffer.from("%PDF-1.7\n%%EOF\n");
       const result = await scanDocumentBuffer(probe, { ...env, NODE_ENV: "production" });
@@ -101,7 +107,7 @@ if (require.main === module) {
       process.exitCode = 1;
       return;
     }
-    console.log("Application preflight passed: HTTPS URL configuration, secrets, DB migration,");
+    console.log("Application preflight passed: HTTPS URL configuration, secrets, DB migration and Exam schema,");
     console.log("private storage read/write and live ClamAV scan.");
     console.log("NOT VERIFIED: TLS certificates, CDN permissions, backups/restores, real bank");
     console.log("reconciliation, browser E2E and infrastructure exposure; check manually.");
