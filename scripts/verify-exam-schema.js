@@ -26,7 +26,13 @@ async function verifyExamSchema(db) {
       "Apply pending migrations: npx prisma migrate deploy"
     );
   }
-  // Validate that generated Prisma client can query the actual columns.
+  // A legacy TEXT column may exist yet still be incompatible with Prisma's enum.
+  const modeType = await db.$queryRaw`SELECT udt_name FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'Exam' AND column_name = 'contentMode'`;
+  if (modeType?.[0]?.udt_name !== "ExamContentMode") {
+    throw new Error("Exam.contentMode must use PostgreSQL enum ExamContentMode; legacy text values need conversion.");
+  }
+  // Validate that generated Prisma client can query the actual enum values.
   await db.exam.findFirst({ select: { id: true, grade: true, contentMode: true } });
 }
 
