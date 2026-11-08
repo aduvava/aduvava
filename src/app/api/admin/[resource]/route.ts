@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { parseAdminInput } from "@/lib/admin-input";
 import { gradeToLevel } from "@/lib/theory-admin";
 import { isValidExamGrade } from "@/lib/exam-grade";
+import { typeForContentMode } from "@/lib/exam-content-mode";
 import { prisma } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk, readJson, requireAdmin } from "@/lib/api";
 
@@ -51,7 +52,12 @@ async function createResource(resource: string, body: Record<string, unknown>) {
       if (body.educationLevel === "THPTQG" && body.isPublished !== false) {
         throw new HttpError(400, "Hãy tạo đề THPTQG ở trạng thái nháp (isPublished: false), nhập đủ câu theo cấu trúc rồi mới xuất bản.");
       }
-      return prisma.exam.create({ data: body as never });
+      return prisma.exam.create({ data: {
+        ...body,
+        ...(body.contentMode === "TOPIC" || body.contentMode === "EXAM"
+          ? { type: typeForContentMode(body.contentMode, body.type as string | undefined) }
+          : {}),
+      } as never });
     case "questions": {
       const examId = String(body.examId ?? "");
       const target = await prisma.exam.findUnique({
@@ -179,6 +185,7 @@ async function listManagedResource(resource: string, searchParams: URLSearchPara
     const level = searchParams.get("level");
     const subjectId = searchParams.get("subjectId");
     const grade = searchParams.get("grade");
+    const contentMode = searchParams.get("contentMode");
     const where: Prisma.ExamWhereInput = {
       ownerId: null,
       ...(query ? { OR: [
@@ -190,6 +197,7 @@ async function listManagedResource(resource: string, searchParams: URLSearchPara
         ? { educationLevel: level as "THCS" | "THPT" | "EXAM_10" | "THPTQG" } : {}),
       ...(subjectId ? { subjectId } : {}),
       ...(grade && isValidExamGrade(level, grade) ? { grade } : {}),
+      ...(contentMode === "TOPIC" || contentMode === "EXAM" ? { contentMode } : {}),
     };
     const [items, total] = await prisma.$transaction([
       prisma.exam.findMany({
