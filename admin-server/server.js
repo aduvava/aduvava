@@ -1710,7 +1710,7 @@ async function examsPage(user, notice) {
         <select name="grade" aria-label="Chỉnh lớp của đề ${escapeHtml(item.title)}">${optionList([{ value: "", label: "Chưa chọn lớp" }, ...gradesForAdminExam(item.educationLevel).map((grade) => ({ value: grade, label: grade }))], item.grade || "")}</select>
         <button type="submit" class="secondary">Lưu lớp</button>
       </form>` : badge("Không áp dụng"),
-      badge(examContentModeLabel(item.examStructure?.contentMode) || item.type),
+      badge(item.contentMode === "EXAM" ? "Theo kỳ thi" : "Theo chuyên đề"),
       badge(item.accessLevel),
       `${formatNumber(item._count.questions)} câu / ${formatNumber(item._count.attempts)} lượt`,
       `${item.durationMinutes} phút`,
