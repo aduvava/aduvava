@@ -83,7 +83,7 @@ export default async function SubjectPage({ params, searchParams }: SubjectPageP
             },
           },
           orderBy: { createdAt: "desc" },
-          take: 12,
+          take: 100,
         },
       },
     }),
@@ -134,6 +134,7 @@ export default async function SubjectPage({ params, searchParams }: SubjectPageP
   const hotExams = databaseSubject.exams.map((exam) => ({
     id: exam.id,
     title: exam.title,
+    contentMode: exam.contentMode,
     href: `/exams/${exam.id}`,
     durationMinutes: exam.durationMinutes,
     questionCount: exam._count.questions,
