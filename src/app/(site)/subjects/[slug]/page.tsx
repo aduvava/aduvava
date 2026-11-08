@@ -64,11 +64,16 @@ export default async function SubjectPage({ params, searchParams }: SubjectPageP
           where: {
             isPublished: true,
             ownerId: null,
-            ...(requestedEducationLevel === "THPTQG"
-              ? { educationLevel: "THPTQG" as const }
-              : requestedEducationLevel
-                ? { OR: [{ educationLevel: requestedEducationLevel }, { educationLevel: null }] }
-                : {}),
+            AND: [
+              requestedEducationLevel === "THPTQG"
+                ? { educationLevel: "THPTQG" as const }
+                : requestedEducationLevel
+                  ? { OR: [{ educationLevel: requestedEducationLevel }, { educationLevel: null }] }
+                  : {},
+              // Old unclassified exams stay visible until Admin assigns a class.
+              // Corrected exams appear only under the selected class.
+              requestedGrade ? { OR: [{ grade: requestedGrade }, { grade: null }] } : {},
+            ],
           },
           include: {
             _count: { select: { questions: true, attempts: true } },
