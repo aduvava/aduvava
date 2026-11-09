@@ -6,9 +6,12 @@ import { readLimitedJson } from "@/lib/limited-json";
 import { parseAdminInput } from "@/lib/admin-input";
 import { createExamSchema } from "@/lib/exam-create-input";
 
+const importedQuestionSchema = createExamSchema.shape.questions.element.extend({
+  passage: z.string().trim().min(1).max(50000).optional(),
+});
 const importSchema = z.object({
   metadata: z.record(z.string(), z.unknown()),
-  questions: createExamSchema.shape.questions.min(1).max(2000),
+  questions: z.array(importedQuestionSchema).min(1).max(2000),
 }).strict();
 
 export async function POST(request: Request) {
@@ -56,6 +59,7 @@ export async function POST(request: Request) {
             position: question.position,
             type: "SINGLE_CHOICE" as const,
             prompt: question.prompt,
+            passage: question.passage || null,
             points: 1,
             explanation: question.explanation || null,
           })),
