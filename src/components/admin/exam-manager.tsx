@@ -352,12 +352,13 @@ export function ExamManager() {
                 <UploadCloud className="h-5 w-5" /> Tải file câu hỏi (không bắt buộc)
               </label>
               <input id="admin-exam-upload" type="file" accept=".txt,.csv,.tsv,.xlsx" className="mt-3 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-orange-500 file:px-3 file:py-2 file:font-bold file:text-white" onChange={(event) => { void uploadQuestions(event.target.files?.[0]); event.target.value = ""; }} />
-              <p className="mt-2 text-xs text-slate-500">Nhận TXT, CSV, TSV, Excel (XLSX), tối đa 5 MB. Mỗi câu cần 4 phương án A–D và cột/ dòng đáp án đúng. Không chọn file vẫn có thể tạo đề trống và thêm câu hỏi sau.</p>
+              <p className="mt-2 text-xs text-slate-500">Nhận TXT, CSV, TSV, Excel (XLSX), tối đa 5 MB. File thường: question, A, B, C, D, correct, explanation. File có bài đọc: tạo 2 sheet BAI_DOC (group_id, type, title, instruction, passage) và CAU_HOI (no, group_id, question, A, B, C, D, correct, explanation). Các câu có cùng group_id chỉ hiển thị chung một ngữ liệu. Vẫn hỗ trợ file đề cũ.</p>
               {selectedFileName ? <p className="mt-2 text-xs font-bold text-slate-700">{selectedFileName} · {parsingFile ? "Đang đọc..." : fileQuestions ? `${fileQuestions.length} câu hợp lệ` : "Chưa nhập thành công"}</p> : null}
               {fileQuestions?.length ? (
                 <div className="mt-3 rounded-lg bg-white p-3 text-xs text-slate-700">
                   <p className="font-black">Xem nhanh câu đầu: {fileQuestions[0].prompt}</p>
                   <p className="mt-1">Đáp án: {String.fromCharCode(65 + fileQuestions[0].correctIndex)}</p>
+                   {fileQuestions.some((question) => question.passage) ? <p className="mt-1 font-bold text-blue-700">Có ngữ liệu / bài đọc chung trong file.</p> : null}
                   <button type="button" onClick={() => { setFileQuestions(null); setSelectedFileName(""); }} className="mt-2 font-bold text-red-600">Bỏ file đã chọn</button>
                 </div>
               ) : null}
