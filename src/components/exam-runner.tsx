@@ -647,6 +647,36 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
           </div>
         </main>
 
+        {hasReadingPassages ? (
+          <aside className="hidden border-r border-blue-100 bg-slate-50 p-6 lg:order-first lg:sticky lg:top-[145px] lg:block lg:h-[calc(100vh-145px)] lg:overflow-y-auto" aria-label="Ngữ liệu tiếng Anh">
+            <p className="text-xs font-black uppercase tracking-wider text-orange-600">Reading / Ngữ liệu</p>
+            <h2 className="mt-2 text-xl font-black text-slate-900">Đọc và đối chiếu nội dung</h2>
+            {selectedPassage ? (
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-5 text-[15px] leading-8 text-slate-800">
+                <FormattedContent value={selectedPassage} />
+              </div>
+            ) : (
+              <p className="mt-4 rounded-xl border border-dashed border-slate-200 bg-white p-4 text-sm text-slate-600">
+                Câu hỏi hiện tại không có bài đọc. Chọn một câu đọc hiểu để hiển thị ngữ liệu chung tại đây.
+              </p>
+            )}
+            <p className="mt-4 text-xs font-semibold text-slate-500">Bài đọc và câu hỏi có thể cuộn độc lập.</p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              {questions.map((question, questionIndex) => (
+                <button key={question.id} type="button"
+                  className={clsx("min-h-9 min-w-9 rounded-lg border px-2 text-xs font-bold",
+                    index === questionIndex ? "border-orange-500 bg-orange-500 text-white" : answers[question.id] ? "border-blue-200 bg-blue-50 text-blue-800" : "border-slate-200 bg-white text-slate-600")}
+                  onClick={() => {
+                    setIndex(questionIndex);
+                    document.getElementById("question-" + question.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                  aria-label={"Đến câu " + (questionIndex + 1)}>
+                  {questionIndex + 1}
+                </button>
+              ))}
+            </div>
+          </aside>
+        ) : (
         <aside className="hidden border-l border-slate-200 bg-slate-50/70 p-5 lg:sticky lg:top-[145px] lg:block lg:h-[calc(100vh-145px)] lg:overflow-y-auto">
           <h2 className="text-lg font-black text-slate-900">Bảng điều hướng</h2>
           <div className="mt-3 flex flex-wrap gap-x-3 gap-y-2 text-xs font-semibold text-slate-500">
@@ -693,7 +723,20 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
             ))}
           </div>
         </aside>
+        )}
       </div>
+
+      {openedPassage ? (
+        <div className="fixed inset-0 z-[75] flex items-end justify-center bg-slate-950/70 p-3 lg:hidden" role="presentation" onClick={() => setOpenedPassage(null)}>
+          <section role="dialog" aria-modal="true" aria-label="Xem lại bài đọc" className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white" onClick={(event) => event.stopPropagation()}>
+            <header className="flex items-center justify-between border-b border-slate-200 p-4">
+              <h2 className="font-black text-slate-900">Bài đọc</h2>
+              <button type="button" className="rounded-xl border border-slate-200 p-2" aria-label="Đóng bài đọc" onClick={() => setOpenedPassage(null)}><X className="h-5 w-5" /></button>
+            </header>
+            <div className="overflow-y-auto p-5 text-[15px] leading-8 text-slate-800"><FormattedContent value={openedPassage} /></div>
+          </section>
+        </div>
+      ) : null}
 
       {confirmOpen ? (
         <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm" onMouseDown={() => setConfirmOpen(false)}>
