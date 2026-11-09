@@ -478,14 +478,14 @@ export function StudentDashboard({
         </div>
 
         <section id="mon-hoc" className="-mx-4 mt-6 scroll-mt-20 bg-[#fffdf0] px-4 py-6 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-          <div className="mx-auto grid max-w-[1180px] items-start gap-5 lg:grid-cols-[minmax(0,760px)_minmax(320px,360px)]">
+          <div className={clsx("mx-auto grid max-w-[1180px] items-start gap-5", !showingSpecialExams && "lg:grid-cols-[minmax(0,760px)_minmax(320px,360px)]")}>
             <div>
           <div className="grid grid-cols-2 gap-2 pb-2 sm:flex sm:justify-center sm:gap-3 sm:overflow-x-auto">
             {studyGroups.map((group) => {
               const active = group.id === activeGroup;
               return (
                 <button key={group.id} type="button" onClick={() => selectGroup(group)} className={clsx(
-                  "flex min-h-[44px] shrink-0 items-center justify-center rounded-full border px-5 py-2 text-center text-xs font-extrabold transition-all duration-200 lg:px-6",
+                  "flex min-h-[40px] shrink-0 items-center justify-center rounded-full border px-3 py-1.5 text-center text-xs font-extrabold transition-all duration-200 sm:min-h-[44px] sm:px-5 sm:py-2 lg:px-6",
                   active
                     ? "border-orange-500 bg-orange-500 text-white shadow-md shadow-orange-200"
                     : "border-slate-200 bg-white text-slate-700 hover:border-orange-200 hover:text-orange-600",
@@ -502,7 +502,7 @@ export function StudentDashboard({
                 type="button"
                 onClick={() => selectClass(className)}
                 className={clsx(
-                  "min-w-[74px] rounded-full border px-4 py-2 text-xs font-extrabold transition-all duration-200",
+                  "min-w-[70px] rounded-full border px-3 py-1.5 text-xs font-extrabold transition-all duration-200 sm:min-w-[74px] sm:px-4 sm:py-2",
                   activeClass === className
                     ? "border-blue-500 bg-blue-500 text-white shadow-md shadow-blue-200"
                     : "border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600",
@@ -514,16 +514,13 @@ export function StudentDashboard({
           </div>
           {showingSpecialExams ? (
             <div className="mx-auto mt-5 max-w-[690px]">
-              <p className="mb-4 text-center text-xs font-semibold leading-5 text-slate-500">
-                Chọn kỳ thi để xem đúng kho đề đã xuất bản. Các môn thi THPTQG được giữ ở tab bên cạnh.
-              </p>
               <nav aria-label="Các kỳ thi riêng" className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
                 {specialExamTracks.map((track) => (
                   <Link
                     key={track.id}
                     data-testid="special-exam-track"
                     href={`/exams/special/${track.slug}`}
-                    className="group flex min-h-[112px] flex-col items-center justify-center gap-3 rounded-[1.25rem] border border-orange-100 bg-white px-3 py-4 text-center shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 sm:min-h-[124px]"
+                    className="group flex min-h-[92px] flex-col items-center justify-center gap-1.5 rounded-[1.25rem] border border-orange-100 bg-white px-2 py-2 text-center shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 sm:min-h-[124px] sm:gap-3 sm:px-3 sm:py-4"
                   >
                     <span className="grid h-11 w-11 place-items-center rounded-2xl bg-blue-50 text-blue-600 transition group-hover:bg-blue-600 group-hover:text-white">
                       <GraduationCap className="h-6 w-6" aria-hidden="true" />
@@ -583,15 +580,7 @@ export function StudentDashboard({
             </p>
           ) : null}
             </div>
-            {showingSpecialExams ? (
-              <aside className="rounded-[1.5rem] border border-blue-100 bg-white p-5 shadow-sm">
-                <h2 className="text-lg font-black text-slate-900">Luyện đề theo kỳ thi riêng</h2>
-                <p className="mt-3 text-sm leading-7 text-slate-600">
-                  HSA, TSA, V-ACT, QDA, BQA và ĐGNL BCA có kho đề riêng, không trộn với môn học THPTQG.
-                  Chọn kỳ thi bên trái để xem danh sách đề thực tế.
-                </p>
-              </aside>
-            ) : <ExamCenter exams={exams} />}
+            {!showingSpecialExams ? <ExamCenter exams={exams} /> : null}
           </div>
         </section>
 
