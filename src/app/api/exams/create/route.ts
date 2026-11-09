@@ -87,6 +87,7 @@ export async function POST(request: Request) {
             position: question.position,
             type: "SINGLE_CHOICE" as const,
             prompt: question.prompt,
+            passage: question.passage || null,
             points: 1,
             explanation: question.explanation || null,
           })),

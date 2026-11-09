@@ -6,6 +6,7 @@ const questionSchema = z.object({
   options: z.array(z.string().trim().min(1).refine((value) => fitsExamRichField(value, 600), "Phương án quá dài hoặc ảnh vượt giới hạn")).min(2).max(6),
   correctIndex: z.number().int().min(0).max(5),
   explanation: z.string().trim().refine((value) => fitsExamRichField(value, 2000), "Lời giải quá dài hoặc ảnh vượt giới hạn").optional(),
+  passage: z.string().trim().refine((value) => fitsExamRichField(value, 50000), "Ngữ liệu quá dài hoặc ảnh vượt giới hạn").optional(),
 }).strict();
 
 export const createExamSchema = z.object({
