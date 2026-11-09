@@ -21,6 +21,8 @@ import { clsx } from "clsx";
 import { getNationalExamRule, getNationalQuestionCount } from "@/lib/national-exam-rules";
 import { RichContent as FormattedContent } from "@/components/rich-content";
 import { parseDelimited, rowsToObjects } from "@/lib/spreadsheet-import";
+import { parseAdminExamRows } from "@/lib/admin-exam-file-import";
+import { buildReadingExcelTemplate } from "@/lib/reading-template";
 
 type Subject = { id: string; name: string; slug: string; family: "THPTQG" | "DGNL" };
 type EducationLevel = "THCS" | "THPT" | "EXAM_10" | "THPTQG";
@@ -33,6 +35,7 @@ type DraftQuestion = {
   options: string[];
   correctIndex: number;
   explanation: string;
+  passage?: string;
 };
 type ImageTarget =
   | { questionId: string; field: "prompt" | "explanation" }
@@ -109,6 +112,7 @@ function newQuestion(prompt = ""): DraftQuestion {
     options: ["", "", "", ""],
     correctIndex: 0,
     explanation: "",
+    passage: "",
   };
 }
 
@@ -238,21 +242,37 @@ function parseQuestions(text: string): DraftQuestion[] {
 async function parseSpreadsheetFile(file: File): Promise<DraftQuestion[]> {
   if (file.size > 5 * 1024 * 1024) throw new Error("Spreadsheet file too large");
   const lowerName = file.name.toLowerCase();
-  const rawRows = lowerName.endsWith(".xlsx")
-    ? await (async () => {
-        const { readSheet } = await import("read-excel-file/browser");
-        return readSheet(file);
-      })()
-    : parseDelimited(await file.text(), lowerName.endsWith(".tsv") ? "\t" : ",");
+  let rawRows: readonly (readonly unknown[])[];
+  if (lowerName.endsWith(".xlsx")) {
+    const { default: readWorkbook } = await import("read-excel-file/browser");
+    const sheets = await readWorkbook(file);
+    const questionSheet = sheets.find((sheet) => normalizeKey(sheet.sheet) === "cauhoi");
+    const passageSheet = sheets.find((sheet) => normalizeKey(sheet.sheet) === "baidoc");
+    if (passageSheet) {
+      if (!questionSheet) throw new Error("File có BAI_DOC phải có thêm sheet CAU_HOI.");
+      return parseAdminExamRows(questionSheet.data, passageSheet.data).map((question) => ({
+        id: crypto.randomUUID(),
+        prompt: question.prompt,
+        passage: question.passage,
+        options: question.options,
+        correctIndex: question.correctIndex,
+        explanation: question.explanation,
+      }));
+    }
+    rawRows = questionSheet?.data ?? sheets[0].data;
+  } else {
+    rawRows = parseDelimited(await file.text(), lowerName.endsWith(".tsv") ? "\t" : ",");
+  }
   const rows = rowsToObjects(rawRows);
   return rows.flatMap((row) => {
     const prompt = getRowField(row, ["question", "prompt", "cau hoi", "câu hỏi", "noi dung cau hoi", "nội dung câu hỏi"]);
     const image = getRowField(row, ["image", "anh", "ảnh", "hinh anh", "hình ảnh", "url anh", "image url"]);
     const options = ["A", "B", "C", "D", "E", "F"]
-      .map((letter) => getRowField(row, [letter, `option ${letter}`, `phuong an ${letter}`, `phương án ${letter}`, `dap an ${letter}`, `đáp án ${letter}`]))
+      .map((letter) => getRowField(row, [letter, "option " + letter, "phuong an " + letter, "phương án " + letter, "dap an " + letter, "đáp án " + letter]))
       .filter(Boolean);
     const correct = getRowField(row, ["correct", "answer", "dap an dung", "đáp án đúng", "dap an", "đáp án"]);
     const explanation = getRowField(row, ["explanation", "solution", "giai thich", "giải thích", "loi giai", "lời giải"]);
+    const passage = getRowField(row, ["passage", "ngữ liệu", "đoạn văn"]);
 
     if (!prompt || options.length < 2) return [];
     return [{
@@ -261,6 +281,7 @@ async function parseSpreadsheetFile(file: File): Promise<DraftQuestion[]> {
       options,
       correctIndex: correctIndexFrom(correct || "A", options),
       explanation,
+      passage,
     }];
   });
 }
@@ -361,8 +382,8 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
         setQuestions(parsed);
         setQuestionsPage(1);
         setMessage(parsed.length ? `Đã nhập ${parsed.length} câu hỏi từ ${file.name}.` : "Excel cần có các cột question, A, B, C, D, correct.");
-      } catch {
-        setMessage("Không đọc được file Excel. Hãy tải file mẫu rồi điền theo đúng cột.");
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : "Không đọc được file Excel. Hãy tải file mẫu rồi điền theo đúng cột.");
       }
       return;
     }
@@ -438,6 +459,10 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
     downloadBlob(blob, "mau-tao-de-thi.xlsx");
   }
 
+  async function downloadReadingTemplate() {
+    downloadBlob(await buildReadingExcelTemplate(), "mau-de-tieng-anh-bai-doc.xlsx");
+  }
+
   async function saveExam() {
     setMessage(null);
     const validQuestions = questions.map((question) => ({
@@ -469,11 +494,12 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
           .split(/[\n,;]/)
           .map((email) => email.trim())
           .filter(Boolean),
-        questions: validQuestions.map(({ prompt, options, correctIndex, explanation }) => ({
+        questions: validQuestions.map(({ prompt, options, correctIndex, explanation, passage }) => ({
           prompt,
           options,
           correctIndex,
           explanation,
+          passage: passage?.trim() || undefined,
         })),
       }),
     });
@@ -492,6 +518,9 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
       </button>
       <button type="button" onClick={() => void downloadExcelTemplate()} className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2.5 text-sm font-black text-white">
         <FileSpreadsheet className="h-4 w-4" /> Mẫu Excel
+      </button>
+      <button type="button" onClick={() => void downloadReadingTemplate()} className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2.5 text-sm font-black text-white">
+        <FileSpreadsheet className="h-4 w-4" /> Mẫu Excel bài đọc
       </button>
     </div>
   );
@@ -663,7 +692,7 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h2 className="text-lg font-black text-slate-800">Nhập đề từ file</h2>
-                <p className="mt-1 text-sm text-slate-500">Excel dùng các cột: question, image, A, B, C, D, correct, explanation. Cột image chỉ nhận đường dẫn ảnh cùng website hoặc data:image PNG/JPEG/WebP/GIF dưới 250KB.</p>
+                <p className="mt-1 text-sm text-slate-500">Excel cũ: question, image, A, B, C, D, correct, explanation. Bài đọc hiểu: dùng mẫu Excel hai sheet BAI_DOC và CAU_HOI, liên kết bằng group_id. File cũ vẫn tương thích.</p>
               </div>
               {templateButtons}
             </div>
@@ -734,6 +763,10 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
                   </button>
                 </div>
                 <textarea value={question.prompt} onChange={(event) => updateQuestion(question.id, { prompt: event.target.value })} placeholder="Nhập nội dung câu hỏi. Ví dụ: Tính $C_M=\\frac{n}{V}$" className="mt-2 min-h-24 w-full rounded-2xl border border-slate-200 p-4 font-semibold outline-none focus:border-orange-400" />
+                <details className="mt-3 rounded-xl border border-blue-100 bg-blue-50/40 p-3">
+                  <summary className="cursor-pointer text-sm font-bold text-blue-700">Ngữ liệu / bài đọc dùng chung {question.passage ? "(đã có)" : "(tùy chọn)"}</summary>
+                  <textarea value={question.passage ?? ""} onChange={(event) => updateQuestion(question.id, { passage: event.target.value })} placeholder="Dán bài đọc hoặc nhập bằng file Excel BAI_DOC + CAU_HOI." className="mt-2 min-h-32 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm" />
+                </details>
                 {question.prompt ? (
                   <div className="mt-3 rounded-2xl bg-slate-50 p-4 text-sm font-semibold leading-7 text-slate-700">
                     <FormattedContent value={question.prompt} imageClassName="max-h-56" />
