@@ -52,7 +52,7 @@ function parseRichContent(value: string) {
  * Only text nodes are emitted: never treat imported markup as trusted HTML.
  */
 function formattedText(value: string) {
-  const token = /(\\*\\*[^*\\n]+\\*\\*|__[^_\\n]+__|<u>[^<\\n]+<\\/u>|\\*[^*\\n]+\\*|_[^_\\n]+_)/g;
+  const token = /(\*\*[^*\n]+\*\*|__[^_\n]+__|<u>[^<\n]+<\/u>|\*[^*\n]+\*|_[^_\n]+_)/g;
   return value.split(token).map((part, index) => {
     if (part.startsWith("**") && part.endsWith("**")) return <strong key={index}>{part.slice(2, -2)}</strong>;
     if (part.startsWith("__") && part.endsWith("__")) return <strong key={index}>{part.slice(2, -2)}</strong>;
