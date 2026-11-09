@@ -5,6 +5,7 @@ export type ImportedExamQuestion = {
   options: [string, string, string, string];
   correctIndex: number;
   explanation: string;
+  passage?: string;
 };
 
 const normalize = (value: string) => value.toLowerCase().normalize("NFD")
@@ -62,19 +63,55 @@ export function parseAdminExamText(text: string): ImportedExamQuestion[] {
   return results;
 }
 
-export function parseAdminExamRows(rows: readonly (readonly unknown[])[]): ImportedExamQuestion[] {
+
+/** Reads one passage per group, rather than requiring the same passage on every question row. */
+export function parseAdminExamRows(
+  rows: readonly (readonly unknown[])[],
+  passageRows?: readonly (readonly unknown[])[],
+): ImportedExamQuestion[] {
+  const passages = new Map<string, string>();
+  if (passageRows) {
+    const records = rowsToObjects(passageRows);
+    if (records.length > 100) throw new Error("Mỗi file chỉ hỗ trợ tối đa 100 nhóm ngữ liệu.");
+    for (const [index, row] of records.entries()) {
+      if (!Object.values(row).some((value) => String(value ?? "").trim())) continue;
+      const groupId = getField(row, ["group_id", "group id", "mã bài đọc", "ma bai doc"]).toUpperCase();
+      const content = getField(row, ["passage", "ngữ liệu", "noi dung bai doc", "nội dung bài đọc", "đoạn văn"]);
+      const title = getField(row, ["title", "tiêu đề", "tieu de"]);
+      const instruction = getField(row, ["instruction", "hướng dẫn", "yeu cau", "yêu cầu"]);
+      if (!groupId || !content) throw new Error("BAI_DOC dòng " + (index + 2) + ": cần group_id và passage.");
+      if (passages.has(groupId)) throw new Error("Trùng group_id trong BAI_DOC: " + groupId);
+      const reading = [title, instruction, content].filter(Boolean).join("\n\n");
+      if (reading.length > 50000) throw new Error("Bài đọc " + groupId + " vượt quá 50.000 ký tự.");
+      passages.set(groupId, reading);
+    }
+  }
   const records = rowsToObjects(rows);
   const results: ImportedExamQuestion[] = [];
+  const usedGroups = new Set<string>();
   for (const row of records) {
     if (!Object.values(row).some((value) => String(value ?? "").trim())) continue;
     const question = getField(row, ["question", "prompt", "câu hỏi", "noi dung cau hoi", "nội dung câu hỏi"]);
     const image = getField(row, ["image", "ảnh", "hình ảnh"]);
-    const options = ["A", "B", "C", "D"].map((letter) => getField(row, [letter, `option ${letter}`, `đáp án ${letter}`]));
+    const options = ["A", "B", "C", "D"].map((letter) => getField(row, [letter, "option " + letter, "đáp án " + letter]));
     const answer = getField(row, ["correct", "answer", "đáp án đúng", "đáp án"]);
     const explanation = getField(row, ["explanation", "giải thích", "lời giải"]);
-    results.push(makeQuestion(image ? `${question}\n![Minh họa](${image})` : question, options, answer, explanation, results.length + 1));
+    const groupId = getField(row, ["group_id", "group id", "mã bài đọc", "ma bai doc"]).toUpperCase();
+    const directPassage = getField(row, ["passage", "ngữ liệu", "đoạn văn"]);
+    if (groupId && !passages.has(groupId)) {
+      throw new Error("Câu " + (results.length + 1) + ": group_id " + groupId + " chưa có trong sheet BAI_DOC.");
+    }
+    if (groupId) usedGroups.add(groupId);
+    const item = makeQuestion(image ? question + "\n![Minh họa](" + image + ")" : question, options, answer, explanation, results.length + 1);
+    const passage = groupId ? passages.get(groupId) : directPassage;
+    if (passage) item.passage = passage;
+    results.push(item);
   }
   if (!results.length) throw new Error("File bảng tính không có câu hỏi. Cần cột question, A, B, C, D, correct.");
+  if (results.length > 2000) throw new Error("Chỉ nhập tối đa 2.000 câu mỗi lần.");
+  for (const groupId of passages.keys()) {
+    if (!usedGroups.has(groupId)) throw new Error("Nhóm " + groupId + " ở BAI_DOC chưa được câu hỏi nào sử dụng.");
+  }
   return results;
 }
 
@@ -86,8 +123,17 @@ export async function importAdminExamFile(file: File): Promise<ImportedExamQuest
     return parseAdminExamRows(parseDelimited(await file.text(), name.endsWith(".tsv") ? "\t" : ","));
   }
   if (name.endsWith(".xlsx")) {
-    const { readSheet } = await import("read-excel-file/browser");
-    return parseAdminExamRows(await readSheet(file));
+    const { default: readWorkbook } = await import("read-excel-file/browser");
+    const sheets = await readWorkbook(file);
+    const questionsSheet = sheets.find((sheet) => normalize(sheet.sheet) === "cauhoi");
+    const passagesSheet = sheets.find((sheet) => normalize(sheet.sheet) === "baidoc");
+    if (passagesSheet && !questionsSheet) {
+      throw new Error("File có sheet BAI_DOC thì phải có sheet CAU_HOI.");
+    }
+    return parseAdminExamRows(
+      questionsSheet?.data ?? sheets[0].data,
+      passagesSheet?.data,
+    );
   }
   throw new Error("Chỉ hỗ trợ tệp TXT, CSV, TSV hoặc XLSX.");
 }
