@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Pencil, Plus, RefreshCw, Search, Trash2, UploadCloud, X, BookOpenCheck } from "lucide-react";
 import Link from "next/link";
 import { importAdminExamFile, type ImportedExamQuestion } from "@/lib/admin-exam-file-import";
+import { buildReadingExcelTemplate } from "@/lib/reading-template";
 import { specialExamTracks, type SpecialExamTrack, getSpecialExamTrack } from "@/lib/special-exam-tracks";
 import { defaultGradeForExamLevel, gradesForExamLevel } from "@/lib/exam-grade";
 import { EXAM_CONTENT_MODES, type ExamContentMode, typeForContentMode } from "@/lib/exam-content-mode";
@@ -108,6 +109,21 @@ export function ExamManager() {
     setDraft(newDraft());
     setFileQuestions(null);
     setSelectedFileName("");
+  }
+  async function downloadReadingTemplate() {
+    try {
+      const blob = await buildReadingExcelTemplate();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "mau-de-tieng-anh-bai-doc.xlsx";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setMessage("Không tạo được file mẫu Excel.");
+    }
   }
   async function uploadQuestions(file?: File) {
     if (!file) return;
@@ -353,6 +369,9 @@ export function ExamManager() {
               </label>
               <input id="admin-exam-upload" type="file" accept=".txt,.csv,.tsv,.xlsx" className="mt-3 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-orange-500 file:px-3 file:py-2 file:font-bold file:text-white" onChange={(event) => { void uploadQuestions(event.target.files?.[0]); event.target.value = ""; }} />
               <p className="mt-2 text-xs text-slate-500">Nhận TXT, CSV, TSV, Excel (XLSX), tối đa 5 MB. File thường: question, A, B, C, D, correct, explanation. File có bài đọc: tạo 2 sheet BAI_DOC (group_id, type, title, instruction, passage) và CAU_HOI (no, group_id, question, A, B, C, D, correct, explanation). Các câu có cùng group_id chỉ hiển thị chung một ngữ liệu. Vẫn hỗ trợ file đề cũ.</p>
+              <button type="button" onClick={() => void downloadReadingTemplate()} className="mt-2 inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-white px-3 py-2 text-xs font-bold text-blue-700">
+                <UploadCloud className="h-4 w-4" /> Tải mẫu Excel bài đọc
+              </button>
               {selectedFileName ? <p className="mt-2 text-xs font-bold text-slate-700">{selectedFileName} · {parsingFile ? "Đang đọc..." : fileQuestions ? `${fileQuestions.length} câu hợp lệ` : "Chưa nhập thành công"}</p> : null}
               {fileQuestions?.length ? (
                 <div className="mt-3 rounded-lg bg-white p-3 text-xs text-slate-700">
