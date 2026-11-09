@@ -33,6 +33,34 @@ D. Tiêm phòng
     assert.equal(questions[0].correctIndex, 0);
   });
 
+  it("links multiple questions to one shared reading passage from two sheets", () => {
+    const passages = [
+      ["group_id", "type", "title", "instruction", "passage"],
+      ["RD01", "READING", "Reading 1", "Read the passage.", "Online platforms help students learn."],
+      ["CL01", "CLOZE", "Cloze 1", "Choose the correct word.", "Learning is (3) ____."],
+    ];
+    const questions = [
+      ["no", "group_id", "question", "A", "B", "C", "D", "correct", "explanation"],
+      [1, "RD01", "What helps students?", "Books", "Online platforms", "Games", "Sports", "B", ""],
+      [2, "RD01", "Who benefits?", "Students", "Parents", "Drivers", "Chefs", "A", ""],
+      [3, "CL01", "Which word fits blank 3?", "harmful", "useful", "late", "short", "B", ""],
+      [4, "", "She ___ to school.", "go", "goes", "gone", "going", "B", ""],
+    ];
+    const parsed = parseAdminExamRows(questions, passages);
+    assert.equal(parsed.length, 4);
+    assert.equal(parsed[0].passage, parsed[1].passage);
+    assert.match(parsed[0].passage ?? "", /Reading 1/);
+    assert.match(parsed[2].passage ?? "", /Cloze 1/);
+    assert.equal(parsed[3].passage, undefined);
+  });
+
+  it("rejects unknown and duplicate reading group IDs", () => {
+    const questions = [["question","group_id","A","B","C","D","correct"],["Why?","RD02","One","Two","Three","Four","A"]];
+    const passage = [["group_id","passage"],["RD01","Some passage"]];
+    assert.throws(() => parseAdminExamRows(questions, passage), /RD02/);
+    assert.throws(() => parseAdminExamRows(questions, [["group_id","passage"],["RD02","Text"],["RD02","Duplicate"]]), /Trùng group_id/);
+  });
+
   it("rejects missing answers or partially formed questions rather than silently dropping them", () => {
     assert.throws(() => parseAdminExamText("Câu 1: Thiếu đáp án?\nA. Một\nB. Hai\nC. Ba\nD. Bốn"), /Câu 1/);
     assert.throws(() => parseAdminExamRows([
