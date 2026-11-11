@@ -327,9 +327,9 @@ export function Storefront({
               const uploadedImage = storeItemImageFile(item.metadata);
               const availableFile = item.metadata?.downloadFile && typeof item.metadata.downloadFile === "object" && !Array.isArray(item.metadata.downloadFile)
                 ? item.metadata.downloadFile as Record<string, unknown> : null;
-              const downloadable = owned && typeof availableFile?.originalName === "string";
               const VisualIcon = visual.icon;
               const owned = ownedItemIds.has(item.id);
+              const downloadable = owned && typeof availableFile?.originalName === "string";
               const equippedId = getEquippedIdFor(item, equipped);
               const isEquippable = item.category === "AVATAR" || ["avatarFrame", "nameColor", "title", "submitEffect"].includes(getKind(item));
               const isEquipped = equippedId === item.id;
