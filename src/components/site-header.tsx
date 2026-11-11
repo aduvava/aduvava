@@ -7,6 +7,7 @@ import { ButtonLink } from "@/components/ui";
 import { MascotAvatar } from "@/components/mascot-avatar";
 import { HeaderAccountControls } from "@/components/header-account-controls";
 import { MobileSiteNavigation } from "@/components/mobile-site-navigation";
+import { storeItemImageFile } from "@/lib/store-image-url";
 
 const studentNav = [
   { href: "/exams", label: "Đề thi" },
@@ -35,6 +36,7 @@ export async function SiteHeader() {
         select: {
           role: true,
           exp: true,
+          equippedAvatarItem: { select: { metadata: true } },
           subscriptions: {
             where: { status: "ACTIVE", endsAt: { gt: new Date() } },
             orderBy: { endsAt: "desc" },
