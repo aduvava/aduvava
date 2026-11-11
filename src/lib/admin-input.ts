@@ -68,7 +68,7 @@ const schemas = {
     features: z.array(text(1000)).max(100), isActive: z.boolean(),
   }),
   "store-items": z.object({
-    slug: text(200), name: text(200), description: text(10000),
+    slug: z.string().trim().min(1).max(200), name: z.string().trim().min(1).max(200), description: text(10000),
     category: z.enum(["EQUIPMENT", "HELP", "STUDY_PACK", "GIFT", "AVATAR"]),
     price: positiveInt, currency: z.enum(["COIN", "EXP"]),
     imageKey: text(200), badge: optionalText(200),
@@ -107,6 +107,16 @@ export function parseAdminInput(resource: string, input: unknown, mode: Mode): R
     z.object({ status: z.literal("PENDING").optional() })
       .parse({ status: created.status });
     return created;
+  }
+  if (resource === "store-items" && mode === "create") {
+    // Creating a shop item needs its required fields. The old generic
+    // .partial() accepted missing values and Prisma surfaced a 500 instead
+    // of a useful 400 response.
+    return schemas["store-items"].extend({
+      metadata: schemas["store-items"].shape.metadata.optional(),
+      badge: schemas["store-items"].shape.badge.optional(),
+      stock: schemas["store-items"].shape.stock.optional(),
+    }).strict().parse(input);
   }
   const selected = schemas[resource as Resource];
   if (resource === "users") {
