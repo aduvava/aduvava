@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import { getDashboardImage } from "@/data/dashboard-images";
+import { getStoreImageUrl } from "@/lib/store-image-url";
 import { MascotAvatar } from "@/components/mascot-avatar";
 import { getDashboardSubjects, getSubjectCatalogSize } from "@/lib/dashboard-subjects";
 import { specialExamTracks } from "@/lib/special-exam-tracks";
@@ -61,6 +62,7 @@ type DashboardProps = {
   greeting: string;
   dashboardImageKey: string | null;
   dashboardImageName: string | null;
+  dashboardUploadedImage?: string | null;
   learningStreak: number;
   weekActivity: boolean[];
   continueLearning: { title: string; href: string };
@@ -249,8 +251,9 @@ const shopAvatarVisuals = {
   "animated-star": { gradient: "from-slate-950 via-violet-700 to-yellow-300", icon: Sparkles, color: "text-white" },
 } as const;
 
-function DashboardImageCard({ imageKey, imageName }: { imageKey: string | null; imageName: string | null }) {
+function DashboardImageCard({ imageKey, imageName, uploadedImage }: { imageKey: string | null; imageName: string | null; uploadedImage: string | null }) {
   const image = getDashboardImage(imageKey);
+  const imageSource = getStoreImageUrl(uploadedImage);
   const shopVisual = imageKey && imageKey in shopAvatarVisuals
     ? shopAvatarVisuals[imageKey as keyof typeof shopAvatarVisuals]
     : null;
@@ -264,7 +267,9 @@ function DashboardImageCard({ imageKey, imageName }: { imageKey: string | null; 
         title={imageKey ? "Đổi ảnh trong cửa hàng" : "Chọn ảnh trong cửa hàng"}
         className="grid h-full w-full place-items-center overflow-hidden rounded-[1.1rem] bg-orange-50/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
       >
-        {image ? (
+        {imageSource ? (
+          <img src={imageSource} alt={imageName ?? "Avatar đã trang bị"} className="block h-full w-full object-contain" />
+        ) : image ? (
           <img src={image.src} alt={image.alt} className="block h-full w-full object-contain" />
         ) : shopVisual && ShopIcon ? (
           <div className={clsx("grid h-full w-full place-items-center bg-gradient-to-br", shopVisual.gradient)}>
@@ -407,6 +412,7 @@ export function StudentDashboard({
   greeting,
   dashboardImageKey,
   dashboardImageName,
+  dashboardUploadedImage,
   learningStreak,
   weekActivity,
   continueLearning,
@@ -461,7 +467,7 @@ export function StudentDashboard({
     <div className="student-dashboard min-h-screen bg-orange-50/40 pb-20">
       <div className="mx-auto max-w-[1480px] px-4 py-7 sm:px-6 lg:px-8">
         <div className="grid w-full min-w-0 grid-cols-1 items-stretch gap-4 md:grid-cols-3">
-          <DashboardImageCard imageKey={dashboardImageKey} imageName={dashboardImageName} />
+          <DashboardImageCard imageKey={dashboardImageKey} imageName={dashboardImageName} uploadedImage={dashboardUploadedImage ?? null} />
           <section className="relative hidden h-[210px] min-w-0 overflow-hidden rounded-[1.5rem] border border-orange-100/80 bg-white p-4 shadow-[0_10px_22px_rgba(81,52,24,0.05)] sm:h-[190px] md:flex">
             <div className="absolute -right-14 -top-16 h-40 w-40 rounded-full bg-orange-100/60 blur-2xl" />
             <div className="relative flex min-w-0 flex-1 flex-col justify-center">
