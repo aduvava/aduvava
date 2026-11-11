@@ -76,6 +76,23 @@ describe("admin payload allowlists", () => {
     assert.throws(() => parseAdminInput("questions", { exam: { connect: { id: "other" } } }, "update"));
   });
 
+  it("validates required EXP shop fields before attempting to create a database row", () => {
+    assert.throws(() => parseAdminInput("store-items", {
+      name: "Avatar", slug: "avatar-test",
+    }, "create"));
+    assert.throws(() => parseAdminInput("store-items", {
+      name: "Avatar", slug: "",
+    }, "create"));
+    const payload = {
+      slug: "avatar-test", name: "Avatar test", description: "",
+      category: "AVATAR", price: 200, currency: "EXP",
+      imageKey: "orange", badge: null, isFeatured: false,
+      isConsumable: false, isActive: true, stock: null,
+      sortOrder: 10, metadata: null,
+    };
+    assert.deepEqual(parseAdminInput("store-items", payload, "create"), payload);
+  });
+
   it("rejects empty or unknown update inputs", () => {
     assert.throws(() => parseAdminInput("questions", {}, "update"));
     assert.throws(() => parseAdminInput("unknown", {}, "update"));
