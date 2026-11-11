@@ -62,7 +62,17 @@ export default async function StorePage() {
         isFeatured: item.isFeatured,
         isConsumable: item.isConsumable,
         stock: item.stock,
-        metadata: item.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata) ? item.metadata as Record<string, unknown> : null,
+        metadata: item.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata)
+          ? (() => {
+              const data = item.metadata as Record<string, unknown>;
+              // Never expose private document paths to the storefront browser.
+              const downloadFile = data.downloadFile;
+              const safeDocument = downloadFile && typeof downloadFile === "object" && !Array.isArray(downloadFile)
+                ? { originalName: String((downloadFile as Record<string, unknown>).originalName ?? "Tài liệu") }
+                : undefined;
+              return { ...data, downloadFile: safeDocument };
+            })()
+          : null,
       }))}
       initialOwnedItemIds={Array.from(new Set(purchases.map((purchase) => purchase.itemId)))}
       initialInventory={inventory}
