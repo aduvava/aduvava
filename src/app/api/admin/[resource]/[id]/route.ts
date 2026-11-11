@@ -6,6 +6,7 @@ import { isValidExamGrade } from "@/lib/exam-grade";
 import { typeForContentMode } from "@/lib/exam-content-mode";
 import { Prisma } from "@prisma/client";
 import { parseAdminInput } from "@/lib/admin-input";
+import { storeItemWriteData } from "@/lib/store-item-write";
 import { validateOfficialNationalExam } from "@/lib/official-exam-publication";
 import { transitionManualPayment } from "@/lib/payment-transition";
 import { handleRouteError, HttpError, jsonOk, readJson, requireAdmin } from "@/lib/api";
@@ -133,7 +134,7 @@ async function updateResource(resource: string, id: string, body: Record<string,
     case "plans":
       return prisma.plan.update({ where: { id }, data: body as never });
     case "store-items":
-      return prisma.storeItem.update({ where: { id }, data: body as never });
+      return prisma.storeItem.update({ where: { id }, data: storeItemWriteData(body) as never });
     case "theory-chapters": {
       if (body.grade !== undefined || body.educationLevel !== undefined) {
         const current = await prisma.theoryChapter.findUnique({ where: { id }, select: { grade: true, educationLevel: true } });
@@ -276,6 +277,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ reso
     const item = await updateResource(resource, id, body);
     return jsonOk({ item });
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return handleRouteError(new HttpError(409, "Đường dẫn (slug) đã tồn tại. Hãy chọn một mã vật phẩm khác."));
+    }
     return handleRouteError(error);
   }
 }
