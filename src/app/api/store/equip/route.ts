@@ -30,12 +30,15 @@ export async function POST(request: Request) {
       where: {
         userId: user.id,
         itemId,
-        item: { category: { in: ["AVATAR", "EQUIPMENT"] }, isActive: true, isConsumable: false },
+        item: { category: { in: ["AVATAR", "EQUIPMENT"] }, isConsumable: false },
       },
       include: { item: true },
     });
 
     if (!purchase) throw new HttpError(403, "Bạn cần sở hữu vật phẩm này trước khi sử dụng.");
+
+    // Once purchased, a non-consumable cosmetic remains usable even if the
+    // shop later stops selling it. Only new purchases require isActive=true.
 
     const data = equipDataFor(itemId, purchase.item.category, purchase.item.metadata);
     if (!data) throw new HttpError(400, "Vật phẩm này chưa hỗ trợ trang bị.");
