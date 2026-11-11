@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   BookOpen,
   Check,
@@ -10,6 +11,7 @@ import {
   History,
   Image as ImageIcon,
   Palette,
+  PackageCheck,
   Shield,
   ShoppingBag,
   Sparkles,
@@ -260,7 +262,7 @@ export function Storefront({
       note: `Mua ${item.name}`,
       createdAt: new Date().toISOString(),
     }, ...current]);
-    notify(data.equippedItemId ? `Đã mua và trang bị ${item.name}.` : `Đã mua ${item.name}.`);
+    notify(data.equippedItemId ? `Đã mua và trang bị ${item.name}. Xem trong Kho đồ của tôi.` : `Đã mua ${item.name}. Xem trong Kho đồ của tôi.`);
   }
 
   async function equip(item: StoreItem) {
@@ -291,7 +293,10 @@ export function Storefront({
               <p className="mt-1 text-sm font-semibold text-slate-500">Dùng EXP để mở khóa giao diện, trợ giúp, nội dung học tập và quà đổi thưởng.</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <Link href="/kho-do" className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-orange-200 bg-orange-500 px-4 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-orange-600">
+              <PackageCheck className="h-5 w-5" /> Kho đồ của tôi ({ownedItemIds.size})
+            </Link>
             <span className="inline-flex items-center gap-2 rounded-2xl bg-orange-50 px-4 py-3 text-sm font-black text-orange-600">
               <Gem className="h-5 w-5 fill-orange-400" /> {coin.toLocaleString("vi-VN")} COIN
             </span>
