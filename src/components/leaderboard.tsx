@@ -62,6 +62,7 @@ type StudentCosmetics = {
   nameColorClass?: string | null;
   title?: string | null;
   avatarStyle?: string | null;
+  avatarImage?: string | null;
   avatarInitials?: string | null;
   animatedAvatar?: boolean;
 };
@@ -139,11 +140,12 @@ function Avatar({
   const avatarText = student.cosmetics?.avatarInitials || initials(student.name);
   const animatedClass = student.cosmetics?.animatedAvatar ? "animate-pulse" : "";
 
-  if (student.image) {
+  const avatarImage = student.cosmetics?.avatarImage ?? student.image;
+  if (avatarImage) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={student.image}
+        src={avatarImage}
         alt=""
         className={clsx(sizes[size], "shrink-0 rounded-full object-cover", frameClass, animatedClass)}
       />
