@@ -36,7 +36,7 @@ export async function SiteHeader() {
         select: {
           role: true,
           exp: true,
-          equippedAvatarItem: { select: { metadata: true } },
+          equippedAvatarItemId: true,
           subscriptions: {
             where: { status: "ACTIVE", endsAt: { gt: new Date() } },
             orderBy: { endsAt: "desc" },
@@ -47,6 +47,11 @@ export async function SiteHeader() {
         },
       })
     : null;
+
+  const avatarItem = account?.equippedAvatarItemId
+    ? await prisma.storeItem.findUnique({ where: { id: account.equippedAvatarItemId }, select: { metadata: true } })
+    : null;
+  const avatarImage = storeItemImageFile(avatarItem?.metadata);
 
   const initials =
     session?.user?.name
@@ -187,7 +192,7 @@ export async function SiteHeader() {
             user={{
               name: session.user.name ?? "Tài khoản Educhi",
               email: session.user.email ?? "",
-              image: session.user.image ?? null,
+              image: avatarImage ?? session.user.image ?? null,
               initials,
             }}
           />
