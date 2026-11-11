@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { signOut } from "next-auth/react";
-import { Crown, Gem, GraduationCap, History, LogOut, School, UserRound, X } from "lucide-react";
+import { Crown, Gem, GraduationCap, History, LogOut, PackageCheck, School, UserRound, X } from "lucide-react";
 
 type HeaderAccountControlsProps = {
   initialExp: number;
@@ -174,6 +174,9 @@ export function HeaderAccountControls({ initialExp, vipDaysLeft, activeRole, can
               <button type="button" onClick={openProfile} className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-extrabold text-slate-700 transition hover:bg-orange-50 hover:text-orange-600">
                 <UserRound className="h-5 w-5" /> Thông tin cá nhân
               </button>
+              <a href="/kho-do" className="flex w-full items-center gap-3 rounded-2xl bg-orange-50 px-4 py-3 text-sm font-extrabold text-orange-700 transition hover:bg-orange-100">
+                <PackageCheck className="h-5 w-5" /> Kho đồ của tôi
+              </a>
               <button type="button" onClick={openPlans} className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-extrabold text-orange-600 transition hover:bg-orange-50">
                 <Crown className="h-5 w-5" /> Nâng cấp VIP
               </button>
