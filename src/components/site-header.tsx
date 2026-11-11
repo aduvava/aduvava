@@ -7,6 +7,7 @@ import { ButtonLink } from "@/components/ui";
 import { MascotAvatar } from "@/components/mascot-avatar";
 import { HeaderAccountControls } from "@/components/header-account-controls";
 import { MobileSiteNavigation } from "@/components/mobile-site-navigation";
+import { storeItemImageFile } from "@/lib/store-image-url";
 
 const studentNav = [
   { href: "/exams", label: "Đề thi" },
@@ -35,6 +36,7 @@ export async function SiteHeader() {
         select: {
           role: true,
           exp: true,
+          equippedAvatarItemId: true,
           subscriptions: {
             where: { status: "ACTIVE", endsAt: { gt: new Date() } },
             orderBy: { endsAt: "desc" },
@@ -45,6 +47,11 @@ export async function SiteHeader() {
         },
       })
     : null;
+
+  const avatarItem = account?.equippedAvatarItemId
+    ? await prisma.storeItem.findUnique({ where: { id: account.equippedAvatarItemId }, select: { metadata: true } })
+    : null;
+  const avatarImage = storeItemImageFile(avatarItem?.metadata);
 
   const initials =
     session?.user?.name
@@ -185,7 +192,7 @@ export async function SiteHeader() {
             user={{
               name: session.user.name ?? "Tài khoản Educhi",
               email: session.user.email ?? "",
-              image: session.user.image ?? null,
+              image: avatarImage ?? session.user.image ?? null,
               initials,
             }}
           />

@@ -20,6 +20,7 @@ import {
   Zap,
 } from "lucide-react";
 import { clsx } from "clsx";
+import { storeItemImageFile } from "@/lib/store-image-url";
 
 type Category = "EQUIPMENT" | "HELP" | "STUDY_PACK" | "GIFT" | "AVATAR";
 type Currency = "COIN" | "EXP";
@@ -323,8 +324,12 @@ export function Storefront({
           <div className="mt-6 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
             {filteredItems.map((item) => {
               const visual = visualStyles[item.imageKey] ?? visualStyles.orange;
+              const uploadedImage = storeItemImageFile(item.metadata);
+              const availableFile = item.metadata?.downloadFile && typeof item.metadata.downloadFile === "object" && !Array.isArray(item.metadata.downloadFile)
+                ? item.metadata.downloadFile as Record<string, unknown> : null;
               const VisualIcon = visual.icon;
               const owned = ownedItemIds.has(item.id);
+              const downloadable = owned && typeof availableFile?.originalName === "string";
               const equippedId = getEquippedIdFor(item, equipped);
               const isEquippable = item.category === "AVATAR" || ["avatarFrame", "nameColor", "title", "submitEffect"].includes(getKind(item));
               const isEquipped = equippedId === item.id;
@@ -335,7 +340,11 @@ export function Storefront({
                 <article key={item.id} className="w-full overflow-hidden rounded-[1.75rem] border border-orange-100 bg-white p-5 shadow-[0_10px_24px_rgba(72,48,26,.06)]">
                   <div className={clsx("relative grid aspect-[4/3] place-items-center overflow-hidden rounded-[1.25rem] bg-gradient-to-br", visual.gradient)}>
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(255,255,255,.55),transparent_28%)]" />
-                    <VisualIcon className={clsx("relative h-16 w-16 drop-shadow-xl", visual.text)} strokeWidth={1.4} />
+                    {uploadedImage ? (
+                      <img src={uploadedImage} alt={item.name} className="absolute inset-0 h-full w-full object-contain p-3" />
+                    ) : (
+                      <VisualIcon className={clsx("relative h-16 w-16 drop-shadow-xl", visual.text)} strokeWidth={1.4} />
+                    )}
                     {item.badge ? <span className="absolute left-0 top-0 rounded-br-2xl bg-orange-500 px-4 py-2 text-[10px] font-black uppercase text-white">{item.badge}</span> : null}
                     {isEquipped ? <span className="absolute right-3 top-3 rounded-full bg-emerald-500 px-3 py-1.5 text-[10px] font-black uppercase text-white shadow-lg">Đang dùng</span> : null}
                     {count && item.isConsumable ? <span className="absolute bottom-3 right-3 rounded-full bg-slate-950 px-3 py-1.5 text-[10px] font-black uppercase text-white">Có {count}</span> : null}
@@ -345,6 +354,11 @@ export function Storefront({
                     <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase text-slate-500">{slotName(item)}</span>
                   </div>
                   <p className="mt-2 min-h-12 text-sm leading-6 text-slate-400">{item.description}</p>
+                  {downloadable ? (
+                    <a href={`/api/store/items/${item.id}/download`} className="mt-3 inline-flex rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-black text-blue-700 hover:bg-blue-100">
+                      Tải tài liệu: {String(availableFile!.originalName)}
+                    </a>
+                  ) : null}
                   <div className="mt-5 flex items-center justify-between gap-4">
                     <PriceAmount amount={item.price} currency={item.currency} />
                     {owned && isEquippable && !item.isConsumable ? (

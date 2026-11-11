@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { Crown, Pencil, RefreshCw, Search, Trash2, X } from "lucide-react";
+import { Crown, Pencil, RefreshCw, Search, Trash2, UploadCloud, X } from "lucide-react";
+import { getStoreImageUrl } from "@/lib/store-image-url";
 
 type Resource = "subjects" | "store-items" | "users";
 type FieldKind = "text" | "textarea" | "number" | "select" | "checkbox" | "password" | "email";
@@ -10,6 +11,16 @@ type Item = { id: string; name?: string | null; email?: string; role?: string; s
   subscriptions?: Array<{ id: string; endsAt: string; startsAt: string; plan: { name: string } }>;
   isActive?: boolean; metadata?: unknown; _count?: { exams?: number; topics?: number; theoryChapters?: number; theoryArticles?: number; purchases?: number } } & Record<string, unknown>;
 type FormValues = Record<string, string | boolean>;
+type StoreUploadedFile = { storedName: string; originalName: string; mimeType: string; fileSize: number };
+function storeFileFromMetadata(metadata: unknown): StoreUploadedFile | null {
+  if (!isObject(metadata)) return null;
+  const file = metadata.downloadFile;
+  if (!isObject(file) || typeof file.storedName !== "string" ||
+      !/^store-file-[0-9a-f]{32}\.(?:pdf|docx|pptx)$/.test(file.storedName) ||
+      typeof file.originalName !== "string" || typeof file.mimeType !== "string" ||
+      typeof file.fileSize !== "number") return null;
+  return { storedName: file.storedName, originalName: file.originalName, mimeType: file.mimeType, fileSize: file.fileSize };
+}
 type VipPlan = { id: string; name: string; interval: "MONTH" | "QUARTER" | "YEAR"; isActive: boolean };
 
 const families: [string, string][] = [["THPTQG", "Học tập và thi THPT"], ["DGNL", "Đánh giá năng lực"]];
@@ -31,7 +42,7 @@ const fields: Record<Resource, FieldDef[]> = {
     { key: "category", title: "Danh mục", kind: "select", options: categories },
     { key: "price", title: "Giá", kind: "number", required: true },
     { key: "currency", title: "Đơn vị", kind: "select", options: [["EXP", "EXP"], ["COIN", "Coin"]] },
-    { key: "imageKey", title: "Mã màu / hình vật phẩm", kind: "text", max: 200, tip: "Ví dụ: orange, blue, purple. Đang dùng mã hình của cửa hàng." },
+    { key: "imageKey", title: "Mã màu / biểu tượng dự phòng", kind: "text", max: 200, tip: "Chỉ sử dụng khi vật phẩm không có ảnh tải lên. Ví dụ: orange, blue, detective." },
     { key: "badge", title: "Nhãn (không bắt buộc)", kind: "text", max: 200, tip: "Ví dụ: MỚI, HOT" },
     { key: "stock", title: "Tồn kho (để trống là không giới hạn)", kind: "number" },
     { key: "sortOrder", title: "Thứ tự hiển thị", kind: "number" },
@@ -84,6 +95,8 @@ export function AdminCatalogManager({ resource }: { resource: Resource }) {
   const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [imageFile, setImageFile] = useState<string | null>(null);
+  const [downloadFile, setDownloadFile] = useState<StoreUploadedFile | null>(null);
   const [vipPlans, setVipPlans] = useState<VipPlan[]>([]);
   const [vipTarget, setVipTarget] = useState<Item | null>(null);
   const [vipPlanId, setVipPlanId] = useState("");
@@ -163,6 +176,32 @@ export function AdminCatalogManager({ resource }: { resource: Resource }) {
     } finally { setBusy(false); }
   }
 
+  async function uploadStoreAsset(file: File, kind: "image" | "file") {
+    if (resource !== "store-items") return;
+    const limit = kind === "image" ? 5 * 1024 * 1024 : 15 * 1024 * 1024;
+    if (!file.size || file.size > limit) {
+      setMessage(kind === "image" ? "Ảnh không vượt quá 5 MB." : "Tài liệu không vượt quá 15 MB.");
+      return;
+    }
+    setBusy(true);
+    setMessage(kind === "image" ? "Đang tải ảnh vật phẩm..." : "Đang tải tài liệu...");
+    try {
+      const body = new FormData();
+      body.append("kind", kind);
+      body.append("file", file);
+      const response = await fetch("/api/admin/store-assets", { method: "POST", body });
+      if (!response.ok) throw new Error(await responseError(response));
+      const data = await response.json() as { asset: StoreUploadedFile };
+      if (kind === "image") setImageFile(data.asset.storedName);
+      else setDownloadFile(data.asset);
+      setMessage("Đã tải tệp thành công. Nhấn Lưu để gắn tệp vào vật phẩm.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Tải tệp thất bại.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function setField(key: string, value: string | boolean) {
     setValues((current) => ({ ...current, [key]: value }));
   }
@@ -170,6 +209,8 @@ export function AdminCatalogManager({ resource }: { resource: Resource }) {
   function reset() {
     setValues({ ...defaults[resource] });
     setEditing(null);
+    setImageFile(null);
+    setDownloadFile(null);
   }
 
   function edit(item: Item) {
@@ -185,6 +226,9 @@ export function AdminCatalogManager({ resource }: { resource: Resource }) {
       }
     }
     setValues(next); setEditing(item);
+    setImageFile(isObject(item.metadata) && typeof item.metadata.imageFile === "string" &&
+      getStoreImageUrl(item.metadata.imageFile) ? item.metadata.imageFile : null);
+    setDownloadFile(storeFileFromMetadata(item.metadata));
     setMessage("Đang chỉnh sửa: " + (item.name ?? item.email ?? item.id));
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -212,11 +256,15 @@ export function AdminCatalogManager({ resource }: { resource: Resource }) {
       else payload[field.key] = String(value ?? "").trim();
     }
     if (resource === "store-items") {
+      const previous = editing && isObject(editing.metadata) ? editing.metadata : {};
+      const metadata: Record<string, unknown> = { ...previous };
       const kind = String(values.effectKind ?? "");
-      if (kind) {
-        const previous = editing && isObject(editing.metadata) ? editing.metadata : {};
-        payload.metadata = { ...previous, kind };
-      }
+      if (kind) metadata.kind = kind;
+      if (imageFile) metadata.imageFile = imageFile;
+      else delete metadata.imageFile;
+      if (downloadFile) metadata.downloadFile = downloadFile;
+      else delete metadata.downloadFile;
+      payload.metadata = Object.keys(metadata).length ? metadata : null;
     }
     return payload;
   }
@@ -318,6 +366,42 @@ export function AdminCatalogManager({ resource }: { resource: Resource }) {
               )}
             </label>
           ))}
+          {resource === "store-items" ? (
+            <div className="grid gap-4 rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
+              <div className="space-y-2">
+                <label htmlFor="store-avatar-upload" className="flex items-center gap-2 text-sm font-black text-slate-800">
+                  <UploadCloud className="h-4 w-4 text-blue-600" /> Tải ảnh avatar / ảnh vật phẩm
+                </label>
+                <input id="store-avatar-upload" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,image/png,image/jpeg,image/webp,image/gif" disabled={busy}
+                  className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-600 file:px-3 file:py-2 file:font-bold file:text-white"
+                  onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadStoreAsset(file, "image"); event.target.value = ""; }} />
+                <p className="text-xs text-slate-500">Ảnh PNG, JPG, WebP hoặc GIF; tối đa 5 MB. Ảnh được hiển thị trong cửa hàng và ở nơi trang bị avatar.</p>
+                {imageFile && getStoreImageUrl(imageFile) ? (
+                  <div className="flex items-center gap-3 rounded-xl bg-white p-3">
+                    <img src={getStoreImageUrl(imageFile)!} alt="Ảnh vật phẩm được tải lên" className="h-20 w-20 rounded-xl border border-slate-200 object-contain" />
+                    <button type="button" disabled={busy} onClick={() => setImageFile(null)}
+                      className="rounded-xl border border-red-100 px-3 py-2 text-xs font-bold text-red-600">Bỏ ảnh khỏi vật phẩm</button>
+                  </div>
+                ) : null}
+              </div>
+              <div className="space-y-2 border-t border-blue-100 pt-4">
+                <label htmlFor="store-file-upload" className="flex items-center gap-2 text-sm font-black text-slate-800">
+                  <UploadCloud className="h-4 w-4 text-blue-600" /> Tải tệp tài liệu cho vật phẩm
+                </label>
+                <input id="store-file-upload" type="file" accept=".pdf,.docx,.pptx,application/pdf" disabled={busy}
+                  className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-600 file:px-3 file:py-2 file:font-bold file:text-white"
+                  onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadStoreAsset(file, "file"); event.target.value = ""; }} />
+                <p className="text-xs text-slate-500">PDF, DOCX hoặc PPTX; tối đa 15 MB. Chỉ người đã mua vật phẩm mới tải được tệp này.</p>
+                {downloadFile ? (
+                  <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white p-3 text-xs font-bold text-slate-700">
+                    <span className="min-w-0 flex-1 break-all">{downloadFile.originalName} · {(downloadFile.fileSize / 1024 / 1024).toFixed(2)} MB</span>
+                    {editing ? <a href={`/api/store/items/${editing.id}/download`} className="rounded-lg bg-blue-50 px-2 py-1.5 text-blue-700">Tải thử file đã lưu</a> : null}
+                    <button type="button" disabled={busy} onClick={() => setDownloadFile(null)} className="rounded-lg bg-red-50 px-2 py-1.5 text-red-600">Bỏ file</button>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
           {resource === "users" && editing ? (
             <p className="rounded-xl bg-blue-50 p-3 text-xs font-semibold text-blue-800">Chỉnh tên, email hoặc vai trò không làm mất dữ liệu học tập. Mật khẩu và số dư EXP/Coin không được thay đổi ở đây.</p>
           ) : null}
@@ -341,6 +425,9 @@ export function AdminCatalogManager({ resource }: { resource: Resource }) {
           {items.map((item) => (
             <article key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
+                {resource === "store-items" && isObject(item.metadata) && getStoreImageUrl(item.metadata.imageFile) ? (
+                  <img src={getStoreImageUrl(item.metadata.imageFile)!} alt="" className="h-14 w-14 shrink-0 rounded-xl border border-slate-200 bg-white object-contain" />
+                ) : null}
                 <div className="min-w-0 flex-1">
                   <h3 className="break-words font-black text-slate-950">{item.name || item.email || "Chưa đặt tên"}</h3>
                   {resource === "users" ? (

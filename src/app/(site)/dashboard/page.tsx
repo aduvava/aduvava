@@ -47,7 +47,7 @@ export default async function DashboardPage() {
           category: "AVATAR",
           isActive: true,
         },
-        select: { imageKey: true, name: true },
+        select: { imageKey: true, name: true, metadata: true },
       })
     : null;
 
@@ -176,6 +176,8 @@ export default async function DashboardPage() {
       firstName={firstName}
       greeting={greeting}
       dashboardImageKey={equippedDashboardImage?.imageKey ?? null}
+      dashboardUploadedImage={equippedDashboardImage?.metadata && typeof equippedDashboardImage.metadata === "object" && !Array.isArray(equippedDashboardImage.metadata)
+        ? String((equippedDashboardImage.metadata as Record<string, unknown>).imageFile ?? "") : null}
       dashboardImageName={equippedDashboardImage?.name ?? null}
       learningStreak={learningStreak}
       weekActivity={weekActivity}
