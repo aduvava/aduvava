@@ -262,9 +262,9 @@ function DashboardImageCard({ imageKey, imageName, uploadedImage }: { imageKey: 
   return (
     <section className="h-[210px] min-w-0 w-full overflow-hidden rounded-[1.5rem] border border-orange-100/80 bg-white p-4 shadow-[0_10px_22px_rgba(81,52,24,0.05)] sm:h-[190px]">
       <Link
-        href="/dich-vu"
-        aria-label={imageKey ? `Đổi ảnh đang dùng: ${imageName ?? "Ảnh đã trang bị"}` : "Chọn ảnh trong cửa hàng"}
-        title={imageKey ? "Đổi ảnh trong cửa hàng" : "Chọn ảnh trong cửa hàng"}
+        href="/kho-do"
+        aria-label={imageKey ? `Đổi ảnh đang dùng: ${imageName ?? "Ảnh đã trang bị"}` : "Mở kho đồ và chọn avatar"}
+        title={imageKey ? "Đổi ảnh trong kho đồ" : "Chọn avatar trong kho đồ"}
         className="grid h-full w-full place-items-center overflow-hidden rounded-[1.1rem] bg-orange-50/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
       >
         {imageSource ? (
