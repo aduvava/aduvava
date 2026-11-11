@@ -45,7 +45,7 @@ export default async function DashboardPage() {
         where: {
           id: selectedImageId,
           category: "AVATAR",
-          isActive: true,
+          // Bought avatars remain usable after the shop stops selling them.
         },
         select: { imageKey: true, name: true, metadata: true },
       })
