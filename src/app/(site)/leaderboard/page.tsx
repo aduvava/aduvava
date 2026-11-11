@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Leaderboard } from "@/components/leaderboard";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { storeItemImageFile } from "@/lib/store-image-url";
 
 export const metadata: Metadata = {
   title: "Bảng xếp hạng | Educhi",
@@ -81,6 +82,7 @@ export default async function LeaderboardPage() {
       nameColorClass: typeof color?.colorClass === "string" ? color.colorClass : null,
       title: typeof title?.title === "string" ? title.title : null,
       avatarStyle: typeof avatar?.avatarStyle === "string" ? avatar.avatarStyle : null,
+      avatarImage: storeItemImageFile(avatar),
       avatarInitials: typeof avatar?.initials === "string" ? avatar.initials : null,
       animatedAvatar: avatar?.animated === true,
     };
