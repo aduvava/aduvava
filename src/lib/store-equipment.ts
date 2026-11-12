@@ -1,5 +1,5 @@
 export const EQUIPMENT_SLOT_FIELDS = {
-  avatar: "equippedAvatarItemId",
+  avatar: "equippedDashboardImageId",
   avatarFrame: "equippedAvatarFrameId",
   nameColor: "equippedNameColorId",
   title: "equippedTitleId",
@@ -9,7 +9,7 @@ export const EQUIPMENT_SLOT_FIELDS = {
 export type EquipmentSlot = keyof typeof EQUIPMENT_SLOT_FIELDS;
 
 export const EQUIPMENT_SLOT_LABELS: Record<EquipmentSlot, string> = {
-  avatar: "Ảnh đại diện",
+  avatar: "Ảnh trang chủ",
   avatarFrame: "Khung avatar",
   nameColor: "Màu tên",
   title: "Danh hiệu",
