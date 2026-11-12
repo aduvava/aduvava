@@ -254,31 +254,37 @@ const shopAvatarVisuals = {
 function DashboardImageCard({ imageKey, imageName, uploadedImage }: { imageKey: string | null; imageName: string | null; uploadedImage: string | null }) {
   const image = getDashboardImage(imageKey);
   const imageSource = getStoreImageUrl(uploadedImage);
+  const displayImage = imageSource ?? image?.src ?? null;
   const shopVisual = imageKey && imageKey in shopAvatarVisuals
     ? shopAvatarVisuals[imageKey as keyof typeof shopAvatarVisuals]
     : null;
   const ShopIcon = shopVisual?.icon;
 
   return (
-    <section className="h-[230px] min-w-0 w-full overflow-hidden rounded-[1.5rem] border border-orange-100/80 bg-white p-3 shadow-[0_10px_22px_rgba(81,52,24,0.05)] sm:h-[210px] md:h-[190px] md:p-4">
+    <section className="h-[230px] min-w-0 w-full overflow-hidden rounded-[1.5rem] border border-orange-100/80 bg-white shadow-[0_10px_22px_rgba(81,52,24,0.05)] sm:h-[210px] md:h-[190px]">
       <Link
         href="/kho-do"
         aria-label={imageKey ? `Đổi ảnh lớn trang chủ: ${imageName ?? "Ảnh đang dùng"}` : "Mở kho đồ và chọn ảnh trang chủ"}
         title={imageKey ? "Đổi ảnh lớn trong kho đồ" : "Chọn ảnh trang chủ trong kho đồ"}
-        className="relative flex h-full w-full min-h-0 min-w-0 items-center justify-center overflow-hidden rounded-[1.1rem] bg-orange-50/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
+        className="relative flex h-full w-full min-h-0 min-w-0 items-center justify-center overflow-hidden rounded-[1.4rem] bg-orange-50/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
       >
-        {imageSource ? (
-          <img
-            src={imageSource}
-            alt={imageName ?? "Ảnh trang chủ đã trang bị"}
-            className="absolute inset-0 block h-full w-full object-contain object-center p-2"
-          />
-        ) : image ? (
-          <img
-            src={image.src}
-            alt={image.alt}
-            className="absolute inset-0 block h-full w-full object-contain object-center p-2"
-          />
+        {displayImage ? (
+          <>
+            {/* Extend the picture across the wide card without cropping the subject. */}
+            <img
+              src={displayImage}
+              alt=""
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover object-center blur-xl opacity-70"
+            />
+            <span aria-hidden="true" className="pointer-events-none absolute inset-0 bg-white/10" />
+            {/* A square upload is fully visible on top of the soft extended background. */}
+            <img
+              src={displayImage}
+              alt={imageName ?? image?.alt ?? "Ảnh trang chủ đã trang bị"}
+              className="relative block h-full w-full min-h-0 min-w-0 object-contain object-center"
+            />
+          </>
         ) : shopVisual && ShopIcon ? (
           <div className={clsx("grid h-full w-full place-items-center bg-gradient-to-br", shopVisual.gradient)}>
             <ShopIcon className={clsx("h-16 w-16 drop-shadow-xl", shopVisual.color)} strokeWidth={1.4} />
