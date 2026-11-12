@@ -12,6 +12,7 @@ import { getStoreImageUrl } from "@/lib/store-image-url";
 import {
   EQUIPMENT_SLOT_LABELS,
   equipmentSlotFor,
+  isReusableStoreItem,
   type EquipmentSlot,
 } from "@/lib/store-equipment";
 
@@ -57,14 +58,25 @@ export function StoreInventory({
 }) {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
+  const [selectedSlot, setSelectedSlot] = useState<EquipmentSlot | null>(null);
   const [equipped, setEquipped] = useState<Equipped>(initialEquipped);
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
 
-  const filtered = items.filter((item) =>
-    filter === "all" ||
-    (filter === "other" ? item.category !== "AVATAR" && item.category !== "EQUIPMENT" : item.category === filter)
-  );
+  const filtered = items.filter((item) => {
+    const slot = equipmentSlotFor(item);
+    if (selectedSlot) return slot === selectedSlot;
+    if (filter === "all") return true;
+    if (filter === "AVATAR") return slot === "avatar";
+    if (filter === "EQUIPMENT") return item.category === "EQUIPMENT" && slot !== "avatar";
+    return slot === null && item.category !== "EQUIPMENT";
+  });
+
+  function chooseSlot(slot: EquipmentSlot) {
+    setSelectedSlot(slot);
+    setFilter(slot === "avatar" ? "AVATAR" : "EQUIPMENT");
+    document.getElementById("owned-store-items")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
   const namesById = new Map(items.map((item) => [item.id, item.name]));
   const equippedCount = slots.filter((slot) => equipped[slot] !== null).length;
 
@@ -123,12 +135,18 @@ export function StoreInventory({
                 <div key={slot} className="min-w-0 rounded-2xl bg-slate-50 p-3">
                   <p className="text-xs font-bold text-slate-500">{EQUIPMENT_SLOT_LABELS[slot]}</p>
                   <p className="mt-1 truncate text-sm font-black text-slate-900">{itemId ? namesById.get(itemId) ?? "Đang sử dụng" : "Mặc định"}</p>
-                  {itemId ? (
-                    <button type="button" disabled={Boolean(busy)} onClick={() => void changeEquipment(slot)}
-                      className="mt-2 rounded-lg bg-white px-3 py-1.5 text-xs font-black text-rose-600 ring-1 ring-rose-100 hover:bg-rose-50 disabled:opacity-50">
-                      {busy === slot ? "Đang tháo..." : "Tháo ra"}
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <button type="button" onClick={() => chooseSlot(slot)}
+                      className="rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-black text-white hover:bg-orange-600">
+                      {itemId ? "Đổi" : "Chọn"}
                     </button>
-                  ) : <span className="mt-2 block text-xs font-semibold text-slate-400">Chưa chọn</span>}
+                    {itemId ? (
+                      <button type="button" disabled={Boolean(busy)} onClick={() => void changeEquipment(slot)}
+                        className="rounded-lg bg-white px-3 py-1.5 text-xs font-black text-rose-600 ring-1 ring-rose-100 hover:bg-rose-50 disabled:opacity-50">
+                        {busy === slot ? "Đang tháo..." : "Tháo ra"}
+                      </button>
+                    ) : <span className="text-xs font-semibold text-slate-400">Chưa chọn</span>}
+                  </div>
                 </div>
               );
             })}
@@ -137,20 +155,28 @@ export function StoreInventory({
 
         {message ? <p role="status" aria-live="polite" className="mt-4 rounded-xl bg-orange-50 px-4 py-3 text-sm font-bold text-orange-900">{message}</p> : null}
 
-        <section className="mt-7" aria-label="Danh sách vật phẩm sở hữu">
+        <section id="owned-store-items" className="mt-7 scroll-mt-24" aria-label="Danh sách vật phẩm sở hữu">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-xl font-black text-slate-950">Vật phẩm đã mua ({items.length})</h2>
             <p className="text-xs font-semibold text-slate-500">Vật phẩm đã ngừng bán vẫn thuộc sở hữu của bạn.</p>
           </div>
           <nav className="mt-4 flex gap-2 overflow-x-auto pb-2" aria-label="Lọc kho đồ">
             {filters.map((option) => (
-              <button key={option.id} type="button" onClick={() => setFilter(option.id)}
+              <button key={option.id} type="button" onClick={() => { setSelectedSlot(null); setFilter(option.id); }}
                 className={clsx("shrink-0 rounded-xl border px-4 py-2.5 text-sm font-black transition",
                   filter === option.id ? "border-orange-500 bg-orange-500 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-orange-300")}>
                 {option.label}
               </button>
             ))}
           </nav>
+
+          {selectedSlot ? (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-orange-50 px-4 py-3">
+              <p className="text-sm font-bold text-orange-900">Chọn {EQUIPMENT_SLOT_LABELS[selectedSlot].toLowerCase()} từ vật phẩm đã mua.</p>
+              <button type="button" onClick={() => { setSelectedSlot(null); setFilter("all"); }}
+                className="rounded-lg bg-white px-3 py-1.5 text-xs font-black text-orange-700">Xem tất cả</button>
+            </div>
+          ) : null}
 
           {filtered.length ? (
             <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -170,7 +196,7 @@ export function StoreInventory({
                       <h3 className="font-black text-slate-950">{item.name}</h3>
                       <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-500">{item.description}</p>
                       <p className="mt-2 text-xs font-bold text-slate-500">
-                        {item.isConsumable ? `Đã mua ${item.count} lượt` : "Đã sở hữu"}
+                        {!isReusableStoreItem(item) ? `Đã mua ${item.count} lượt` : "Đã sở hữu"}
                         {!item.isActive ? " · Ngừng bán" : ""}
                       </p>
                     </div>
