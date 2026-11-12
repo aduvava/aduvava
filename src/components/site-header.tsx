@@ -49,7 +49,7 @@ export async function SiteHeader() {
     : null;
 
   const avatarItem = account?.equippedAvatarItemId
-    ? await prisma.storeItem.findUnique({ where: { id: account.equippedAvatarItemId }, select: { metadata: true } })
+    ? await prisma.storeItem.findUnique({ where: { id: account.equippedAvatarItemId }, select: { metadata: true, imageKey: true } })
     : null;
   const avatarImage = storeItemImageFile(avatarItem?.metadata);
 
@@ -192,7 +192,8 @@ export async function SiteHeader() {
             user={{
               name: session.user.name ?? "Tài khoản Educhi",
               email: session.user.email ?? "",
-              image: avatarImage ?? session.user.image ?? null,
+              image: avatarImage ?? (avatarItem ? null : session.user.image ?? null),
+              avatarKey: avatarItem && !avatarImage ? avatarItem.imageKey : null,
               initials,
             }}
           />
