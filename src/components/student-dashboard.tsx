@@ -260,7 +260,7 @@ function DashboardImageCard({ imageKey, imageName, uploadedImage }: { imageKey: 
   const ShopIcon = shopVisual?.icon;
 
   return (
-    <section className="aspect-[4/3] min-w-0 w-full overflow-hidden rounded-[1.5rem] border border-orange-100/80 bg-white p-3 shadow-[0_10px_22px_rgba(81,52,24,0.05)] md:aspect-auto md:h-[190px] md:p-4">
+    <section className="h-[230px] min-w-0 w-full overflow-hidden rounded-[1.5rem] border border-orange-100/80 bg-white p-3 shadow-[0_10px_22px_rgba(81,52,24,0.05)] sm:h-[210px] md:h-[190px] md:p-4">
       <Link
         href="/kho-do"
         aria-label={imageKey ? `Đổi ảnh lớn trang chủ: ${imageName ?? "Ảnh đang dùng"}` : "Mở kho đồ và chọn ảnh trang chủ"}
