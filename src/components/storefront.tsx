@@ -76,7 +76,7 @@ const categories: { id: Category; label: string; description: string; icon: type
   { id: "HELP", label: "Trợ giúp", description: "Vật phẩm tiêu hao hỗ trợ khi làm bài khó.", icon: Zap },
   { id: "STUDY_PACK", label: "Gói học tập", description: "Bộ đề, tài liệu và phân tích học tập độc quyền.", icon: BookOpen },
   { id: "GIFT", label: "Đổi quà", description: "Voucher, dịch vụ số và quà lưu niệm cần admin xác nhận.", icon: Gift },
-  { id: "AVATAR", label: "Avatar", description: "Bộ sưu tập ảnh đại diện độc quyền.", icon: ImageIcon },
+  { id: "AVATAR", label: "Ảnh trang chủ", description: "Ảnh đã mua thay ô ảnh lớn trên trang chủ, không thay ảnh tài khoản nhỏ.", icon: ImageIcon },
 ];
 
 const visualStyles: Record<string, { gradient: string; icon: typeof Sparkles; text: string }> = {
@@ -123,7 +123,7 @@ function getEquippedIdFor(item: StoreItem, equipped: EquippedItems) {
 
 function slotName(item: StoreItem) {
   const kind = getKind(item);
-  if (equipmentSlotFor(item) === "avatar") return "Avatar";
+  if (equipmentSlotFor(item) === "avatar") return "Ảnh trang chủ";
   if (kind === "avatarFrame") return "Khung avatar";
   if (kind === "nameColor") return "Màu tên";
   if (kind === "title") return "Danh hiệu";
