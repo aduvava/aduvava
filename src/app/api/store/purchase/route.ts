@@ -51,7 +51,9 @@ export async function POST(request: Request) {
       });
 
       const equippedSlot = equipmentSlotFor(item);
-      const equippedData = equippedSlot ? { [EQUIPMENT_SLOT_FIELDS[equippedSlot]]: item.id } : null;
+      const equippedData = equippedSlot === "avatar"
+        ? { equippedDashboardImageId: item.id, equippedAvatarItemId: null }
+        : equippedSlot ? { [EQUIPMENT_SLOT_FIELDS[equippedSlot]]: item.id } : null;
       if (equippedData) {
         await tx.user.update({
           where: { id: user.id },
