@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Crown, Pencil, RefreshCw, Search, Trash2, UploadCloud, X } from "lucide-react";
 import { getStoreImageUrl } from "@/lib/store-image-url";
+import { equipmentSlotFor } from "@/lib/store-equipment";
 
 type Resource = "subjects" | "store-items" | "users";
 type FieldKind = "text" | "textarea" | "number" | "select" | "checkbox" | "password" | "email";
@@ -39,7 +40,8 @@ const fields: Record<Resource, FieldDef[]> = {
     { key: "name", title: "Tên vật phẩm", kind: "text", max: 200, required: true },
     { key: "slug", title: "Đường dẫn (slug)", kind: "text", max: 200, required: true, tip: "Không trùng vật phẩm khác, ví dụ: khung-avatar-cam" },
     { key: "description", title: "Mô tả vật phẩm", kind: "textarea", max: 10000 },
-    { key: "category", title: "Danh mục", kind: "select", options: categories },
+    { key: "category", title: "Danh mục", kind: "select", options: categories,
+      tip: "Muốn người mua đổi ảnh đại diện: chọn Ảnh đại diện. Khung, màu tên, danh hiệu và hiệu ứng: chọn Trang bị và loại tương ứng." },
     { key: "price", title: "Giá", kind: "number", required: true },
     { key: "currency", title: "Đơn vị", kind: "select", options: [["EXP", "EXP"], ["COIN", "Coin"]] },
     { key: "imageKey", title: "Mã màu / biểu tượng dự phòng", kind: "text", max: 200, tip: "Chỉ sử dụng khi vật phẩm không có ảnh tải lên. Ví dụ: orange, blue, detective." },
@@ -48,9 +50,10 @@ const fields: Record<Resource, FieldDef[]> = {
     { key: "sortOrder", title: "Thứ tự hiển thị", kind: "number" },
     { key: "isActive", title: "Đang mở bán", kind: "checkbox" },
     { key: "isFeatured", title: "Vật phẩm nổi bật", kind: "checkbox" },
-    { key: "isConsumable", title: "Dùng được nhiều lần", kind: "checkbox" },
+    { key: "isConsumable", title: "Vật phẩm tiêu hao (mua theo lượt)", kind: "checkbox",
+      tip: "Chỉ bật cho trợ giúp dùng theo lượt. Avatar và đồ trang trí mua một lần, được đổi lại mãi mãi." },
     { key: "effectKind", title: "Loại hiệu ứng (tùy chọn)", kind: "select",
-      options: [["", "Không đổi hiệu ứng hiện có"], ["avatarFrame", "Khung ảnh đại diện"], ["nameColor", "Màu tên"], ["title", "Danh hiệu"], ["submitEffect", "Hiệu ứng nộp bài"]],
+      options: [["", "Không đổi hiệu ứng hiện có"], ["avatar", "Ảnh đại diện"], ["avatarFrame", "Khung ảnh đại diện"], ["nameColor", "Màu tên"], ["title", "Danh hiệu"], ["submitEffect", "Hiệu ứng nộp bài"]],
       tip: "Chỉ dùng cho vật phẩm có hiệu ứng trang trí; giữ nguyên dữ liệu cấu hình khác." },
   ],
   users: [
@@ -265,6 +268,13 @@ export function AdminCatalogManager({ resource }: { resource: Resource }) {
       if (downloadFile) metadata.downloadFile = downloadFile;
       else delete metadata.downloadFile;
       payload.metadata = Object.keys(metadata).length ? metadata : null;
+      // Purchased cosmetics are always reusable; do not accidentally bill
+      // again because an admin ticked the legacy "use multiple times" field.
+      if (equipmentSlotFor({
+        category: String(payload.category ?? ""),
+        isConsumable: Boolean(payload.isConsumable),
+        metadata: payload.metadata,
+      })) payload.isConsumable = false;
     }
     return payload;
   }
@@ -375,7 +385,7 @@ export function AdminCatalogManager({ resource }: { resource: Resource }) {
                 <input id="store-avatar-upload" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,image/png,image/jpeg,image/webp,image/gif" disabled={busy}
                   className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-600 file:px-3 file:py-2 file:font-bold file:text-white"
                   onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadStoreAsset(file, "image"); event.target.value = ""; }} />
-                <p className="text-xs text-slate-500">Ảnh PNG, JPG, WebP hoặc GIF; tối đa 5 MB. Ảnh được hiển thị trong cửa hàng và ở nơi trang bị avatar.</p>
+                <p className="text-xs text-slate-500">Ảnh PNG, JPG, WebP hoặc GIF; tối đa 5 MB. Muốn người mua dùng làm avatar, hãy chọn danh mục “Ảnh đại diện” (hoặc Trang bị → loại “Ảnh đại diện”).</p>
                 {imageFile && getStoreImageUrl(imageFile) ? (
                   <div className="flex items-center gap-3 rounded-xl bg-white p-3">
                     <img src={getStoreImageUrl(imageFile)!} alt="Ảnh vật phẩm được tải lên" className="h-20 w-20 rounded-xl border border-slate-200 object-contain" />
