@@ -244,7 +244,7 @@ function getItemVisual(item: string, slug: string): SubjectVisual {
   return { icon: GraduationCap, imageSrc: undefined, className: "from-orange-100 to-amber-50 text-orange-600" };
 }
 
-// Match the EXP shop's avatar previews when an item has no standalone image asset.
+// Match the EXP shop's homepage-picture previews when a shop item has no uploaded image.
 const shopAvatarVisuals = {
   detective: { gradient: "from-amber-100 via-orange-200 to-slate-800", icon: ImageIcon, color: "text-slate-900" },
   ukulele: { gradient: "from-pink-100 via-rose-200 to-orange-400", icon: ImageIcon, color: "text-rose-700" },
@@ -263,12 +263,12 @@ function DashboardImageCard({ imageKey, imageName, uploadedImage }: { imageKey: 
     <section className="h-[210px] min-w-0 w-full overflow-hidden rounded-[1.5rem] border border-orange-100/80 bg-white p-4 shadow-[0_10px_22px_rgba(81,52,24,0.05)] sm:h-[190px]">
       <Link
         href="/kho-do"
-        aria-label={imageKey ? `Đổi ảnh đang dùng: ${imageName ?? "Ảnh đã trang bị"}` : "Mở kho đồ và chọn avatar"}
-        title={imageKey ? "Đổi ảnh trong kho đồ" : "Chọn avatar trong kho đồ"}
+        aria-label={imageKey ? `Đổi ảnh lớn trang chủ: ${imageName ?? "Ảnh đang dùng"}` : "Mở kho đồ và chọn ảnh trang chủ"}
+        title={imageKey ? "Đổi ảnh lớn trong kho đồ" : "Chọn ảnh trang chủ trong kho đồ"}
         className="grid h-full w-full place-items-center overflow-hidden rounded-[1.1rem] bg-orange-50/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
       >
         {imageSource ? (
-          <img src={imageSource} alt={imageName ?? "Avatar đã trang bị"} className="block h-full w-full object-contain" />
+          <img src={imageSource} alt={imageName ?? "Ảnh trang chủ đã trang bị"} className="block h-full w-full object-contain" />
         ) : image ? (
           <img src={image.src} alt={image.alt} className="block h-full w-full object-contain" />
         ) : shopVisual && ShopIcon ? (
