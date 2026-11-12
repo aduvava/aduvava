@@ -194,6 +194,7 @@ const subjectVisuals = {
   },
   "Tin học": {
     icon: Laptop,
+    imageSrc: "/subject-images/tin-hoc.webp",
     className: "from-blue-50 to-cyan-50 text-blue-600",
   },
   "KT&PL": {
@@ -211,7 +212,11 @@ const subjectVisuals = {
     imageSrc: "/subject-images/cong-nghe-nong-nghiep.png",
     className: "from-lime-50 to-green-50 text-lime-700",
   },
-  "Công nghệ Công nghiệp": { icon: Cog, className: "from-orange-100 to-amber-50 text-orange-600" },
+  "Công nghệ Công nghiệp": {
+    icon: Cog,
+    imageSrc: "/subject-images/cong-nghe-cong-nghiep.webp",
+    className: "from-orange-100 to-amber-50 text-orange-600",
+  },
 } satisfies Record<string, SubjectVisual>;
 
 function getItemVisual(item: string, slug: string): SubjectVisual {
@@ -236,6 +241,8 @@ function getItemVisual(item: string, slug: string): SubjectVisual {
     [/sinh[ -]?hoc|sinh[ -]?vat/, "Sinh Học"],
     [/khoa[ -]?hoc[ -]?tu[ -]?nhien|khtn/, "KHTN (Sinh Học)"],
     [/kinh[ -]?te|phap[ -]?luat|giao[ -]?duc[ -]?cong[ -]?dan|gdcd/, "KT&PL"],
+    [/tin[ -]?hoc/, "Tin học"],
+    [/cong[ -]?nghe[ -]?cong[ -]?nghiep/, "Công nghệ Công nghiệp"],
     [/cong[ -]?nghe/, "Công Nghệ"],
   ];
   const match = aliases.find(([pattern]) => pattern.test(normalized));
