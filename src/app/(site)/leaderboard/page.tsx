@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { Leaderboard } from "@/components/leaderboard";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { storeItemImageFile } from "@/lib/store-image-url";
 
 export const metadata: Metadata = {
   title: "Bảng xếp hạng | Educhi",
@@ -31,7 +30,6 @@ export default async function LeaderboardPage() {
             equippedAvatarFrameId: true,
             equippedNameColorId: true,
             equippedTitleId: true,
-            equippedAvatarItemId: true,
             profile: { select: { grade: true } },
           },
         },
@@ -50,7 +48,6 @@ export default async function LeaderboardPage() {
         equippedAvatarFrameId: true,
         equippedNameColorId: true,
         equippedTitleId: true,
-        equippedAvatarItemId: true,
         profile: { select: { grade: true } },
       },
     }),
@@ -71,20 +68,19 @@ export default async function LeaderboardPage() {
     equippedAvatarFrameId?: string | null;
     equippedNameColorId?: string | null;
     equippedTitleId?: string | null;
-    equippedAvatarItemId?: string | null;
   } | null) {
     const frame = metadataOf(account?.equippedAvatarFrameId);
     const color = metadataOf(account?.equippedNameColorId);
     const title = metadataOf(account?.equippedTitleId);
-    const avatar = metadataOf(account?.equippedAvatarItemId);
     return {
       avatarFrame: typeof frame?.frameStyle === "string" ? frame.frameStyle : null,
       nameColorClass: typeof color?.colorClass === "string" ? color.colorClass : null,
       title: typeof title?.title === "string" ? title.title : null,
-      avatarStyle: typeof avatar?.avatarStyle === "string" ? avatar.avatarStyle : null,
-      avatarImage: storeItemImageFile(avatar),
-      avatarInitials: typeof avatar?.initials === "string" ? avatar.initials : null,
-      animatedAvatar: avatar?.animated === true,
+      // Store pictures customize the large homepage card, never the profile portrait.
+      avatarStyle: null,
+      avatarImage: null,
+      avatarInitials: null,
+      animatedAvatar: false,
     };
   }
 
