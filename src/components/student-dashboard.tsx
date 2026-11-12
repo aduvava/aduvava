@@ -260,17 +260,25 @@ function DashboardImageCard({ imageKey, imageName, uploadedImage }: { imageKey: 
   const ShopIcon = shopVisual?.icon;
 
   return (
-    <section className="h-[210px] min-w-0 w-full overflow-hidden rounded-[1.5rem] border border-orange-100/80 bg-white p-4 shadow-[0_10px_22px_rgba(81,52,24,0.05)] sm:h-[190px]">
+    <section className="aspect-[4/3] min-w-0 w-full overflow-hidden rounded-[1.5rem] border border-orange-100/80 bg-white p-3 shadow-[0_10px_22px_rgba(81,52,24,0.05)] md:aspect-auto md:h-[190px] md:p-4">
       <Link
         href="/kho-do"
         aria-label={imageKey ? `Đổi ảnh lớn trang chủ: ${imageName ?? "Ảnh đang dùng"}` : "Mở kho đồ và chọn ảnh trang chủ"}
         title={imageKey ? "Đổi ảnh lớn trong kho đồ" : "Chọn ảnh trang chủ trong kho đồ"}
-        className="grid h-full w-full place-items-center overflow-hidden rounded-[1.1rem] bg-orange-50/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
+        className="relative flex h-full w-full min-h-0 min-w-0 items-center justify-center overflow-hidden rounded-[1.1rem] bg-orange-50/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
       >
         {imageSource ? (
-          <img src={imageSource} alt={imageName ?? "Ảnh trang chủ đã trang bị"} className="block h-full w-full object-contain" />
+          <img
+            src={imageSource}
+            alt={imageName ?? "Ảnh trang chủ đã trang bị"}
+            className="absolute inset-0 block h-full w-full object-contain object-center p-2"
+          />
         ) : image ? (
-          <img src={image.src} alt={image.alt} className="block h-full w-full object-contain" />
+          <img
+            src={image.src}
+            alt={image.alt}
+            className="absolute inset-0 block h-full w-full object-contain object-center p-2"
+          />
         ) : shopVisual && ShopIcon ? (
           <div className={clsx("grid h-full w-full place-items-center bg-gradient-to-br", shopVisual.gradient)}>
             <ShopIcon className={clsx("h-16 w-16 drop-shadow-xl", shopVisual.color)} strokeWidth={1.4} />
