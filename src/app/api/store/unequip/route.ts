@@ -15,7 +15,9 @@ export async function POST(request: Request) {
     // unchanged, so they may re-equip any owned item without paying again.
     await prisma.user.update({
       where: { id: user.id },
-      data: { [EQUIPMENT_SLOT_FIELDS[slot]]: null },
+      data: slot === "avatar"
+        ? { equippedDashboardImageId: null, equippedAvatarItemId: null }
+        : { [EQUIPMENT_SLOT_FIELDS[slot]]: null },
     });
     return jsonOk({ slot, message: "Đã tháo vật phẩm. Vật phẩm vẫn còn trong Kho đồ." });
   } catch (error) {
