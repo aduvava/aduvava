@@ -25,7 +25,7 @@ function storeFileFromMetadata(metadata: unknown): StoreUploadedFile | null {
 type VipPlan = { id: string; name: string; interval: "MONTH" | "QUARTER" | "YEAR"; isActive: boolean };
 
 const families: [string, string][] = [["THPTQG", "Học tập và thi THPT"], ["DGNL", "Đánh giá năng lực"]];
-const categories: [string, string][] = [["EQUIPMENT", "Trang bị"], ["HELP", "Hỗ trợ"], ["STUDY_PACK", "Gói học tập"], ["GIFT", "Quà tặng"], ["AVATAR", "Ảnh đại diện"]];
+const categories: [string, string][] = [["EQUIPMENT", "Trang bị"], ["HELP", "Hỗ trợ"], ["STUDY_PACK", "Gói học tập"], ["GIFT", "Quà tặng"], ["AVATAR", "Ảnh trang chủ"]];
 const roles: [string, string][] = [["STUDENT", "Học sinh"], ["TEACHER", "Giáo viên"], ["ADMIN", "Quản trị viên"]];
 const fields: Record<Resource, FieldDef[]> = {
   subjects: [
@@ -41,7 +41,7 @@ const fields: Record<Resource, FieldDef[]> = {
     { key: "slug", title: "Đường dẫn (slug)", kind: "text", max: 200, required: true, tip: "Không trùng vật phẩm khác, ví dụ: khung-avatar-cam" },
     { key: "description", title: "Mô tả vật phẩm", kind: "textarea", max: 10000 },
     { key: "category", title: "Danh mục", kind: "select", options: categories,
-      tip: "Muốn người mua đổi ảnh đại diện: chọn Ảnh đại diện. Khung, màu tên, danh hiệu và hiệu ứng: chọn Trang bị và loại tương ứng." },
+      tip: "Muốn ảnh đã mua thay ô ảnh lớn ở trang chủ: chọn Ảnh trang chủ. Không thay avatar nhỏ của tài khoản. Khung, màu tên, danh hiệu và hiệu ứng: chọn Trang bị và loại tương ứng." },
     { key: "price", title: "Giá", kind: "number", required: true },
     { key: "currency", title: "Đơn vị", kind: "select", options: [["EXP", "EXP"], ["COIN", "Coin"]] },
     { key: "imageKey", title: "Mã màu / biểu tượng dự phòng", kind: "text", max: 200, tip: "Chỉ sử dụng khi vật phẩm không có ảnh tải lên. Ví dụ: orange, blue, detective." },
@@ -53,7 +53,7 @@ const fields: Record<Resource, FieldDef[]> = {
     { key: "isConsumable", title: "Vật phẩm tiêu hao (mua theo lượt)", kind: "checkbox",
       tip: "Chỉ bật cho trợ giúp dùng theo lượt. Avatar và đồ trang trí mua một lần, được đổi lại mãi mãi." },
     { key: "effectKind", title: "Loại hiệu ứng (tùy chọn)", kind: "select",
-      options: [["", "Không đổi hiệu ứng hiện có"], ["avatar", "Ảnh đại diện"], ["avatarFrame", "Khung ảnh đại diện"], ["nameColor", "Màu tên"], ["title", "Danh hiệu"], ["submitEffect", "Hiệu ứng nộp bài"]],
+      options: [["", "Không đổi hiệu ứng hiện có"], ["avatar", "Ảnh trang chủ"], ["avatarFrame", "Khung ảnh đại diện"], ["nameColor", "Màu tên"], ["title", "Danh hiệu"], ["submitEffect", "Hiệu ứng nộp bài"]],
       tip: "Chỉ dùng cho vật phẩm có hiệu ứng trang trí; giữ nguyên dữ liệu cấu hình khác." },
   ],
   users: [
@@ -380,12 +380,12 @@ export function AdminCatalogManager({ resource }: { resource: Resource }) {
             <div className="grid gap-4 rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
               <div className="space-y-2">
                 <label htmlFor="store-avatar-upload" className="flex items-center gap-2 text-sm font-black text-slate-800">
-                  <UploadCloud className="h-4 w-4 text-blue-600" /> Tải ảnh avatar / ảnh vật phẩm
+                  <UploadCloud className="h-4 w-4 text-blue-600" /> Tải ảnh trang chủ / ảnh vật phẩm
                 </label>
                 <input id="store-avatar-upload" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,image/png,image/jpeg,image/webp,image/gif" disabled={busy}
                   className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-600 file:px-3 file:py-2 file:font-bold file:text-white"
                   onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadStoreAsset(file, "image"); event.target.value = ""; }} />
-                <p className="text-xs text-slate-500">Ảnh PNG, JPG, WebP hoặc GIF; tối đa 5 MB. Muốn người mua dùng làm avatar, hãy chọn danh mục “Ảnh đại diện” (hoặc Trang bị → loại “Ảnh đại diện”).</p>
+                <p className="text-xs text-slate-500">Ảnh PNG, JPG, WebP hoặc GIF; tối đa 5 MB. Muốn ảnh mua được dùng ở ô lớn trang chủ, hãy chọn danh mục “Ảnh trang chủ” (hoặc Trang bị → loại “Ảnh trang chủ”). Ảnh tài khoản nhỏ không bị thay.</p>
                 {imageFile && getStoreImageUrl(imageFile) ? (
                   <div className="flex items-center gap-3 rounded-xl bg-white p-3">
                     <img src={getStoreImageUrl(imageFile)!} alt="Ảnh vật phẩm được tải lên" className="h-20 w-20 rounded-xl border border-slate-200 object-contain" />
