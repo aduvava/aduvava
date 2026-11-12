@@ -24,6 +24,7 @@ export default async function StorePage() {
         equippedTitleId: true,
         equippedSubmitEffectId: true,
         equippedAvatarItemId: true,
+        equippedDashboardImageId: true,
       },
     }),
     prisma.storeItem.findMany({
@@ -81,7 +82,7 @@ export default async function StorePage() {
         nameColorId: account?.equippedNameColorId ?? null,
         titleId: account?.equippedTitleId ?? null,
         submitEffectId: account?.equippedSubmitEffectId ?? null,
-        avatarItemId: account?.equippedAvatarItemId ?? null,
+        avatarItemId: account?.equippedDashboardImageId ?? account?.equippedAvatarItemId ?? null,
       }}
       initialHistory={walletTransactions.map((transaction) => ({
         id: transaction.id,
