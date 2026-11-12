@@ -34,7 +34,7 @@ type Filter = "all" | "AVATAR" | "EQUIPMENT" | "other";
 
 const filters: { id: Filter; label: string }[] = [
   { id: "all", label: "Tất cả" },
-  { id: "AVATAR", label: "Avatar" },
+  { id: "AVATAR", label: "Ảnh trang chủ" },
   { id: "EQUIPMENT", label: "Trang bị" },
   { id: "other", label: "Vật phẩm khác" },
 ];
@@ -115,7 +115,7 @@ export function StoreInventory({
               <h1 className="text-3xl font-black text-slate-950 sm:text-4xl">Kho đồ của tôi</h1>
             </div>
             <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-slate-600">
-              Tất cả vật phẩm đã mua sẽ nằm ở đây. Bạn có thể đổi avatar, khung, màu tên và hiệu ứng bất cứ lúc nào, không cần mua lại.
+              Tất cả vật phẩm đã mua sẽ nằm ở đây. Ảnh đã mua sẽ thay ảnh lớn trên trang chủ, không đổi avatar nhỏ của tài khoản. Bạn có thể đổi lại bất cứ lúc nào, không cần mua lại.
             </p>
           </div>
           <Link href="/dich-vu" className="inline-flex items-center gap-2 rounded-2xl border border-orange-200 bg-white px-4 py-3 text-sm font-black text-orange-600 hover:bg-orange-50">
@@ -235,7 +235,7 @@ export function StoreInventory({
         </section>
         <p className="mt-5 flex items-start gap-2 text-xs font-semibold leading-5 text-slate-500">
           <Crown className="mt-0.5 h-4 w-4 shrink-0" />
-          Kho đồ lưu lịch sử sở hữu. Đổi hoặc tháo vật phẩm trang trí không trừ thêm EXP hay Coin.
+          Kho đồ lưu lịch sử sở hữu. Đổi ảnh lớn trang chủ và các vật phẩm trang trí không trừ thêm EXP hay Coin.
         </p>
       </div>
     </div>
