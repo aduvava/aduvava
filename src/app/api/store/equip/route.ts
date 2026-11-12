@@ -23,7 +23,9 @@ export async function POST(request: Request) {
 
     await prisma.user.update({
       where: { id: user.id },
-      data: { [EQUIPMENT_SLOT_FIELDS[slot]]: itemId },
+      data: slot === "avatar"
+        ? { equippedDashboardImageId: itemId, equippedAvatarItemId: null }
+        : { [EQUIPMENT_SLOT_FIELDS[slot]]: itemId },
     });
 
     return jsonOk({
