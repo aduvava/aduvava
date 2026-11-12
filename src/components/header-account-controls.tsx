@@ -3,14 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { signOut } from "next-auth/react";
-import { Crown, Gem, GraduationCap, History, LogOut, PackageCheck, School, UserRound, X } from "lucide-react";
+import { Crown, Gem, GraduationCap, History, Image as ImageIcon, LogOut, PackageCheck, School, Sparkles, UserRound, X } from "lucide-react";
 
 type HeaderAccountControlsProps = {
   initialExp: number;
   vipDaysLeft: number | null;
   activeRole: "STUDENT" | "TEACHER" | "ADMIN";
   canUseAdmin: boolean;
-  user: { name: string; email: string; image: string | null; initials: string };
+  user: { name: string; email: string; image: string | null; avatarKey: string | null; initials: string };
 };
 
 type StudentProfileForm = {
@@ -27,6 +27,29 @@ const profileFields = [
   { key: "grade", label: "Lớp", placeholder: "Ví dụ: Lớp 12A1", Icon: GraduationCap },
   { key: "school", label: "Trường đang học", placeholder: "Ví dụ: THPT Nguyễn Trãi", Icon: School },
 ] as const;
+
+/** Show the selected shop artwork even when an old avatar has no uploaded image. */
+function AccountAvatarArt({ image, avatarKey, initials }: {
+  image: string | null; avatarKey: string | null; initials: string;
+}) {
+  if (image) return <img src={image} alt="" className="h-full w-full object-cover" />;
+  if (!avatarKey) return <>{initials}</>;
+
+  const isStar = avatarKey === "animated-star";
+  const gradient = avatarKey === "detective"
+    ? "from-amber-100 via-orange-200 to-slate-800 text-slate-900"
+    : avatarKey === "ukulele"
+      ? "from-pink-100 via-rose-200 to-orange-400 text-rose-700"
+      : isStar
+        ? "from-slate-950 via-violet-700 to-yellow-300 text-white"
+        : "from-orange-300 via-orange-500 to-red-600 text-white";
+  const Icon = isStar ? Sparkles : ImageIcon;
+  return (
+    <span className={`grid h-full w-full place-items-center bg-gradient-to-br ${gradient}`}>
+      <Icon className={`h-5 w-5 ${isStar ? "animate-pulse" : ""}`} aria-hidden="true" />
+    </span>
+  );
+}
 
 export function HeaderAccountControls({ initialExp, vipDaysLeft, activeRole, canUseAdmin, user }: HeaderAccountControlsProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -144,14 +167,14 @@ export function HeaderAccountControls({ initialExp, vipDaysLeft, activeRole, can
           aria-expanded={menuOpen}
           className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-white bg-gradient-to-br from-amber-400 to-orange-600 text-sm font-black text-white shadow-[0_3px_13px_rgba(249,115,22,0.2)] ring-2 ring-orange-200 transition hover:scale-[1.04] hover:ring-orange-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500 sm:h-11 sm:w-11"
         >
-          {user.image ? <img src={user.image} alt="" className="h-full w-full object-cover" /> : user.initials}
+          <AccountAvatarArt image={user.image} avatarKey={user.avatarKey} initials={user.initials} />
         </button>
 
         {menuOpen ? (
           <div data-testid="header-account-menu" className="absolute right-0 top-14 z-50 w-[min(88vw,320px)] overflow-hidden rounded-[1.75rem] border border-orange-100 bg-white shadow-[0_22px_65px_rgba(15,23,42,0.18)]">
             <div className="flex items-center gap-3 border-b border-orange-100 bg-gradient-to-r from-orange-50 to-amber-50 px-4 py-5">
               <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 text-sm font-black text-white shadow-sm">
-                {user.image ? <img src={user.image} alt="" className="h-full w-full object-cover" /> : user.initials}
+                <AccountAvatarArt image={user.image} avatarKey={user.avatarKey} initials={user.initials} />
               </span>
               <div className="min-w-0">
                 <p className="truncate text-sm font-black text-slate-900">{user.name}</p>
