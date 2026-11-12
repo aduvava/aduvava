@@ -6,7 +6,7 @@ import { StoreInventory } from "@/components/store-inventory";
 
 export const metadata: Metadata = {
   title: "Kho đồ của tôi | Educhi",
-  description: "Xem lại vật phẩm đã mua, trang bị và thay đổi avatar, khung và hiệu ứng.",
+  description: "Xem vật phẩm đã mua, thay ảnh lớn trang chủ, khung và hiệu ứng.",
 };
 export const dynamic = "force-dynamic";
 
@@ -18,7 +18,7 @@ export default async function MyInventoryPage() {
     prisma.user.findUnique({
       where: { id: user.id },
       select: {
-        equippedAvatarItemId: true, equippedAvatarFrameId: true,
+        equippedAvatarItemId: true, equippedDashboardImageId: true, equippedAvatarFrameId: true,
         equippedNameColorId: true, equippedTitleId: true,
         equippedSubmitEffectId: true,
       },
@@ -60,7 +60,7 @@ export default async function MyInventoryPage() {
         };
       })}
       initialEquipped={{
-        avatar: account?.equippedAvatarItemId ?? null,
+        avatar: account?.equippedDashboardImageId ?? account?.equippedAvatarItemId ?? null,
         avatarFrame: account?.equippedAvatarFrameId ?? null,
         nameColor: account?.equippedNameColorId ?? null,
         title: account?.equippedTitleId ?? null,
