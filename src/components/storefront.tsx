@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import { storeItemImageFile } from "@/lib/store-image-url";
+import { equipmentSlotFor, isReusableStoreItem } from "@/lib/store-equipment";
 
 type Category = "EQUIPMENT" | "HELP" | "STUDY_PACK" | "GIFT" | "AVATAR";
 type Currency = "COIN" | "EXP";
@@ -111,18 +112,18 @@ function getKind(item: StoreItem) {
 }
 
 function getEquippedIdFor(item: StoreItem, equipped: EquippedItems) {
-  if (item.category === "AVATAR") return equipped.avatarItemId;
-  const kind = getKind(item);
-  if (kind === "avatarFrame") return equipped.avatarFrameId;
-  if (kind === "nameColor") return equipped.nameColorId;
-  if (kind === "title") return equipped.titleId;
-  if (kind === "submitEffect") return equipped.submitEffectId;
+  const slot = equipmentSlotFor(item);
+  if (slot === "avatar") return equipped.avatarItemId;
+  if (slot === "avatarFrame") return equipped.avatarFrameId;
+  if (slot === "nameColor") return equipped.nameColorId;
+  if (slot === "title") return equipped.titleId;
+  if (slot === "submitEffect") return equipped.submitEffectId;
   return null;
 }
 
 function slotName(item: StoreItem) {
   const kind = getKind(item);
-  if (item.category === "AVATAR") return "Avatar";
+  if (equipmentSlotFor(item) === "avatar") return "Avatar";
   if (kind === "avatarFrame") return "Khung avatar";
   if (kind === "nameColor") return "Màu tên";
   if (kind === "title") return "Danh hiệu";
@@ -225,13 +226,13 @@ export function Storefront({
   }
 
   function markEquipped(item: StoreItem) {
-    const kind = getKind(item);
+    const slot = equipmentSlotFor(item);
     setEquipped((current) => {
-      if (item.category === "AVATAR") return { ...current, avatarItemId: item.id };
-      if (kind === "avatarFrame") return { ...current, avatarFrameId: item.id };
-      if (kind === "nameColor") return { ...current, nameColorId: item.id };
-      if (kind === "title") return { ...current, titleId: item.id };
-      if (kind === "submitEffect") return { ...current, submitEffectId: item.id };
+      if (slot === "avatar") return { ...current, avatarItemId: item.id };
+      if (slot === "avatarFrame") return { ...current, avatarFrameId: item.id };
+      if (slot === "nameColor") return { ...current, nameColorId: item.id };
+      if (slot === "title") return { ...current, titleId: item.id };
+      if (slot === "submitEffect") return { ...current, submitEffectId: item.id };
       return current;
     });
   }
@@ -336,7 +337,8 @@ export function Storefront({
               const owned = ownedItemIds.has(item.id);
               const downloadable = owned && typeof availableFile?.originalName === "string";
               const equippedId = getEquippedIdFor(item, equipped);
-              const isEquippable = item.category === "AVATAR" || ["avatarFrame", "nameColor", "title", "submitEffect"].includes(getKind(item));
+              const isEquippable = equipmentSlotFor(item) !== null;
+              const isReusable = isReusableStoreItem(item);
               const isEquipped = equippedId === item.id;
               const soldOut = item.stock === 0;
               const count = inventory[item.id] ?? 0;
@@ -352,7 +354,7 @@ export function Storefront({
                     )}
                     {item.badge ? <span className="absolute left-0 top-0 rounded-br-2xl bg-orange-500 px-4 py-2 text-[10px] font-black uppercase text-white">{item.badge}</span> : null}
                     {isEquipped ? <span className="absolute right-3 top-3 rounded-full bg-emerald-500 px-3 py-1.5 text-[10px] font-black uppercase text-white shadow-lg">Đang dùng</span> : null}
-                    {count && item.isConsumable ? <span className="absolute bottom-3 right-3 rounded-full bg-slate-950 px-3 py-1.5 text-[10px] font-black uppercase text-white">Có {count}</span> : null}
+                    {count && !isReusable ? <span className="absolute bottom-3 right-3 rounded-full bg-slate-950 px-3 py-1.5 text-[10px] font-black uppercase text-white">Có {count}</span> : null}
                   </div>
                   <div className="mt-5 flex items-start justify-between gap-3">
                     <h3 className="text-lg font-black text-slate-950">{item.name}</h3>
@@ -366,7 +368,7 @@ export function Storefront({
                   ) : null}
                   <div className="mt-5 flex items-center justify-between gap-4">
                     <PriceAmount amount={item.price} currency={item.currency} />
-                    {owned && isEquippable && !item.isConsumable ? (
+                    {owned && isEquippable ? (
                       <button
                         type="button"
                         onClick={() => equip(item)}
@@ -379,14 +381,14 @@ export function Storefront({
                       <button
                         type="button"
                         onClick={() => purchase(item)}
-                        disabled={(owned && !item.isConsumable) || soldOut || busyId === item.id}
+                        disabled={(owned && isReusable) || soldOut || busyId === item.id}
                         className={clsx(
                           "rounded-2xl px-5 py-3 text-sm font-black transition",
-                          owned && !item.isConsumable ? "bg-emerald-50 text-emerald-600" : "bg-slate-950 text-white hover:bg-orange-500",
+                          owned && isReusable ? "bg-emerald-50 text-emerald-600" : "bg-slate-950 text-white hover:bg-orange-500",
                           (soldOut || busyId === item.id) && "cursor-not-allowed bg-slate-200 text-slate-500",
                         )}
                       >
-                        {busyId === item.id ? "Đang xử lý..." : soldOut ? "Hết hàng" : owned && !item.isConsumable ? "Đã sở hữu" : "Mua ngay"}
+                        {busyId === item.id ? "Đang xử lý..." : soldOut ? "Hết hàng" : owned && isReusable ? "Đã sở hữu" : "Mua ngay"}
                       </button>
                     )}
                   </div>
