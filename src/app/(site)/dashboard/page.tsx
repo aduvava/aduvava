@@ -3,6 +3,7 @@ import { StudentDashboard } from "@/components/student-dashboard";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { isStudentOnboardingComplete } from "@/lib/onboarding";
+import { equipmentSlotFor } from "@/lib/store-equipment";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -37,18 +38,18 @@ export default async function DashboardPage() {
     }),
   ]);
 
-  // The shop writes the selected avatar to equippedAvatarItemId.
-  // Keep the older dashboard image selection as a fallback for existing accounts.
-  const selectedImageId = account?.equippedAvatarItemId ?? account?.equippedDashboardImageId;
-  const equippedDashboardImage = selectedImageId
-    ? await prisma.storeItem.findFirst({
-        where: {
-          id: selectedImageId,
-          category: "AVATAR",
-          // Bought avatars remain usable after the shop stops selling them.
-        },
-        select: { imageKey: true, name: true, metadata: true },
+  // New store selections belong to the large picture on the dashboard.
+  // The legacy account-avatar field is only a read fallback for older purchases.
+  const selectedImageId = account?.equippedDashboardImageId ?? account?.equippedAvatarItemId;
+  const selectedStoreItem = selectedImageId
+    ? await prisma.storeItem.findUnique({
+        where: { id: selectedImageId },
+        select: { category: true, isConsumable: true, imageKey: true, name: true, metadata: true },
       })
+    : null;
+  // Admin-uploaded images previously saved in EQUIPMENT are also supported.
+  const equippedDashboardImage = selectedStoreItem && equipmentSlotFor(selectedStoreItem) === "avatar"
+    ? selectedStoreItem
     : null;
 
   const weakSubjectIds = Array.from(
