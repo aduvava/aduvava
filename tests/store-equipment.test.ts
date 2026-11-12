@@ -41,11 +41,11 @@ describe("owned-item cosmetic inventory", () => {
 
   it("maps five cosmetic choices to the correct user account fields", () => {
     assert.deepEqual(Object.keys(EQUIPMENT_SLOT_FIELDS).sort(), ["avatar", "avatarFrame", "nameColor", "submitEffect", "title"].sort());
-    assert.equal(EQUIPMENT_SLOT_FIELDS.avatar, "equippedAvatarItemId");
+    assert.equal(EQUIPMENT_SLOT_FIELDS.avatar, "equippedDashboardImageId");
     assert.equal(EQUIPMENT_SLOT_FIELDS.avatarFrame, "equippedAvatarFrameId");
     assert.equal(EQUIPMENT_SLOT_FIELDS.nameColor, "equippedNameColorId");
     assert.equal(EQUIPMENT_SLOT_FIELDS.title, "equippedTitleId");
     assert.equal(EQUIPMENT_SLOT_FIELDS.submitEffect, "equippedSubmitEffectId");
-    assert.equal(EQUIPMENT_SLOT_LABELS.avatar, "Ảnh đại diện");
+    assert.equal(EQUIPMENT_SLOT_LABELS.avatar, "Ảnh trang chủ");
   });
 });
