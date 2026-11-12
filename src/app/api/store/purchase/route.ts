@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk, readJson, requireUser } from "@/lib/api";
+import { EQUIPMENT_SLOT_FIELDS, equipmentSlotFor, isReusableStoreItem } from "@/lib/store-equipment";
 
 const purchaseSchema = z.object({ itemId: z.string().min(1) });
 
@@ -8,17 +9,6 @@ function getMetadataKind(metadata: unknown) {
   if (typeof metadata !== "object" || metadata === null || Array.isArray(metadata)) return "";
   const kind = (metadata as Record<string, unknown>).kind;
   return typeof kind === "string" ? kind : "";
-}
-
-function equipDataFor(itemId: string, category: string, metadata: unknown) {
-  if (category === "AVATAR") return { equippedAvatarItemId: itemId };
-
-  const kind = getMetadataKind(metadata);
-  if (kind === "avatarFrame") return { equippedAvatarFrameId: itemId };
-  if (kind === "nameColor") return { equippedNameColorId: itemId };
-  if (kind === "title") return { equippedTitleId: itemId };
-  if (kind === "submitEffect") return { equippedSubmitEffectId: itemId };
-  return null;
 }
 
 export async function POST(request: Request) {
@@ -32,7 +22,7 @@ export async function POST(request: Request) {
       if (!item?.isActive) throw new HttpError(404, "Vật phẩm không tồn tại hoặc đã ngừng bán.");
       const balanceField = item.currency === "COIN" ? "coins" : "exp";
 
-      if (!item.isConsumable) {
+      if (isReusableStoreItem(item)) {
         const owned = await tx.storePurchase.findFirst({ where: { userId: user.id, itemId } });
         if (owned) throw new HttpError(409, "Bạn đã sở hữu vật phẩm này.");
       }
@@ -60,7 +50,8 @@ export async function POST(request: Request) {
         },
       });
 
-      const equippedData = !item.isConsumable ? equipDataFor(item.id, item.category, item.metadata) : null;
+      const equippedSlot = equipmentSlotFor(item);
+      const equippedData = equippedSlot ? { [EQUIPMENT_SLOT_FIELDS[equippedSlot]]: item.id } : null;
       if (equippedData) {
         await tx.user.update({
           where: { id: user.id },
@@ -99,7 +90,7 @@ export async function POST(request: Request) {
         item,
         balance,
         equippedItemId: equippedData ? item.id : null,
-        equippedSlot: equippedData ? getMetadataKind(item.metadata) || item.category : null,
+        equippedSlot,
       };
     });
 
