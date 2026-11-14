@@ -79,7 +79,6 @@ export function SubjectLearningDetail({
 }: SubjectLearningDetailProps) {
   const [mode, setMode] = useState<LearningMode>("topics");
   const [supportOpen, setSupportOpen] = useState(false);
-  const totalLessons = subject.units.reduce((sum, unit) => sum + unit.lessons.length, 0);
   const topicExams = hotExams.filter((exam) => exam.contentMode === "TOPIC");
   const periodExams = hotExams.filter((exam) => exam.contentMode === "EXAM");
 
@@ -183,16 +182,7 @@ export function SubjectLearningDetail({
         <section className="mt-8">
           {mode === "topics" ? (
             <>
-              <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-500">Học theo chuyên đề</p>
-                  <h2 className="mt-1 text-2xl font-black uppercase sm:text-3xl">Chuyên đề môn {subject.name}</h2>
-                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">{subject.description}</p>
-                </div>
-                <div className="inline-flex w-fit items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-xs font-bold text-slate-500">
-                  <SlidersHorizontal className="h-4 w-4" /> {subject.units.length} chương · {totalLessons} chuyên đề
-                </div>
-              </div>
+              <h2 className="text-lg font-black uppercase tracking-[0.08em] text-orange-500 sm:text-xl">Học theo chuyên đề</h2>
 
               <div className="mt-6">
                 <h3 className="text-lg font-black text-slate-800">Đề luyện theo chuyên đề ({topicExams.length})</h3>
@@ -243,11 +233,7 @@ export function SubjectLearningDetail({
 
           {mode === "exams" ? (
             <>
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-500">Luyện theo mốc kiểm tra</p>
-                <h2 className="mt-1 text-2xl font-black uppercase sm:text-3xl">Đề kiểm tra môn {subject.name}</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-500">Chọn đúng loại kì thi để luyện cấu trúc và thời gian làm bài tương ứng.</p>
-              </div>
+              <h2 className="text-lg font-black uppercase tracking-[0.08em] text-orange-500 sm:text-xl">Học theo kì thi</h2>
               <div className="mt-6 grid gap-4 lg:grid-cols-2">
                 {periodExams.map((exam) => (
                   <article key={exam.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-md">
@@ -269,11 +255,7 @@ export function SubjectLearningDetail({
 
           {mode === "theory" ? (
             <>
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-500">Hệ thống kiến thức</p>
-                <h2 className="mt-1 text-2xl font-black uppercase sm:text-3xl">Lý thuyết môn {subject.name}</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-500">Nội dung trọng tâm được sắp xếp theo chương để dễ ôn tập.</p>
-              </div>
+              <h2 className="text-lg font-black uppercase tracking-[0.08em] text-orange-500 sm:text-xl">Học lý thuyết</h2>
               <div className="mt-6 grid gap-5 lg:grid-cols-2">
                 {subject.theoryChapters.map((chapter, unitIndex) => (
                   <article key={chapter.id} className="rounded-[2rem] border border-emerald-100 bg-white p-6 shadow-sm">
