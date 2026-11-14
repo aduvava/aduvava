@@ -3,32 +3,12 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
-  ArrowLeft,
-  Atom,
-  BookOpen,
-  Calculator,
-  CalendarDays,
-  Clock3,
-  Cog,
-  Dna,
-  Earth,
-  Eye,
-  Factory,
-  FileText,
-  Flame,
-  FlaskConical,
-  Landmark,
-  Languages,
-  Laptop,
-  Leaf,
-  MessageCircleMore,
-  Play,
-  Scale,
-  SlidersHorizontal,
-  X,
+  ArrowLeft, BookOpen, CalendarDays, Clock3, Eye, FileText,
+  Flame, Play, SlidersHorizontal, X,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { MascotAvatar } from "@/components/mascot-avatar";
+import { getItemVisual } from "@/lib/subject-visuals";
 
 type LearningUnit = {
   title: string;
@@ -81,22 +61,6 @@ type SubjectLearningDetailProps = {
   contextQuery: string;
 };
 
-const iconMap = {
-  calculator: Calculator,
-  "book-open": BookOpen,
-  languages: Languages,
-  landmark: Landmark,
-  earth: Earth,
-  dna: Dna,
-  atom: Atom,
-  flask: FlaskConical,
-  scale: Scale,
-  cog: Cog,
-  leaf: Leaf,
-  factory: Factory,
-  laptop: Laptop,
-} as const;
-
 type LearningMode = "topics" | "exams" | "theory";
 
 const learningModes: Array<{ id: LearningMode; label: string; icon: typeof BookOpen }> = [
@@ -104,11 +68,6 @@ const learningModes: Array<{ id: LearningMode; label: string; icon: typeof BookO
   { id: "exams", label: "Theo Kì thi", icon: CalendarDays },
   { id: "theory", label: "Lý thuyết", icon: FileText },
 ];
-
-function SubjectIcon({ icon, className }: { icon: string; className?: string }) {
-  const Icon = iconMap[icon as keyof typeof iconMap] ?? BookOpen;
-  return <Icon className={className} strokeWidth={1.9} />;
-}
 
 export function SubjectLearningDetail({
   subject,
@@ -148,6 +107,8 @@ export function SubjectLearningDetail({
         <div className="mt-7 flex gap-4 overflow-x-auto pb-4 [scrollbar-color:#9ca3af_transparent]">
           {subjects.map((item) => {
             const active = item.slug === subject.slug;
+            const visual = getItemVisual(item.name, item.slug);
+            const ItemIcon = visual.icon;
             return (
               <Link
                 key={item.slug}
@@ -160,10 +121,16 @@ export function SubjectLearningDetail({
                 )}
               >
                 <span className={clsx(
-                  "grid h-16 w-16 shrink-0 place-items-center rounded-2xl",
-                  active ? "bg-white/95 text-orange-500" : `bg-gradient-to-br ${item.accent} text-white`,
+                  "grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-2xl",
+                  visual.imageSrc
+                    ? "bg-white"
+                    : active ? "bg-white/95 text-orange-500" : `bg-gradient-to-br ${item.accent} text-white`,
                 )}>
-                  <SubjectIcon icon={item.icon} className="h-8 w-8" />
+                  {visual.imageSrc ? (
+                    <img src={visual.imageSrc} alt={`Ảnh môn ${item.name}`} className="h-full w-full object-cover" loading="lazy" />
+                  ) : (
+                    <ItemIcon className="h-8 w-8" strokeWidth={1.9} />
+                  )}
                 </span>
                 <span className="min-w-0">
                   <span className="block truncate text-lg font-black">{item.shortName}</span>
