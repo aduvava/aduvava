@@ -68,6 +68,25 @@ async function addSystemNotice(conversationId: string, text: string) {
       data: { conversationId, sender: "SYSTEM", content: text },
     }),
   ]);
+  // Notify Admins via their existing Educhi notification bell as well as the inbox.
+  // Chat escalation remains successful even when notification delivery fails.
+  try {
+    const admins = await prisma.user.findMany({
+      where: { role: "ADMIN" }, select: { id: true },
+    });
+    if (admins.length) {
+      await prisma.notification.createMany({
+        data: admins.map((admin) => ({
+          userId: admin.id,
+          title: "Học sinh cần hỗ trợ",
+          message: "Có hội thoại mới đang chờ Admin xử lý.",
+          href: "/admin/support",
+        })),
+      });
+    }
+  } catch (error) {
+    console.error("Cannot create Admin support notification", error instanceof Error ? error.message : "Unknown error");
+  }
 }
 
 export async function GET(request: Request) {
