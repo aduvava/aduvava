@@ -79,6 +79,13 @@ const resourceLinks: {
     tone: "bg-orange-50 text-orange-600",
   },
   {
+    href: "/admin/support",
+    title: "Hỗ trợ AI & Admin",
+    description: "Xem câu hỏi học sinh, xử lý yêu cầu và ngân sách AI.",
+    Icon: MessagesSquare,
+    tone: "bg-orange-50 text-orange-600",
+  },
+  {
     href: "/admin/users",
     title: "Người dùng",
     description: "Tạo tài khoản học sinh, giáo viên và admin.",

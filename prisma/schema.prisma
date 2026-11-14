@@ -171,6 +171,7 @@ model User {
   notifications      Notification[]
   ownedExams         Exam[]              @relation("OwnedExams")
   examAccessGrants   ExamAccessGrant[]
+  supportConversations SupportConversation[]
 }
 
 model Account {
@@ -766,4 +767,54 @@ model SecurityThrottle {
   updatedAt DateTime @updatedAt
 
   @@index([expiresAt])
+}
+
+enum SupportConversationStatus {
+  AI
+  WAITING_ADMIN
+  RESOLVED
+}
+
+enum SupportSender {
+  USER
+  AI
+  ADMIN
+  SYSTEM
+}
+
+model SupportConversation {
+  id        String                    @id @default(cuid())
+  userId    String
+  status    SupportConversationStatus @default(AI)
+  createdAt DateTime                  @default(now())
+  updatedAt DateTime                  @updatedAt
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages SupportMessage[]
+
+  @@index([userId, updatedAt])
+  @@index([status, updatedAt])
+}
+
+model SupportMessage {
+  id             String        @id @default(cuid())
+  conversationId String
+  sender         SupportSender
+  content        String        @db.Text
+  model          String?
+  inputTokens    Int           @default(0)
+  outputTokens   Int           @default(0)
+  costMicroUsd   Int           @default(0)
+  createdAt      DateTime      @default(now())
+
+  conversation SupportConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+model SupportAiBudget {
+  month          String   @id @db.VarChar(7)
+  spentMicroUsd  Int      @default(0)
+  heldMicroUsd   Int      @default(0)
+  updatedAt      DateTime @updatedAt
 }

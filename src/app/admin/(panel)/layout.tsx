@@ -11,6 +11,7 @@ import {
   LogOut,
   Store,
   Users,
+  MessageCircleMore,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,7 @@ const adminNav = [
   { href: "/admin/theory-chapters", label: "Chương lý thuyết", Icon: FileText },
   { href: "/admin/theory-lessons", label: "Bài lý thuyết", Icon: FileText },
   { href: "/admin/users", label: "Người dùng", Icon: Users },
+  { href: "/admin/support", label: "Chat hỗ trợ", Icon: MessageCircleMore },
   { href: "/admin/store-items", label: "Cửa hàng EXP", Icon: Store },
   { href: "/admin/plans", label: "Gói thành viên", Icon: CreditCard },
   { href: "/admin/payments", label: "Thanh toán", Icon: CreditCard },

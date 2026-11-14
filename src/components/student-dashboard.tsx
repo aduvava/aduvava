@@ -11,7 +11,6 @@ import { clsx } from "clsx";
 import { getDashboardImage } from "@/data/dashboard-images";
 import { getStoreImageUrl } from "@/lib/store-image-url";
 import { MascotAvatar } from "@/components/mascot-avatar";
-import { getSupportReply, supportQuickQuestions } from "@/lib/support-chat";
 import { getDashboardSubjects, getSubjectCatalogSize } from "@/lib/dashboard-subjects";
 import { getItemVisual } from "@/lib/subject-visuals";
 import { specialExamTracks } from "@/lib/special-exam-tracks";
@@ -201,129 +200,176 @@ function StreakCard({ learningStreak, weekActivity }: { learningStreak: number; 
 }
 
 type SupportMessage = {
-  id: number;
-  role: "student" | "assistant";
-  text: string;
+  id: string;
+  sender: "USER" | "AI" | "ADMIN" | "SYSTEM";
+  content: string;
+  createdAt: string;
+};
+type SupportHistory = {
+  conversation: { id: string; status: "AI" | "WAITING_ADMIN" | "RESOLVED" } | null;
+  conversations: Array<{ id: string; status: string; updatedAt: string }>;
+  messages: SupportMessage[];
+  aiEnabled: boolean;
 };
 
 function ChatSupport() {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
-  const [messages, setMessages] = useState<SupportMessage[]>([
-    {
-      id: 0,
-      role: "assistant",
-      text: "Chào bạn! Mình là trợ lý hướng dẫn tự động của Educhi. Bạn cần hỗ trợ điều gì?",
-    },
-  ]);
+  const [data, setData] = useState<SupportHistory | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
   const messageListRef = useRef<HTMLDivElement>(null);
 
+  async function load(id?: string) {
+    setLoading(true);
+    setError("");
+    try {
+      const query = id ? `?conversationId=${encodeURIComponent(id)}` : "";
+      const response = await fetch(`/api/support/chat${query}`, { cache: "no-store" });
+      const result = await response.json() as SupportHistory & { error?: string };
+      if (!response.ok) throw new Error(result.error || "Không tải được hội thoại.");
+      setData(result);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Không thể kết nối.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { if (open) void load(); }, [open]);
+  // Show Admin replies without asking the student to close the chat or refresh the page.
+  useEffect(() => {
+    const id = data?.conversation?.id;
+    if (!open || !id || data?.conversation?.status !== "WAITING_ADMIN") return;
+    const interval = setInterval(() => { void load(id); }, 20_000);
+    return () => clearInterval(interval);
+  }, [open, data?.conversation?.id, data?.conversation?.status]);
   useEffect(() => {
     if (open && messageListRef.current) {
       messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
     }
-  }, [open, messages]);
+  }, [open, data?.messages]);
 
-  function sendMessage(value: string) {
-    const text = value.trim().slice(0, 500);
-    if (!text) return;
-    setMessages((current) => [
-      ...current,
-      { id: current.length, role: "student", text },
-      { id: current.length + 1, role: "assistant", text: getSupportReply(text) },
-    ]);
-    setDraft("");
+  async function act(action: "send" | "escalate" | "new", text?: string) {
+    if (sending) return;
+    const message = text?.trim().slice(0, 500) ?? "";
+    if (action === "send" && !message) return;
+    if (action === "escalate" && !data?.conversation) return;
+    setSending(true);
+    setError("");
+    try {
+      const response = await fetch("/api/support/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action, ...(data?.conversation && action !== "new" ? { conversationId: data.conversation.id } : {}),
+          ...(action === "send" ? { message } : {}),
+        }),
+      });
+      const result = await response.json() as SupportHistory & { error?: string };
+      if (!response.ok) throw new Error(result.error || "Không gửi được câu hỏi.");
+      setData(result);
+      if (action === "send") setDraft("");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Không thể kết nối.");
+    } finally {
+      setSending(false);
+    }
   }
 
+  const waiting = data?.conversation?.status === "WAITING_ADMIN";
   return (
     <>
       {open ? (
         <section
           role="dialog"
-          aria-label="Hỗ trợ Educhi"
-          className="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-[60] flex max-h-[calc(100dvh-7rem)] min-h-0 flex-col overflow-hidden rounded-2xl border border-orange-100 bg-white shadow-[0_18px_50px_rgba(72,44,20,0.24)] sm:inset-x-auto sm:bottom-24 sm:right-6 sm:w-[22rem] sm:max-h-[min(28rem,calc(100dvh-7rem))]"
+          aria-label="Chatbot hỗ trợ Educhi"
+          className="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-[60] flex max-h-[calc(100dvh-7rem)] min-h-0 flex-col overflow-hidden rounded-2xl border border-orange-100 bg-white shadow-[0_18px_50px_rgba(72,44,20,0.24)] sm:inset-x-auto sm:bottom-24 sm:right-6 sm:w-[23rem] sm:max-h-[min(32rem,calc(100dvh-7rem))]"
         >
-          <div className="flex shrink-0 items-center justify-between gap-2 bg-orange-500 px-4 py-3 text-white">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="h-10 w-10 shrink-0 overflow-hidden rounded-full border-2 border-white/70 bg-white">
+          <div className="flex shrink-0 items-center justify-between gap-2 bg-orange-500 px-3 py-3 text-white">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-white">
                 <MascotAvatar variant="chat" />
               </span>
               <div className="min-w-0">
-                <p className="font-extrabold">Hỗ trợ Educhi</p>
-                <p className="text-xs text-orange-100">Hướng dẫn tự động, không phải nhân viên trực tuyến</p>
+                <p className="font-extrabold leading-5">Educhi AI & Admin</p>
+                <p className="text-[11px] text-orange-50">{waiting ? "Đang chờ Admin hỗ trợ" : "AI trả lời trước, Admin hỗ trợ khi cần"}</p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label="Đóng chat"
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-white transition hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
-            >
+            <button type="button" aria-label="Đóng chat" onClick={() => setOpen(false)}
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full hover:bg-white/15">
               <X className="h-5 w-5" />
             </button>
           </div>
-
-          <div ref={messageListRef} aria-live="polite" aria-relevant="additions" className="min-h-0 max-h-52 flex-1 space-y-3 overflow-y-auto overscroll-contain bg-orange-50/50 px-3 py-4">
-            {messages.map((message) => (
-              <div key={message.id} className={clsx("flex", message.role === "student" ? "justify-end" : "justify-start")}>
-                <p className={clsx(
-                  "max-w-[90%] whitespace-pre-wrap break-words rounded-2xl px-3 py-2.5 text-sm leading-5 shadow-sm",
-                  message.role === "student"
-                    ? "rounded-br-md bg-orange-500 text-white"
-                    : "rounded-tl-md bg-white text-slate-700",
-                )}>
-                  {message.text}
-                </p>
-              </div>
-            ))}
-            {messages.length === 1 ? (
-              <div className="flex flex-wrap gap-2">
-                {supportQuickQuestions.map((question) => (
-                  <button
-                    key={question}
-                    type="button"
-                    onClick={() => sendMessage(question)}
-                    className="rounded-full border border-orange-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-orange-700 hover:bg-orange-50"
-                  >
-                    {question}
-                  </button>
-                ))}
-              </div>
-            ) : null}
+          <div className="flex shrink-0 items-center gap-2 border-b bg-white px-3 py-2">
+            <select aria-label="Lịch sử hội thoại" value={data?.conversation?.id ?? ""} disabled={loading || sending}
+              onChange={(event) => { if (event.target.value) void load(event.target.value); }}
+              className="min-w-0 flex-1 rounded-lg border border-orange-100 px-2 py-2 text-xs text-slate-700">
+              {data?.conversations.length ? data.conversations.map((thread, index) => (
+                <option key={thread.id} value={thread.id}>
+                  {index === 0 ? "Gần nhất · " : ""}{new Date(thread.updatedAt).toLocaleDateString("vi-VN")}
+                  {thread.status === "WAITING_ADMIN" ? " · Chờ Admin" : ""}
+                </option>
+              )) : <option value="">Chưa có hội thoại</option>}
+            </select>
+            <button type="button" disabled={sending || loading} onClick={() => void act("new")}
+              className="shrink-0 rounded-lg border border-orange-200 px-2.5 py-2 text-xs font-extrabold text-orange-700 disabled:opacity-50">
+              + Chat mới
+            </button>
           </div>
 
+          <div ref={messageListRef} role="log" aria-live="polite"
+            className="min-h-0 max-h-[45dvh] flex-1 space-y-3 overflow-y-auto overscroll-contain bg-orange-50/50 px-3 py-3">
+            {!data?.messages.length ? (
+              <p className="rounded-xl bg-white p-3 text-sm leading-5 text-slate-700">
+                Chào bạn! Hãy đặt câu hỏi học tập hoặc hỏi cách sử dụng Educhi.
+              </p>
+            ) : null}
+            {data?.messages.map((message) => (
+              <div key={message.id} className={clsx("flex", message.sender === "USER" ? "justify-end" : "justify-start")}>
+                <div className={clsx(
+                  "max-w-[92%] whitespace-pre-wrap break-words rounded-2xl px-3 py-2.5 text-sm leading-5 shadow-sm",
+                  message.sender === "USER" ? "rounded-br-md bg-orange-500 text-white" : "rounded-tl-md bg-white text-slate-700",
+                )}>
+                  {message.sender === "ADMIN" ? <p className="mb-1 text-[10px] font-bold text-orange-700">Admin Educhi</p> : null}
+                  {message.sender === "AI" ? <p className="mb-1 text-[10px] font-bold text-orange-700">Educhi AI</p> : null}
+                  <p>{message.content}</p>
+                </div>
+              </div>
+            ))}
+            {loading ? <p className="text-center text-xs text-slate-500">Đang tải…</p> : null}
+            {sending ? <p className="text-center text-xs text-slate-500">Đang xử lý câu hỏi…</p> : null}
+          </div>
+
+          {error ? <p role="alert" className="bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p> : null}
+          <div className="flex shrink-0 items-center justify-between gap-2 border-t border-orange-100 bg-white px-3 py-2">
+            <span className="text-[10px] text-slate-500">
+              {waiting ? "Tin nhắn sẽ đến Admin." : data?.aiEnabled ? "Trợ lý AI · Không gửi mật khẩu hoặc OTP." : "AI chưa bật · Chuyển câu hỏi đến Admin"}
+            </span>
+            {data?.conversation && !waiting ? (
+              <button type="button" onClick={() => void act("escalate")} disabled={sending}
+                className="shrink-0 rounded-lg border border-orange-200 px-2 py-1.5 text-[11px] font-extrabold text-orange-700 disabled:opacity-50">
+                Nhờ Admin
+              </button>
+            ) : null}
+          </div>
           <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              sendMessage(draft);
-            }}
+            onSubmit={(event) => { event.preventDefault(); void act("send", draft); }}
             className="flex shrink-0 items-center gap-2 border-t border-orange-100 bg-white p-3"
           >
-            <input
-              aria-label="Nhập câu hỏi cho Educhi"
-              placeholder="Nhập câu hỏi..."
-              maxLength={500}
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              className="h-11 min-w-0 flex-1 rounded-xl border border-orange-100 bg-white px-3 text-base text-slate-900 outline-none focus:border-orange-400 sm:text-sm"
-            />
-            <button
-              type="submit"
-              aria-label="Gửi tin nhắn"
-              disabled={!draft.trim()}
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-orange-500 text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-45"
-            >
+            <input aria-label="Nhập câu hỏi cho Educhi" placeholder="Nhập câu hỏi…" maxLength={500}
+              value={draft} onChange={(event) => setDraft(event.target.value)}
+              className="h-11 min-w-0 flex-1 rounded-xl border border-orange-100 bg-white px-3 text-base text-slate-900 outline-none focus:border-orange-400 sm:text-sm" />
+            <button type="submit" aria-label="Gửi tin nhắn" disabled={sending || !draft.trim()}
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-orange-500 text-white disabled:opacity-50">
               <Send className="h-4 w-4" />
             </button>
           </form>
         </section>
       ) : (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label="Mở chat hỗ trợ"
-          className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-3 z-[60] grid h-14 w-14 place-items-center overflow-hidden rounded-full border-2 border-orange-300 bg-white shadow-[0_8px_24px_rgba(249,115,22,0.28)] transition hover:-translate-y-1 sm:bottom-6 sm:right-6"
-        >
+        <button type="button" onClick={() => setOpen(true)} aria-label="Mở chat hỗ trợ"
+          className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-3 z-[60] grid h-14 w-14 place-items-center overflow-hidden rounded-full border-2 border-orange-300 bg-white shadow-[0_8px_24px_rgba(249,115,22,0.28)] transition hover:-translate-y-1 sm:bottom-6 sm:right-6">
           <MascotAvatar variant="chat" />
         </button>
       )}
