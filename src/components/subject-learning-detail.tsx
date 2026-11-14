@@ -103,7 +103,7 @@ export function SubjectLearningDetail({
           </div>
         </div>
 
-        <div className="mt-7 flex gap-4 overflow-x-auto pb-4 [scrollbar-color:#9ca3af_transparent]">
+        <div className="mt-6 flex gap-3 overflow-x-auto pb-3 [scrollbar-color:#9ca3af_transparent]">
           {subjects.map((item) => {
             const active = item.slug === subject.slug;
             const visual = getItemVisual(item.name, item.slug);
@@ -113,7 +113,7 @@ export function SubjectLearningDetail({
                 key={item.slug}
                 href={`/subjects/${item.slug}${contextQuery}`}
                 className={clsx(
-                  "flex min-w-[250px] items-center gap-4 rounded-[2rem] border px-5 py-5 transition-all duration-200 sm:min-w-[280px]",
+                  "flex min-w-[235px] items-center gap-3 rounded-[1.65rem] border px-4 py-3 transition-all duration-200 sm:min-w-[265px] sm:px-5 sm:py-4",
                   active
                     ? "border-orange-400 bg-orange-500 text-white shadow-lg shadow-orange-200"
                     : "border-white bg-white text-slate-700 shadow-sm hover:-translate-y-0.5 hover:border-orange-100 hover:shadow-md",
@@ -142,29 +142,29 @@ export function SubjectLearningDetail({
           })}
         </div>
 
-        <section className="mt-5">
+        <section className="mt-4">
           <div className="flex items-center justify-between gap-4">
             <h2 className="flex items-center gap-3 text-2xl font-black">
               <Flame className="h-7 w-7 fill-orange-500 text-orange-500" /> Đề thi hot
             </h2>
           </div>
-          <div className="mt-5 grid gap-5 lg:grid-cols-3">
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
             {hotExams.slice(0, 3).map((exam) => (
-              <article key={exam.id} className="relative overflow-hidden rounded-[2rem] border border-orange-100 bg-white p-6 shadow-sm">
-                <span className="absolute right-0 top-0 rounded-bl-3xl bg-orange-500 px-5 py-2.5 text-xs font-black text-white">
+              <article key={exam.id} className="relative overflow-hidden rounded-[1.65rem] border border-orange-100 bg-white px-4 pb-4 pt-5 shadow-sm sm:p-5">
+                <span className="absolute right-0 top-0 rounded-bl-2xl bg-orange-500 px-4 py-2 text-xs font-black text-white">
                   {exam.weeklyParticipants} người thi tuần này
                 </span>
-                <div className="pt-7">
-                  <span className="mb-3 inline-block rounded-full bg-orange-50 px-3 py-1 text-xs font-bold text-orange-700">{exam.contentMode === "TOPIC" ? "Theo chuyên đề" : "Theo kỳ thi"}</span>
-                  <h3 className="min-h-14 text-lg font-black leading-7 text-slate-800">{exam.title}</h3>
-                  <div className="mt-5 flex flex-wrap gap-4 text-xs font-extrabold uppercase text-slate-400">
+                <div className="pt-7 sm:pt-6">
+                  <span className="mb-2 inline-block rounded-full bg-orange-50 px-3 py-1 text-xs font-bold text-orange-700">{exam.contentMode === "TOPIC" ? "Theo chuyên đề" : "Theo kỳ thi"}</span>
+                  <h3 className="text-lg font-black leading-7 text-slate-800">{exam.title}</h3>
+                  <div className="mt-3 flex flex-wrap gap-x-3 gap-y-2 text-xs font-extrabold uppercase text-slate-400">
                     <span className="inline-flex items-center gap-1.5"><Eye className="h-4 w-4" />{exam.attemptCount.toLocaleString("vi-VN")} lượt thi</span>
                     <span className="inline-flex items-center gap-1.5"><FileText className="h-4 w-4" />{exam.questionCount} câu</span>
                     <span className="inline-flex items-center gap-1.5"><Clock3 className="h-4 w-4" />{exam.durationMinutes} phút</span>
                   </div>
                   <Link
                     href={exam.href}
-                    className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-orange-50 px-4 py-3.5 text-sm font-black text-orange-600 transition hover:bg-orange-500 hover:text-white"
+                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-orange-50 px-4 py-3 text-sm font-black text-orange-600 transition hover:bg-orange-500 hover:text-white"
                   >
                     <Play className="h-4 w-4 fill-current" /> Làm bài ngay
                   </Link>
@@ -173,7 +173,7 @@ export function SubjectLearningDetail({
             ))}
           </div>
           {!hotExams.length ? (
-            <div className="mt-5 rounded-[2rem] border-2 border-dashed border-orange-200 bg-white/70 px-6 py-12 text-center text-sm font-semibold text-slate-500">
+            <div className="mt-4 rounded-[1.65rem] border-2 border-dashed border-orange-200 bg-white/70 px-5 py-8 text-center text-sm font-semibold text-slate-500">
               Chưa có đề thi được xuất bản cho môn học này.
             </div>
           ) : null}
