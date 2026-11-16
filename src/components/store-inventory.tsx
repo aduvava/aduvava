@@ -186,9 +186,9 @@ export function StoreInventory({
                 const img = getStoreImageUrl(item.metadata.imageFile);
                 return (
                   <article key={item.id} className="flex min-w-0 flex-col overflow-hidden rounded-[1.5rem] border border-orange-100 bg-white p-4 shadow-sm">
-                    <div className="relative grid aspect-[4/3] place-items-center overflow-hidden rounded-2xl bg-gradient-to-br from-orange-50 via-white to-blue-50">
+                    <div className="relative grid aspect-[4/3] place-items-center overflow-hidden rounded-2xl bg-white">
                       {img ? (
-                        <img src={img} alt={item.name} className="h-full w-full object-contain p-3" />
+                        <img src={img} alt={item.name} className="h-full w-full object-fill" />
                       ) : <CategoryIcon category={item.category} />}
                       {isEquipped ? <span className="absolute right-2 top-2 rounded-full bg-emerald-600 px-2.5 py-1 text-[10px] font-black text-white">Đang dùng</span> : null}
                     </div>
