@@ -9,7 +9,8 @@ import { SCHOOL_GRADES, VIETNAM_PROVINCES } from "@/data/profile-options";
 export function RegisterForm() {
   const [message, setMessage] = useState<string | null>(null);
   const [existingAccount, setExistingAccount] = useState(false);
-  const teacher = useSearchParams().get("role") === "teacher";
+  const params = useSearchParams();
+  const teacher = !params.has("ref") && params.get("role") === "teacher";
   const role = "STUDENT" as const;
 
   async function submit(formData: FormData) {
