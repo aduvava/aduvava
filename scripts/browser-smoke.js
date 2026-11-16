@@ -262,6 +262,32 @@ async function main() {
     } });
     assert.equal(planResponse.status(), 201, "admin creates VIP plan");
     const planId = (await planResponse.json()).item.id;
+    // The invited buyer's account existed before checkout. The optional code
+    // must bind this invoice without modifying account registration history.
+    const codeCheckout = await invitePage.request.post(base + "/api/payments/checkout", {
+      data: { planId, referralCode: inviteCode },
+    });
+    assert.equal(codeCheckout.status(), 201, "any existing logged-in account can apply an optional referral code");
+    const codeInvoice = await codeCheckout.json();
+    assert.equal(codeInvoice.appliedReferralCode, inviteCode);
+    const storedCodeInvoice = await prisma.payment.findUniqueOrThrow({
+      where: { id: codeInvoice.payment.id },
+    });
+    assert.equal(storedCodeInvoice.metadata.referralInviterId, account.id);
+    assert.equal(await prisma.referralReward.count({ where: { paymentId: codeInvoice.payment.id } }), 0,
+      "no referral reward before bank settlement");
+    const duplicateCheckout = await invitePage.request.post(base + "/api/payments/checkout", {
+      data: { planId, referralCode: inviteCode },
+    });
+    assert.equal(duplicateCheckout.status(), 200, "retry must reuse invoice with unchanged inviter");
+    assert.equal((await duplicateCheckout.json()).payment.id, codeInvoice.payment.id);
+    assert.equal((await invitePage.request.post(base + "/api/payments/checkout", {
+      data: { planId, referralCode: "ZZZZZZ" },
+    })).status(), 400, "unknown referral codes must be rejected");
+    assert.equal((await adminPage.request.post(base + "/api/payments/checkout", {
+      data: { planId, referralCode: inviteCode },
+    })).status(), 400, "self-referral code must be rejected");
+    await inviteContext.close();
     await adminPage.goto(base + "/admin/plans");
     await adminPage.getByRole("heading", { name: "Gói thành viên", exact: true }).waitFor();
     assert.equal(await adminPage.getByText("JSON editor").count(), 0, "VIP plan UI hides JSON editor");
