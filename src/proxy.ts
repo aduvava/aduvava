@@ -31,7 +31,11 @@ export async function proxy(request: NextRequest) {
       });
     }
     const url = new URL(isAdmin ? "/admin/login" : "/login", request.url);
-    url.searchParams.set("callbackUrl", pathname);
+    // Keep only the optional six-character VIP referral when asking guests to log in.
+    const inviteCode = pathname === "/vip" ? request.nextUrl.searchParams.get("ref")?.toUpperCase() : null;
+    const destination = inviteCode && /^[A-Z0-9]{6}$/.test(inviteCode)
+      ? "/vip?ref=" + encodeURIComponent(inviteCode) : pathname;
+    url.searchParams.set("callbackUrl", destination);
     return NextResponse.redirect(url);
   }
 
