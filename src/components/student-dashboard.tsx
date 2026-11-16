@@ -73,7 +73,7 @@ const studyGroups = [
 ];
 
 type CommunityMessage = {
-  id: number;
+  id: string;
   name: string;
   initials: string;
   text: string;
@@ -82,7 +82,6 @@ type CommunityMessage = {
   replyTo?: Pick<CommunityMessage, "name" | "text">;
 };
 
-const initialMessages: CommunityMessage[] = [];
 
 const rankingColors = [
   "bg-amber-100 text-amber-700",
@@ -424,7 +423,7 @@ export function StudentDashboard({
   const visibleSubjects = useMemo(() => getDashboardSubjects(subjects, activeGroup), [subjects, activeGroup]);
   const showingSpecialExams = activeGroup === "national-exam" && activeClass === "Kỳ thi riêng";
   const [activeSubject, setActiveSubject] = useState(getDashboardSubjects(subjects, studyGroups[0].id)[0]?.slug ?? "");
-  const [communityMessages, setCommunityMessages] = useState<CommunityMessage[]>(initialMessages);
+  const [communityMessages, setCommunityMessages] = useState<CommunityMessage[]>([]);
   const [communityDraft, setCommunityDraft] = useState("");
   const [replyTarget, setReplyTarget] = useState<CommunityMessage | null>(null);
 
@@ -439,25 +438,51 @@ export function StudentDashboard({
     setActiveSubject(visibleSubjects[0]?.slug ?? "");
   }
 
-  function sendCommunityMessage() {
-    const text = communityDraft.trim();
-    if (!text) return;
+  const [communityError, setCommunityError] = useState("");
+  const [communitySending, setCommunitySending] = useState(false);
+  const [communityLoading, setCommunityLoading] = useState(true);
 
-    const now = new Date();
-    setCommunityMessages((items) => [
-      ...items,
-      {
-        id: Date.now(),
-        name: firstName || "Bạn",
-        initials: getInitials(firstName || "Bạn"),
-        text,
-        time: now.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
-        color: "bg-orange-100 text-orange-600",
-        replyTo: replyTarget ? { name: replyTarget.name, text: replyTarget.text } : undefined,
-      },
-    ]);
-    setCommunityDraft("");
-    setReplyTarget(null);
+  async function loadCommunity() {
+    try {
+      const response = await fetch("/api/community", { cache: "no-store" });
+      if (!response.ok) throw new Error("Không tải được tin nhắn cộng đồng.");
+      const data = await response.json() as { messages: CommunityMessage[] };
+      setCommunityMessages(data.messages);
+      setCommunityError("");
+    } catch (error) {
+      setCommunityError(error instanceof Error ? error.message : "Không kết nối được cộng đồng.");
+    } finally {
+      setCommunityLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadCommunity();
+    const timer = setInterval(() => { if (document.visibilityState === "visible") void loadCommunity(); }, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  async function sendCommunityMessage() {
+    const text = communityDraft.trim();
+    if (!text || communitySending) return;
+    setCommunitySending(true);
+    try {
+      const response = await fetch("/api/community", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, replyToId: replyTarget?.id }),
+      });
+      const data = await response.json() as { messages?: CommunityMessage[]; error?: string };
+      if (!response.ok) throw new Error(data.error || "Không gửi được tin nhắn.");
+      setCommunityMessages(data.messages || []);
+      setCommunityDraft("");
+      setReplyTarget(null);
+      setCommunityError("");
+    } catch (error) {
+      setCommunityError(error instanceof Error ? error.message : "Không gửi được tin nhắn.");
+    } finally {
+      setCommunitySending(false);
+    }
   }
 
   return (
@@ -596,7 +621,9 @@ export function StudentDashboard({
               </div>
               <span className="grid h-10 w-10 place-items-center rounded-[1.15rem] bg-orange-50 text-orange-500"><MessageCircleMore className="h-5 w-5" /></span>
             </div>
-            <div className="mt-5 space-y-3">
+            <div className="mt-5 max-h-[360px] space-y-3 overflow-y-auto pr-1">
+              {communityLoading ? <p className="text-sm text-slate-400">Đang tải tin nhắn...</p> : null}
+              {!communityLoading && communityMessages.length === 0 ? <p className="text-sm text-slate-400">Chưa có tin nhắn. Hãy bắt đầu cuộc trò chuyện!</p> : null}
               {communityMessages.map((message, index) => (
                 <div key={message.id} className={clsx("flex gap-3", index === 1 && "sm:pl-10")}>
                   <span className={clsx("grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-extrabold", message.color)}>{message.initials}</span>
@@ -611,7 +638,7 @@ export function StudentDashboard({
                       <p className="text-sm font-extrabold text-slate-700">{message.name}</p>
                       <div className="flex items-center gap-2">
                         <button type="button" onClick={() => setReplyTarget(message)} className="text-[11px] font-bold text-orange-500 hover:text-orange-600">Trích dẫn</button>
-                        <span className="text-[11px] text-slate-400">{message.time}</span>
+                        <span className="text-[11px] text-slate-400">{new Date(message.time).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</span>
                       </div>
                     </div>
                     <p className="mt-1 text-sm leading-6 text-slate-600">{message.text}</p>
@@ -619,6 +646,7 @@ export function StudentDashboard({
                 </div>
               ))}
             </div>
+            {communityError ? <p role="alert" className="mt-2 text-xs text-red-600">{communityError}</p> : null}
             {replyTarget ? (
               <div className="mt-4 flex items-start justify-between gap-3 rounded-2xl bg-orange-50 px-4 py-3 text-xs text-slate-600">
                 <div>
@@ -638,7 +666,7 @@ export function StudentDashboard({
                 placeholder="Chia sẻ điều bạn đang thắc mắc..."
                 className="min-w-0 flex-1 rounded-[1.35rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-orange-400 focus:bg-white"
               />
-              <button type="button" onClick={sendCommunityMessage} aria-label="Gửi tin nhắn" className="grid h-11 w-11 place-items-center rounded-[1.25rem] bg-orange-500 text-white transition hover:bg-orange-600"><Send className="h-4 w-4" /></button>
+              <button type="button" onClick={sendCommunityMessage} disabled={communitySending} aria-label="Gửi tin nhắn" className="grid h-11 w-11 place-items-center rounded-[1.25rem] bg-orange-500 text-white transition hover:bg-orange-600"><Send className="h-4 w-4" /></button>
             </div>
           </section>
 
