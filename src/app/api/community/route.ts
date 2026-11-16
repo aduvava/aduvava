@@ -1,0 +1,75 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import { requireUser, HttpError, handleRouteError } from "@/lib/api";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+function checkOrigin(request: Request) {
+  const origin = request.headers.get("origin");
+  const allowed = process.env.NEXTAUTH_URL ? new URL(process.env.NEXTAUTH_URL).origin : new URL(request.url).origin;
+  if (!origin || origin !== allowed) throw new HttpError(403, "Invalid request origin");
+}
+
+async function history() {
+  const rows = (await prisma.communityMessage.findMany({
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: 60,
+  })).reverse();
+  const users = await prisma.user.findMany({
+    where: { id: { in: [...new Set(rows.map((row) => row.userId))] } },
+    select: { id: true, name: true, role: true },
+  });
+  const names = new Map(users.map((user) => [user.id, { name: user.name || "Thành viên Educhi", role: user.role }]));
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  return rows.map((row) => ({
+    id: row.id,
+    name: names.get(row.userId)?.name || "Thành viên Educhi",
+    initials: (names.get(row.userId)?.name || "ED").trim().split(/\s+/).slice(-2).map((part) => part[0]).join("").toUpperCase(),
+    text: row.content,
+    time: row.createdAt.toISOString(),
+    color: "bg-orange-100 text-orange-600",
+    replyTo: row.replyToId && byId.has(row.replyToId) ? {
+      name: names.get(byId.get(row.replyToId)!.userId)?.name || "Thành viên Educhi",
+      text: byId.get(row.replyToId)!.content,
+    } : undefined,
+    canDelete: names.get(row.userId)?.role === "ADMIN",
+  }));
+}
+
+export async function GET() {
+  try {
+    await requireUser();
+    return NextResponse.json({ messages: await history() }, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) { return handleRouteError(error); }
+}
+
+export async function POST(request: Request) {
+  try {
+    checkOrigin(request);
+    const user = await requireUser();
+    const body = await request.json().catch(() => ({}));
+    const message = typeof body.message === "string" ? body.message.trim() : "";
+    if (!message || message.length > 500) throw new HttpError(400, "Tin nhắn phải có từ 1 đến 500 ký tự.");
+    const recent = await prisma.communityMessage.findFirst({
+      where: { userId: user.id }, orderBy: { createdAt: "desc" }, select: { createdAt: true },
+    });
+    if (recent && Date.now() - recent.createdAt.getTime() < 3000) throw new HttpError(429, "Vui lòng đợi 3 giây trước khi gửi tiếp.");
+    const replyToId = typeof body.replyToId === "string" ? body.replyToId : null;
+    const reply = replyToId ? await prisma.communityMessage.findUnique({ where: { id: replyToId }, select: { id: true } }) : null;
+    await prisma.communityMessage.create({ data: { userId: user.id, content: message, replyToId: reply?.id || null } });
+    return NextResponse.json({ messages: await history() }, { status: 201 });
+  } catch (error) { return handleRouteError(error); }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    checkOrigin(request);
+    const user = await requireUser();
+    if (user.role !== "ADMIN") throw new HttpError(403, "Chỉ quản trị viên có thể xóa tin nhắn.");
+    const body = await request.json().catch(() => ({}));
+    if (typeof body.id !== "string") throw new HttpError(400, "Thiếu mã tin nhắn.");
+    await prisma.communityMessage.delete({ where: { id: body.id } });
+    return NextResponse.json({ messages: await history() });
+  } catch (error) { return handleRouteError(error); }
+}

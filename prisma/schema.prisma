@@ -847,3 +847,15 @@ model SupportAiBudget {
   heldMicroUsd   Int      @default(0)
   updatedAt      DateTime @updatedAt
 }
+
+// Shared dashboard discussion, persisted for all signed-in members.
+model CommunityMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  content   String   @db.VarChar(500)
+  replyToId String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt, id])
+  @@index([userId, createdAt])
+}
