@@ -14,7 +14,8 @@ function featureList(value: unknown) {
   return Array.isArray(value) ? value.map((item) => String(item)) : [];
 }
 
-export default async function VipPage() {
+export default async function VipPage({ searchParams }: { searchParams: Promise<{ ref?: string }> }) {
+  const params = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login?role=student&callbackUrl=/vip");
 
@@ -34,6 +35,7 @@ export default async function VipPage() {
   return (
     <VipPricing
       referralOverview={referralOverview}
+      initialReferralCode={params.ref ?? ""}
       plans={plans.map((plan) => ({
         id: plan.id,
         slug: plan.slug,
