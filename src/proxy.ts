@@ -30,13 +30,17 @@ export async function proxy(request: NextRequest) {
         status: 401, headers: { "Cache-Control": "no-store" },
       });
     }
-    const url = new URL(isAdmin ? "/admin/login" : "/login", request.url);
-    // Keep only the optional six-character VIP referral when asking guests to log in.
+    // Relative Location is essential behind the VPS Docker reverse proxy;
+    // constructing redirects from request.url can expose 0.0.0.0:3000.
     const inviteCode = pathname === "/vip" ? request.nextUrl.searchParams.get("ref")?.toUpperCase() : null;
     const destination = inviteCode && /^[A-Z0-9]{6}$/.test(inviteCode)
       ? "/vip?ref=" + encodeURIComponent(inviteCode) : pathname;
-    url.searchParams.set("callbackUrl", destination);
-    return NextResponse.redirect(url);
+    const loginPath = isAdmin ? "/admin/login" : "/login?role=student";
+    const separator = loginPath.includes("?") ? "&" : "?";
+    return new NextResponse(null, { status: 303, headers: {
+      Location: loginPath + separator + "callbackUrl=" + encodeURIComponent(destination),
+      "Cache-Control": "no-store",
+    } });
   }
 
   if (isAdmin && token.role !== "ADMIN") {
@@ -45,7 +49,7 @@ export async function proxy(request: NextRequest) {
         status: 403, headers: { "Cache-Control": "no-store" },
       });
     }
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return new NextResponse(null, { status: 303, headers: { Location: "/dashboard" } });
   }
 
   // Student/teacher is now a selectable authenticated mode. A JWT role
