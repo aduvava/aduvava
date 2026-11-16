@@ -1,5 +1,7 @@
 "use strict";
 
+const { calculateReferralRewardVnd } = require("./referral-invites.js");
+
 // A single transaction implements all PAID -> VIP activations from both admin
 // interfaces. Never mark a payment as PAID before its subscription is committed.
 const VALID_STATUSES = new Set(["PENDING", "PAID", "FAILED"]);
@@ -137,6 +139,40 @@ async function transitionManualPayment(db, paymentId, nextStatus, sepayEventId =
         });
         if (sepayEventId !== null) {
           await tx.sePayReceipt.create({ data: { eventId: sepayEventId, paymentId } });
+        }
+        // The referral ledger, balance increment and VIP activation share ONE
+        // serializable transaction. No commission for unverified transfers,
+        // duplicate SePay callbacks, VIP grants, or a missing inviter.
+        const rewardAmount = calculateReferralRewardVnd(current.amount);
+        if (rewardAmount > 0) {
+          const buyer = await tx.user.findUnique({
+            where: { id: current.userId },
+            select: { referredByUserId: true },
+          });
+          const inviterId = buyer?.referredByUserId;
+          if (inviterId && inviterId !== current.userId) {
+            await tx.referralReward.create({
+              data: {
+                inviterId,
+                buyerId: current.userId,
+                paymentId: current.id,
+                paymentAmountVnd: current.amount,
+                amountVnd: rewardAmount,
+              },
+            });
+            await tx.user.update({
+              where: { id: inviterId },
+              data: { referralBalanceVnd: { increment: rewardAmount } },
+            });
+            await tx.notification.create({
+              data: {
+                userId: inviterId,
+                title: "Bạn đã nhận thưởng giới thiệu VIP",
+                message: `Một người bạn đã thanh toán VIP. Số dư giới thiệu của bạn tăng ${rewardAmount.toLocaleString("vi-VN")}đ.`,
+                href: "/vip",
+              },
+            });
+          }
         }
         await tx.notification.create({
           data: {
