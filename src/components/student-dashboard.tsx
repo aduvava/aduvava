@@ -127,22 +127,11 @@ function DashboardImageCard({ imageKey, imageName, uploadedImage }: { imageKey: 
         className="relative flex h-full w-full min-h-0 min-w-0 items-center justify-center overflow-hidden rounded-[1.4rem] bg-orange-50/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
       >
         {displayImage ? (
-          <>
-            {/* Extend the picture across the wide card without cropping the subject. */}
-            <img
-              src={displayImage}
-              alt=""
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover object-center blur-xl opacity-70"
-            />
-            <span aria-hidden="true" className="pointer-events-none absolute inset-0 bg-white/10" />
-            {/* A square upload is fully visible on top of the soft extended background. */}
-            <img
-              src={displayImage}
-              alt={imageName ?? image?.alt ?? "Ảnh trang chủ đã trang bị"}
-              className="relative block h-full w-full min-h-0 min-w-0 object-contain object-center"
-            />
-          </>
+          <img
+            src={displayImage}
+            alt={imageName ?? image?.alt ?? "Ảnh trang chủ đã trang bị"}
+            className="block h-full w-full object-cover object-center"
+          />
         ) : shopVisual && ShopIcon ? (
           <div className={clsx("grid h-full w-full place-items-center bg-gradient-to-br", shopVisual.gradient)}>
             <ShopIcon className={clsx("h-16 w-16 drop-shadow-xl", shopVisual.color)} strokeWidth={1.4} />
