@@ -67,7 +67,7 @@ export async function createManualCheckout(
         data: { metadata: nextMetadata },
       });
       if (updated.count !== 1) throw new HttpError(409, "Giao dịch đã đổi trạng thái, vui lòng tải lại trang VIP.");
-      payment = { ...recentPending, metadata: nextMetadata };
+      payment = await prisma.payment.findUniqueOrThrow({ where: { id: recentPending.id } });
     }
     return {
       payment,
