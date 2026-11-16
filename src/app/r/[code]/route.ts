@@ -1,36 +1,32 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import {
-  COOKIE_NAME, INVITE_LIFETIME_MS, REFERRAL_CODE_PATTERN, createInviteToken,
-} from "@/lib/referral-invites";
+import { getOrCreateReferralCode } from "@/lib/referrals";
+import { REFERRAL_CODE_PATTERN, LEGACY_REFERRAL_CODE_PATTERN } from "@/lib/referral-invites";
 
 export const runtime = "nodejs";
 
-// Keep Location relative so the browser stays on educhi.xyz even when Next.js
-// receives an internal Docker request URL (e.g. http://0.0.0.0:3000).
-function redirectOnSameHost(path: string) {
+// Relative Location prevents private Docker hostnames from leaking to visitors.
+function sameHostRedirect(path: string) {
   return new NextResponse(null, {
     status: 303,
     headers: { Location: path, "Cache-Control": "no-store" },
   });
 }
 
-export async function GET(request: NextRequest, context: { params: Promise<{ code: string }> }) {
+export async function GET(_request: Request, context: { params: Promise<{ code: string }> }) {
   const { code } = await context.params;
   const normalized = code.trim().toUpperCase();
+  const current = REFERRAL_CODE_PATTERN.test(normalized);
+  const legacy = LEGACY_REFERRAL_CODE_PATTERN.test(normalized);
+  if (!current && !legacy) return sameHostRedirect("/vip");
 
-  if (!REFERRAL_CODE_PATTERN.test(normalized) || !process.env.NEXTAUTH_SECRET) {
-    return redirectOnSameHost("/register?role=student");
-  }
-  const owner = await prisma.user.findUnique({
-    where: { referralCode: normalized }, select: { id: true },
-  });
-  if (!owner) return redirectOnSameHost("/register?role=student");
-  const token = createInviteToken(owner.id, process.env.NEXTAUTH_SECRET);
-  const response = redirectOnSameHost("/invite/" + encodeURIComponent(normalized));
-  response.cookies.set(COOKIE_NAME, token, {
-    httpOnly: true, secure: process.env.NODE_ENV === "production" || request.nextUrl.protocol === "https:",
-    sameSite: "lax", path: "/", maxAge: INVITE_LIFETIME_MS / 1000,
-  });
-  return response;
+  const inviter = current
+    ? await prisma.user.findUnique({ where: { referralCode: normalized }, select: { id: true } })
+    : await prisma.user.findUnique({ where: { referralLegacyCode: normalized }, select: { id: true } });
+  if (!inviter) return sameHostRedirect("/vip");
+
+  // Older long invitation URLs still resolve, but buyers are never required to
+  // register new accounts or leave their existing Educhi/Admin session.
+  const codeForCheckout = await getOrCreateReferralCode(inviter.id);
+  return sameHostRedirect("/vip?ref=" + encodeURIComponent(codeForCheckout));
 }
