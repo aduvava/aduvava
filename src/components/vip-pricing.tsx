@@ -19,6 +19,7 @@ type VipPricingProps = {
   plans: Plan[];
   activeSubscription: { planName: string; endsAt: string } | null;
   referralOverview: ReferralOverview;
+  initialReferralCode?: string;
 };
 
 function formatVnd(value: number) {
@@ -57,7 +58,7 @@ function DetailRow({ label, value, onCopy }: { label: string; value: string; onC
   );
 }
 
-function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
+function PlanCard({ plan, featured, referralCode }: { plan: Plan; featured: boolean; referralCode: string }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
@@ -65,6 +66,7 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
   const [paymentStatus, setPaymentStatus] = useState<"PENDING" | "PAID" | "FAILED" | null>(null);
   const [bankTransfer, setBankTransfer] = useState<BankTransferDetails | null>(null);
   const [qrSource, setQrSource] = useState<0 | 1 | 2>(0);
+  const [appliedReferralCode, setAppliedReferralCode] = useState("");
 
   async function checkPayment(paymentIdToCheck: string) {
     try {
@@ -98,13 +100,17 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
   async function checkout() {
     if (loading) return;
     if (bankTransfer) { setPaymentOpen(true); return; }
+    if (referralCode && !/^[A-Z0-9]{6}$/.test(referralCode)) {
+      setMessage("Mã giới thiệu cần đúng 6 chữ hoặc số, hoặc để trống nếu không có.");
+      return;
+    }
     setLoading(true);
     setMessage("");
     try {
       const response = await fetch("/api/payments/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId: plan.id }),
+        body: JSON.stringify({ planId: plan.id, ...(referralCode ? { referralCode } : {}) }),
       });
       if (response.status === 401) {
         window.location.href = "/login?callbackUrl=/vip";
@@ -124,6 +130,7 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
         return;
       }
       setBankTransfer(data.bankTransfer);
+      setAppliedReferralCode(typeof data.appliedReferralCode === "string" ? data.appliedReferralCode : "");
       setPaymentId(data.payment?.id ?? null);
       setPaymentStatus("PENDING");
       setQrSource(0);
@@ -188,6 +195,7 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-orange-600">Chuyển khoản VIP Educhi</p>
                 <h3 className="mt-1 text-2xl font-black text-slate-950">Thông tin thanh toán</h3>
                 <p className="mt-1 text-sm font-semibold text-slate-500">{plan.name} · {formatVnd(bankTransfer.amount)}</p>
+                <p className="mt-1 text-xs font-semibold text-slate-500">Mã giới thiệu trên đơn: {appliedReferralCode || "Không sử dụng"}</p>
               </div>
               <button type="button" onClick={() => setPaymentOpen(false)}
                 aria-label="Đóng thông tin chuyển khoản"
@@ -255,7 +263,8 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
   );
 }
 
-export function VipPricing({ plans, activeSubscription, referralOverview }: VipPricingProps) {
+export function VipPricing({ plans, activeSubscription, referralOverview, initialReferralCode = "" }: VipPricingProps) {
+  const [referralCode, setReferralCode] = useState(/^[A-Z0-9]{6}$/.test(initialReferralCode.toUpperCase()) ? initialReferralCode.toUpperCase() : "");
   const featured = plans.find((plan) => plan.slug.includes("monthly"))?.id ?? plans[1]?.id;
 
   return (
@@ -284,8 +293,33 @@ export function VipPricing({ plans, activeSubscription, referralOverview }: VipP
           </div>
         </section>
 
-        <section className="mt-8 grid gap-6 lg:grid-cols-3">
-          {plans.map((plan) => <PlanCard key={plan.id} plan={plan} featured={plan.id === featured} />)}
+        <section aria-labelledby="optional-referral-title" className="mt-8 rounded-[1.75rem] border border-orange-100 bg-white p-5 shadow-sm sm:p-6">
+          <label id="optional-referral-title" htmlFor="vip-referral-code" className="block text-base font-black text-slate-900">
+            Mã giới thiệu (không bắt buộc)
+          </label>
+          <p className="mt-1 text-sm font-medium text-slate-600">
+            Tài khoản mới hay cũ đều có thể nhập mã gồm 6 chữ hoặc số khi mua VIP.
+            Nếu thanh toán thành công, người giới thiệu nhận 10% giá trị gói.
+            Không có mã vẫn đăng ký VIP bình thường.
+          </p>
+          <input
+            id="vip-referral-code"
+            aria-label="Mã giới thiệu không bắt buộc"
+            type="text"
+            maxLength={6}
+            autoComplete="off"
+            autoCapitalize="characters"
+            value={referralCode}
+            onChange={(event) => setReferralCode(event.currentTarget.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))}
+            placeholder="Ví dụ: ABC123"
+            className="mt-4 h-12 w-full max-w-xs rounded-xl border border-orange-200 bg-orange-50/40 px-4 text-base font-black uppercase tracking-widest text-slate-950 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+          />
+          <p className="mt-2 text-xs font-medium text-slate-500">
+            Mã được gắn vào đơn trước khi chuyển khoản. Không thể dùng mã của chính mình.
+          </p>
+        </section>
+        <section className="mt-6 grid gap-6 lg:grid-cols-3">
+          {plans.map((plan) => <PlanCard key={plan.id} plan={plan} featured={plan.id === featured} referralCode={referralCode} />)}
           {!plans.length ? (
             <div className="rounded-[2rem] border border-orange-100 bg-white p-10 text-center text-sm font-semibold text-slate-500 lg:col-span-3">
               Chưa có gói VIP. Admin có thể tạo gói mới trong mục Gói thành viên.
