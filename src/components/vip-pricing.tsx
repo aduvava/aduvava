@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Check, Copy, Crown, QrCode, X } from "lucide-react";
 import { clsx } from "clsx";
+import { ReferralWidget, type ReferralOverview } from "@/components/referral-widget";
 
 type Plan = {
   id: string;
@@ -17,6 +18,7 @@ type Plan = {
 type VipPricingProps = {
   plans: Plan[];
   activeSubscription: { planName: string; endsAt: string } | null;
+  referralOverview: ReferralOverview;
 };
 
 function formatVnd(value: number) {
@@ -253,7 +255,7 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
   );
 }
 
-export function VipPricing({ plans, activeSubscription }: VipPricingProps) {
+export function VipPricing({ plans, activeSubscription, referralOverview }: VipPricingProps) {
   const featured = plans.find((plan) => plan.slug.includes("monthly"))?.id ?? plans[1]?.id;
 
   return (
@@ -290,6 +292,7 @@ export function VipPricing({ plans, activeSubscription }: VipPricingProps) {
             </div>
           ) : null}
         </section>
+        <ReferralWidget overview={referralOverview} />
       </div>
     </main>
   );
