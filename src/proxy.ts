@@ -30,17 +30,18 @@ export async function proxy(request: NextRequest) {
         status: 401, headers: { "Cache-Control": "no-store" },
       });
     }
-    // Relative Location is essential behind the VPS Docker reverse proxy;
-    // constructing redirects from request.url can expose 0.0.0.0:3000.
+    // Next.js Proxy requires an absolute Location. Use configured public
+    // NEXTAUTH_URL, not the Docker/internal request.url host.
     const inviteCode = pathname === "/vip" ? request.nextUrl.searchParams.get("ref")?.toUpperCase() : null;
     const destination = inviteCode && /^[A-Z0-9]{6}$/.test(inviteCode)
       ? "/vip?ref=" + encodeURIComponent(inviteCode) : pathname;
     const loginPath = isAdmin ? "/admin/login" : "/login?role=student";
     const separator = loginPath.includes("?") ? "&" : "?";
-    return new NextResponse(null, { status: 303, headers: {
-      Location: loginPath + separator + "callbackUrl=" + encodeURIComponent(destination),
-      "Cache-Control": "no-store",
-    } });
+    const publicOrigin = process.env.NEXTAUTH_URL || request.nextUrl.origin;
+    return NextResponse.redirect(
+      new URL(loginPath + separator + "callbackUrl=" + encodeURIComponent(destination), publicOrigin),
+      { status: 303, headers: { "Cache-Control": "no-store" } },
+    );
   }
 
   if (isAdmin && token.role !== "ADMIN") {
@@ -49,7 +50,7 @@ export async function proxy(request: NextRequest) {
         status: 403, headers: { "Cache-Control": "no-store" },
       });
     }
-    return new NextResponse(null, { status: 303, headers: { Location: "/dashboard" } });
+    return NextResponse.redirect(new URL("/dashboard", process.env.NEXTAUTH_URL || request.nextUrl.origin), 303);
   }
 
   // Student/teacher is now a selectable authenticated mode. A JWT role
