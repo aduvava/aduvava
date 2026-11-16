@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { canAccessExam } from "@/lib/access";
 import { getQuestionPartLabel } from "@/lib/national-exam-rules";
 import { RichContent as FormattedContent } from "@/components/rich-content";
+import { AttemptStartButton } from "@/components/attempt-start-button";
 
 function hasAnswer(type: string, value: unknown, optionCount: number) {
   if (type === "TRUE_FALSE_SET") {
@@ -261,6 +262,13 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
             );
           })}
         </div>
+        <section className="mx-auto mt-8 max-w-5xl rounded-[1.5rem] border border-orange-100 bg-white px-5 py-6 text-center shadow-sm">
+          <h2 className="text-lg font-black text-slate-900">Bạn muốn luyện tập thêm?</h2>
+          <p className="mt-2 text-sm text-slate-500">Làm lại cùng đề thi với một lượt làm bài mới. Điểm và kết quả lần trước vẫn được lưu.</p>
+          <div className="mt-5 flex justify-center">
+            <AttemptStartButton examId={attempt.exam.id} label="↻ Làm lại đề" />
+          </div>
+        </section>
       </div>
     </div>
   );

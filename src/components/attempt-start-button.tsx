@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function AttemptStartButton({ examId, disabled }: { examId: string; disabled?: boolean }) {
+export function AttemptStartButton({ examId, disabled, label = "Bắt đầu tính giờ →" }: { examId: string; disabled?: boolean; label?: string }) {
   const [message, setMessage] = useState<string | null>(null);
   const router = useRouter();
 
@@ -33,7 +33,7 @@ export function AttemptStartButton({ examId, disabled }: { examId: string; disab
   return (
     <div>
       <button disabled={disabled} onClick={start} className="rounded-2xl bg-orange-500 px-10 py-4 text-lg font-black text-white shadow-lg shadow-orange-200 transition enabled:hover:-translate-y-0.5 enabled:hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50">
-        Bắt đầu tính giờ →
+        {label}
       </button>
       {message ? <p className="mt-3 text-sm font-semibold text-ink/65">{message}</p> : null}
     </div>
