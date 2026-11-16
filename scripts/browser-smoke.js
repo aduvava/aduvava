@@ -19,6 +19,7 @@ if (process.env.BROWSER_SMOKE_CI_ONLY !== "yes" ||
 async function main() {
   const email = "browser-smoke-" + Date.now() + "@example.test";
   const leaderboardPeerEmail = "podium-" + Date.now() + "@example.test";
+  const referralGuestEmail = "invite-browser-" + Date.now() + "@example.test";
   const password = "BrowserSmokeCI-Only-2026!";
   const prisma = new PrismaClient();
   const browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
@@ -132,6 +133,38 @@ async function main() {
     await adminPage.locator('input[name="password"]').fill(password);
     await adminPage.getByRole("button", { name: "ĐĂNG NHẬP", exact: true }).click();
     await adminPage.waitForURL(/\/admin(?:\?|$)/, { timeout: 20000 });
+
+    // A signed-in Admin opening a public invite must NEVER land on /admin:
+    // show a standalone student sign-up and an opt-in logout prompt instead.
+    const inviteCode = require("../src/lib/referral-invites.js").newReferralCode();
+    await prisma.user.update({ where: { id: account.id }, data: { referralCode: inviteCode } });
+    await adminPage.goto(base + "/r/" + inviteCode);
+    await adminPage.waitForURL((url) => url.pathname === "/invite/" + inviteCode, { timeout: 15000 });
+    await adminPage.getByRole("heading", { name: "Đăng ký tài khoản học sinh" }).waitFor();
+    assert.equal(await adminPage.locator(".admin-shell").count(), 0, "invites cannot show the Admin dashboard");
+    await adminPage.getByRole("button", { name: /Đăng xuất để tạo tài khoản học sinh mới/ }).waitFor();
+
+    // A guest opening the same link must see an actual student registration form,
+    // and account creation must link the inviter without an Admin session.
+    const inviteContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const invitePage = await inviteContext.newPage();
+    await invitePage.goto(base + "/r/" + inviteCode);
+    await invitePage.waitForURL((url) => url.pathname === "/invite/" + inviteCode, { timeout: 15000 });
+    await invitePage.getByRole("heading", { name: "Đăng ký tài khoản học sinh" }).waitFor();
+    assert.equal(await invitePage.locator(".admin-shell").count(), 0);
+    await invitePage.locator('input[name="name"]').fill("Referral Guest");
+    await invitePage.locator('input[name="email"]').fill(referralGuestEmail);
+    await invitePage.locator('input[name="password"]').fill(password);
+    await invitePage.locator('select[name="grade"]').selectOption({ index: 1 });
+    await invitePage.locator('select[name="province"]').selectOption({ index: 1 });
+    await invitePage.getByRole("button", { name: "TẠO TÀI KHOẢN" }).click();
+    await invitePage.waitForURL(/\/onboarding(?:\?|$)/, { timeout: 45000 });
+    const referredAccount = await prisma.user.findUniqueOrThrow({ where: { email: referralGuestEmail } });
+    assert.equal(referredAccount.role, "STUDENT");
+    assert.equal(referredAccount.referredByUserId, account.id, "signed invitation must attach the real inviter");
+    await inviteContext.close();
+    await adminPage.goto(base + "/admin");
+    await adminPage.getByRole("heading", { name: "Bảng điều khiển quản trị" }).waitFor();
 
     const unique = Date.now().toString(36);
     const subjectResponse = await adminPage.request.post(base + "/api/admin/subjects", { data: {
@@ -638,6 +671,7 @@ async function main() {
     console.log("Chromium smoke passed: two-line responsive headline, registration, session, role switching, admin protection, mobile navigation and mobile login.");
   } finally {
     await browser.close();
+    await prisma.user.deleteMany({ where: { email: referralGuestEmail } });
     await prisma.user.deleteMany({ where: { email: leaderboardPeerEmail } });
     await prisma.user.deleteMany({ where: { email } });
     await prisma.$disconnect();

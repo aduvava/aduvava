@@ -27,7 +27,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ cod
   });
   if (!owner) return redirectOnSameHost("/register?role=student");
   const token = createInviteToken(owner.id, process.env.NEXTAUTH_SECRET);
-  const response = redirectOnSameHost("/register?role=student&ref=" + encodeURIComponent(normalized));
+  const response = redirectOnSameHost("/invite/" + encodeURIComponent(normalized));
   response.cookies.set(COOKIE_NAME, token, {
     httpOnly: true, secure: process.env.NODE_ENV === "production" || request.nextUrl.protocol === "https:",
     sameSite: "lax", path: "/", maxAge: INVITE_LIFETIME_MS / 1000,
