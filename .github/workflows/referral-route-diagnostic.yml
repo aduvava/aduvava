@@ -34,6 +34,14 @@ jobs:
           else
             echo 'ADMIN_LOGIN_TEXT_PRESENT=no'
           fi
+          echo "--- ASSERT NEW LIVE INVITATION FLOW ---"
+          curl --silent --show-error --fail --max-time 15 -D /tmp/invite-headers.txt -c /tmp/invite-cookie.txt -o /dev/null 'https://educhi.xyz/r/ECC2E5FE260C'
+          grep -qi '^location: /invite/ECC2E5FE260C' /tmp/invite-headers.txt
+          curl --silent --show-error --fail --max-time 15 -b /tmp/invite-cookie.txt -o /tmp/invite-page.html 'https://educhi.xyz/invite/ECC2E5FE260C'
+          grep -q 'Đăng ký tài khoản học sinh' /tmp/invite-page.html
+          grep -q 'Đã xác nhận lời mời' /tmp/invite-page.html
+          if grep -q 'Bảng điều khiển quản trị' /tmp/invite-page.html; then echo 'Admin panel unexpectedly visible'; exit 1; fi
+          echo 'LIVE INVITE CHECK PASSED: guest lands on student signup with verified inviter'
           echo "--- FOLLOW REFERRAL CHAIN ---"
           curl --silent --show-error --location --max-redirs 5 --max-time 20 --output /tmp/educhi-final.html --write-out 'status=%{http_code} effective_url=%{url_effective}\n' 'https://educhi.xyz/r/ECC2E5FE260C' || true
           grep -ioE '<title[^>]*>[^<]{0,140}</title>' /tmp/educhi-final.html | head -n 1 || true
