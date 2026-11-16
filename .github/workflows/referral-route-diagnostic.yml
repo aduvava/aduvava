@@ -24,10 +24,10 @@ jobs:
           done
           echo "--- CHECK PUBLIC REGISTRATION CONTENT ---"
           curl --silent --show-error --max-time 12 --output /tmp/educhi-register.html 'https://educhi.xyz/register?role=student&ref=ECC2E5FE260C'
-          if grep -q 'Tạo tài khoản học sinh' /tmp/educhi-register.html; then
-            echo 'STUDENT_SIGNUP_PRESENT=yes'
+          if grep -q 'Tạo tài khoản' /tmp/educhi-register.html; then
+            echo 'STUDENT_SIGNUP_HEADING_PREFIX_PRESENT=yes'
           else
-            echo 'STUDENT_SIGNUP_PRESENT=no'
+            echo 'STUDENT_SIGNUP_HEADING_PREFIX_PRESENT=no'
           fi
           if grep -q 'Đăng nhập quản trị' /tmp/educhi-register.html; then
             echo 'ADMIN_LOGIN_TEXT_PRESENT=yes'
