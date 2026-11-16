@@ -1,0 +1,27 @@
+name: Temporary public referral route diagnosis
+
+on:
+  push:
+    branches: [diagnostic/referral-live-route-20261116]
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check live public HTTP responses (no authentication)
+        shell: bash
+        run: |
+          set -u
+          for path in "/r/ECC2E5FE260C" "/register?role=student&ref=ECC2E5FE260C" "/login?role=student" "/admin/login"; do
+            echo "--- PATH: $path ---"
+            curl --silent --show-error --max-time 12 --max-redirs 0 --output /tmp/educhi-response.html --dump-header /tmp/educhi-headers.txt "https://educhi.xyz$path" || true
+            grep -iE '^(HTTP/|location:|content-type:)' /tmp/educhi-headers.txt || true
+            grep -ioE '<title[^>]*>[^<]{0,140}</title>' /tmp/educhi-response.html | head -n 1 || true
+          done
+          echo "--- FOLLOW REFERRAL CHAIN ---"
+          curl --silent --show-error --location --max-redirs 5 --max-time 20 --output /tmp/educhi-final.html --write-out 'status=%{http_code} effective_url=%{url_effective}\n' 'https://educhi.xyz/r/ECC2E5FE260C' || true
+          grep -ioE '<title[^>]*>[^<]{0,140}</title>' /tmp/educhi-final.html | head -n 1 || true
