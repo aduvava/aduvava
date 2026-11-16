@@ -102,3 +102,17 @@ body {
   line-height: 1.8;
   color: rgba(16, 33, 43, 0.72);
 }
+
+/* Referral signup should never inherit logged-in Admin chrome. */
+.site-layout:has(.referral-register-screen) > header,
+.site-layout:has(.referral-register-screen) .mobile-bottom-nav {
+  display: none;
+}
+
+.site-layout:has(.referral-register-screen) .site-main {
+  padding-top: 0;
+}
+
+.site-layout:has(.referral-register-screen) {
+  padding-bottom: 0;
+}
