@@ -5,6 +5,7 @@ export const MAX_EXTRA_TIME_SECONDS = 3600;
 export type TimedAttempt = {
   startedAt: Date;
   extraTimeSeconds: number;
+  timeLimitMinutes?: number | null;
   exam: { durationMinutes: number };
 };
 
@@ -12,7 +13,7 @@ export function attemptDeadlineMs(attempt: TimedAttempt): number {
   const extra = Number.isFinite(attempt.extraTimeSeconds)
     ? Math.min(MAX_EXTRA_TIME_SECONDS, Math.max(0, attempt.extraTimeSeconds))
     : 0;
-  return attempt.startedAt.getTime() + attempt.exam.durationMinutes * 60_000 + extra * 1000;
+  return attempt.startedAt.getTime() + (attempt.timeLimitMinutes ?? attempt.exam.durationMinutes) * 60_000 + extra * 1000;
 }
 
 export function isAttemptExpired(attempt: TimedAttempt, now: Date = new Date()): boolean {

@@ -95,7 +95,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     const weakTopics = topicScores.filter((item) => item.ratio < 0.6);
     const now = new Date();
     const elapsed = Math.max(0, Math.round((now.getTime() - attempt.startedAt.getTime()) / 1000));
-    const durationSeconds = Math.min(elapsed, attempt.exam.durationMinutes * 60 + attempt.extraTimeSeconds);
+    const durationSeconds = Math.min(elapsed, (attempt.timeLimitMinutes ?? attempt.exam.durationMinutes) * 60 + attempt.extraTimeSeconds);
     const feedback =
       result.maxScore && result.score / result.maxScore >= 0.8
         ? "Bạn đang kiểm soát tốt đề này. Ưu tiên luyện tốc độ và giảm lỗi sai nhỏ."
@@ -145,7 +145,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       score: result.score,
       maxScore: result.maxScore,
       durationSeconds,
-      durationMinutes: attempt.exam.durationMinutes,
+      durationMinutes: attempt.timeLimitMinutes ?? attempt.exam.durationMinutes,
       examType: attempt.exam.type,
       examStructure: attempt.exam.examStructure,
       previousAttemptCount,

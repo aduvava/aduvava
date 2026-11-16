@@ -22,6 +22,7 @@ type HelperItem = { id: string; name: string; kind: string; count: number; minut
 
 type ExamRunnerProps = {
   attemptId: string;
+  mode: "PRACTICE" | "MOCK";
   examTitle: string;
   examDescription?: string | null;
   subjectSlug?: string;
@@ -86,9 +87,10 @@ function SubmitEffectOverlay({ effect }: { effect?: string | null }) {
   );
 }
 
-export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug, subjectName, initialSeconds, questions, initialAnswers, submitEffect, helpers = [] }: ExamRunnerProps) {
+export function ExamRunner({ attemptId, mode, examTitle, examDescription, subjectSlug, subjectName, initialSeconds, questions, initialAnswers, submitEffect, helpers = [] }: ExamRunnerProps) {
   const router = useRouter();
   const [index, setIndex] = useState(0);
+  const [feedback, setFeedback] = useState<Record<string, { correctOptions: { id: string; label: string }[]; correctText: string | null; explanation: string | null }>>({});
   const [secondsLeft, setSecondsLeft] = useState(initialSeconds);
   const [answers, setAnswers] = useState<Record<string, unknown>>(() => Object.fromEntries(initialAnswers.map((answer) => [answer.questionId, answer.value])));
   const answersRef = useRef<Record<string, unknown>>(answers);
@@ -175,12 +177,55 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
     if (!response.ok) throw new Error("Save failed");
   }
 
+  async function revealFeedback(questionId: string) {
+    if (mode !== "PRACTICE") return;
+    const response = await fetch(`/api/attempts/${attemptId}/feedback/${questionId}`, { cache: "no-store" });
+    if (!response.ok) return;
+    const data = await response.json();
+    setFeedback((previous) => ({ ...previous, [questionId]: data }));
+  }
+
+  useEffect(() => {
+    if (mode !== "PRACTICE") return;
+    for (const question of questions) {
+      if (isAnswered(question, answersRef.current[question.id])) void revealFeedback(question.id);
+    }
+  }, [attemptId, mode]);
+
+  function PracticeFeedback({ question }: { question: RunnerQuestion }) {
+    if (mode !== "PRACTICE") return null;
+    const data = feedback[question.id];
+    if (!data) {
+      if (question.type === "SHORT_ANSWER" || question.type === "ESSAY") {
+        return <button type="button" onClick={async () => {
+          if (!isAnswered(question, answersRef.current[question.id])) return;
+          try {
+            await persistAnswer(question.id, answersRef.current[question.id]);
+            await revealFeedback(question.id);
+          } catch { setStatus("Không thể kiểm tra đáp án. Hãy thử lại."); }
+        }} className="mt-4 rounded-xl border border-orange-300 bg-orange-50 px-4 py-2 text-sm font-bold text-orange-700">Kiểm tra đáp án và giải thích</button>;
+      }
+      return null;
+    }
+    return <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-slate-800">
+      <p className="font-black text-emerald-700">Đáp án đúng</p>
+      {data.correctOptions.length ? <p className="mt-2 font-bold">{data.correctOptions.map((option) => option.label).join(", ")}</p> : null}
+      {data.correctText ? <FormattedContent value={data.correctText} className="mt-2" /> : null}
+      <p className="mt-3 font-black text-blue-700">Giải thích</p>
+      {data.explanation ? <FormattedContent value={data.explanation} className="mt-1 leading-6" /> : <p className="mt-1 text-slate-500">Câu này chưa có lời giải chi tiết.</p>}
+    </div>;
+  }
+
   async function save(questionId: string, value: unknown) {
     const next = { ...answersRef.current, [questionId]: value };
     answersRef.current = next;
     setAnswers(next);
     try {
       await persistAnswer(questionId, value);
+      const question = questions.find((item) => item.id === questionId);
+      if (question && mode === "PRACTICE" && (question.type === "SINGLE_CHOICE" || question.type === "TRUE_FALSE_SET") && isAnswered(question, value)) {
+        await revealFeedback(questionId);
+      }
     } catch {
       setStatus("Lưu thất bại, hệ thống sẽ thử lại khi tự động lưu");
       dirtyRef.current.add(questionId);
@@ -428,6 +473,7 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
                         />
                       </div>
                     ) : null}
+                    <PracticeFeedback question={question} />
                   </article>
                 );
               })}
@@ -635,6 +681,7 @@ export function ExamRunner({ attemptId, examTitle, examDescription, subjectSlug,
                       />
                     </div>
                   ) : null}
+                  <PracticeFeedback question={question} />
                 </article>
               );
             })}
