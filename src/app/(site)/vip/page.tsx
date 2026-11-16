@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { VipPricing } from "@/components/vip-pricing";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getReferralOverview } from "@/lib/referrals";
 
 export const metadata: Metadata = {
   title: "Nạp VIP | Educhi",
@@ -17,7 +18,7 @@ export default async function VipPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?role=student&callbackUrl=/vip");
 
-  const [plans, activeSubscription] = await Promise.all([
+  const [plans, activeSubscription, referralOverview] = await Promise.all([
     prisma.plan.findMany({
       where: { isActive: true },
       orderBy: [{ price: "asc" }, { createdAt: "asc" }],
@@ -27,10 +28,12 @@ export default async function VipPage() {
       include: { plan: true },
       orderBy: { endsAt: "desc" },
     }),
+    getReferralOverview(user.id),
   ]);
 
   return (
     <VipPricing
+      referralOverview={referralOverview}
       plans={plans.map((plan) => ({
         id: plan.id,
         slug: plan.slug,
