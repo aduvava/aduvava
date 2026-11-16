@@ -130,7 +130,7 @@ function DashboardImageCard({ imageKey, imageName, uploadedImage }: { imageKey: 
           <img
             src={displayImage}
             alt={imageName ?? image?.alt ?? "Ảnh trang chủ đã trang bị"}
-            className="block h-full w-full object-cover object-center"
+            className="block h-full w-full object-fill"
           />
         ) : shopVisual && ShopIcon ? (
           <div className={clsx("grid h-full w-full place-items-center bg-gradient-to-br", shopVisual.gradient)}>
