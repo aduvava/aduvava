@@ -60,7 +60,7 @@ export default function HomePage() {
           </h1>
         </div>
 
-        <div className="relative mx-auto grid max-w-[1440px] items-center gap-8 px-4 pb-12 pt-7 sm:px-6 lg:grid-cols-[0.92fr_1.08fr] lg:gap-12 lg:px-8 lg:pb-16 lg:pt-10">
+        <div className="relative mx-auto grid max-w-[1440px] items-center gap-8 px-4 pb-12 pt-7 sm:px-6 lg:grid-cols-[0.92fr_1.08fr] lg:items-start lg:gap-12 lg:px-8 lg:pb-16 lg:pt-5">
           <div>
             <p className="max-w-xl text-base font-medium leading-7 text-slate-600 sm:text-lg sm:leading-8">
               Luyện đề theo lớp, môn học và kỳ thi. Chấm điểm ngay, theo dõi tiến bộ, học cùng giáo viên và tự tin chinh phục mục tiêu của bạn trên một nền tảng.
