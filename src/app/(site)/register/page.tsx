@@ -4,7 +4,7 @@ import { Card } from "@/components/ui";
 import { RegisterForm } from "@/components/forms/register-form";
 import { GoogleSignInButton } from "@/components/forms/google-signin-button";
 
-export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ role?: string }> }) {
+export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ role?: string; ref?: string }> }) {
   const params = await searchParams;
   const teacher = params.role === "teacher";
   const googleEnabled = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
@@ -14,6 +14,7 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
       <Card className="w-full max-w-lg">
         <h1 className="font-display text-4xl font-black text-ink">Tạo tài khoản {teacher ? "giáo viên" : "học sinh"}</h1>
         <p className="mt-3 text-sm text-ink/65">Chỉ cần một tài khoản Educhi để học và giảng dạy. Bạn có thể đổi vai trò bất cứ lúc nào.</p>
+        {params.ref ? <p className="mt-3 rounded-xl border border-orange-100 bg-orange-50 px-4 py-3 text-sm font-semibold text-orange-700">Bạn đang đăng ký qua lời mời của bạn bè. Hoa hồng chỉ được ghi nhận khi bạn mua VIP và thanh toán thành công.</p> : null}
         <div className="mt-6">
           <GoogleSignInButton enabled={googleEnabled} label="Đăng ký nhanh bằng Google" role={teacher ? "teacher" : "student"} callbackUrl={teacher ? "/teacher" : "/dashboard"} />
           <p className="mt-2 text-center text-xs text-slate-500">Chỉ hoàn thiện thông tin lần đầu, tài khoản cũ sẽ không phải nhập lại.</p>
