@@ -134,24 +134,23 @@ async function main() {
     await adminPage.getByRole("button", { name: "ĐĂNG NHẬP", exact: true }).click();
     await adminPage.waitForURL(/\/admin(?:\?|$)/, { timeout: 20000 });
 
-    // A signed-in Admin opening a public invite must NEVER land on /admin:
-    // show a standalone student sign-up and an opt-in logout prompt instead.
+    // All accounts, including Admin and existing students, may receive a
+    // share link. It opens VIP with an OPTIONAL six-character code, never Admin.
     const inviteCode = require("../src/lib/referral-invites.js").newReferralCode();
     await prisma.user.update({ where: { id: account.id }, data: { referralCode: inviteCode } });
     await adminPage.goto(base + "/r/" + inviteCode);
-    await adminPage.waitForURL((url) => url.pathname === "/invite/" + inviteCode, { timeout: 15000 });
-    await adminPage.getByRole("heading", { name: "Đăng ký tài khoản học sinh" }).waitFor();
-    assert.equal(await adminPage.locator(".admin-shell").count(), 0, "invites cannot show the Admin dashboard");
-    await adminPage.getByRole("button", { name: /Đăng xuất để tạo tài khoản học sinh mới/ }).waitFor();
+    await adminPage.waitForURL((url) => url.pathname === "/vip" && url.searchParams.get("ref") === inviteCode, { timeout: 15000 });
+    assert.equal(await adminPage.locator(".admin-shell").count(), 0, "VIP share URLs must not show Admin panel");
+    assert.equal(await adminPage.getByLabel("Mã giới thiệu không bắt buộc").inputValue(), inviteCode);
 
-    // A guest opening the same link must see an actual student registration form,
-    // and account creation must link the inviter without an Admin session.
+    // Guests must be sent to STUDENT login with the referral code intact.
+    // Registration is a normal option, never a mandatory invitation step.
     const inviteContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const invitePage = await inviteContext.newPage();
     await invitePage.goto(base + "/r/" + inviteCode);
-    await invitePage.waitForURL((url) => url.pathname === "/invite/" + inviteCode, { timeout: 15000 });
-    await invitePage.getByRole("heading", { name: "Đăng ký tài khoản học sinh" }).waitFor();
-    assert.equal(await invitePage.locator(".admin-shell").count(), 0);
+    await invitePage.waitForURL((url) => url.pathname === "/login" && url.searchParams.get("callbackUrl") === "/vip?ref=" + inviteCode, { timeout: 15000 });
+    await invitePage.getByRole("heading", { name: "Đăng nhập Học sinh" }).waitFor();
+    await invitePage.goto(base + "/register");
     await invitePage.locator('input[name="name"]').fill("Referral Guest");
     await invitePage.locator('input[name="email"]').fill(referralGuestEmail);
     await invitePage.locator('input[name="password"]').fill(password);
@@ -161,8 +160,10 @@ async function main() {
     await invitePage.waitForURL(/\/onboarding(?:\?|$)/, { timeout: 45000 });
     const referredAccount = await prisma.user.findUniqueOrThrow({ where: { email: referralGuestEmail } });
     assert.equal(referredAccount.role, "STUDENT");
-    assert.equal(referredAccount.referredByUserId, account.id, "signed invitation must attach the real inviter");
-    await inviteContext.close();
+    assert.equal(referredAccount.referredByUserId, null, "signup alone must not trigger referral attribution");
+    await invitePage.goto(base + "/vip?ref=" + inviteCode);
+    await invitePage.getByLabel("Mã giới thiệu không bắt buộc").waitFor();
+    assert.equal(await invitePage.getByLabel("Mã giới thiệu không bắt buộc").inputValue(), inviteCode);
     await adminPage.goto(base + "/admin");
     await adminPage.getByRole("heading", { name: "Bảng điều khiển quản trị" }).waitFor();
 
@@ -261,6 +262,32 @@ async function main() {
     } });
     assert.equal(planResponse.status(), 201, "admin creates VIP plan");
     const planId = (await planResponse.json()).item.id;
+    // The invited buyer's account existed before checkout. The optional code
+    // must bind this invoice without modifying account registration history.
+    const codeCheckout = await invitePage.request.post(base + "/api/payments/checkout", {
+      data: { planId, referralCode: inviteCode },
+    });
+    assert.equal(codeCheckout.status(), 201, "any existing logged-in account can apply an optional referral code");
+    const codeInvoice = await codeCheckout.json();
+    assert.equal(codeInvoice.appliedReferralCode, inviteCode);
+    const storedCodeInvoice = await prisma.payment.findUniqueOrThrow({
+      where: { id: codeInvoice.payment.id },
+    });
+    assert.equal(storedCodeInvoice.metadata.referralInviterId, account.id);
+    assert.equal(await prisma.referralReward.count({ where: { paymentId: codeInvoice.payment.id } }), 0,
+      "no referral reward before bank settlement");
+    const duplicateCheckout = await invitePage.request.post(base + "/api/payments/checkout", {
+      data: { planId, referralCode: inviteCode },
+    });
+    assert.equal(duplicateCheckout.status(), 200, "retry must reuse invoice with unchanged inviter");
+    assert.equal((await duplicateCheckout.json()).payment.id, codeInvoice.payment.id);
+    assert.equal((await invitePage.request.post(base + "/api/payments/checkout", {
+      data: { planId, referralCode: "ZZZZZZ" },
+    })).status(), 400, "unknown referral codes must be rejected");
+    assert.equal((await adminPage.request.post(base + "/api/payments/checkout", {
+      data: { planId, referralCode: inviteCode },
+    })).status(), 400, "self-referral code must be rejected");
+    await inviteContext.close();
     await adminPage.goto(base + "/admin/plans");
     await adminPage.getByRole("heading", { name: "Gói thành viên", exact: true }).waitFor();
     assert.equal(await adminPage.getByText("JSON editor").count(), 0, "VIP plan UI hides JSON editor");

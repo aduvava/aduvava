@@ -14,6 +14,9 @@ describe("signed invite links and commission", () => {
     const first = newReferralCode();
     const second = newReferralCode();
     assert.match(first, REFERRAL_CODE_PATTERN);
+    assert.equal(first.length, 6);
+    assert.equal(REFERRAL_CODE_PATTERN.test("ECC2E5FE260C"), false, "old 12-character codes are not entered at checkout");
+    assert.equal(REFERRAL_CODE_PATTERN.test("ABC123"), true);
     assert.notEqual(first, second);
     assert.equal(COOKIE_NAME, "educhi_referral");
   });

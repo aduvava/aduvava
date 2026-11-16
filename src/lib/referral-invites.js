@@ -1,14 +1,16 @@
 "use strict";
 
-const { createHmac, randomBytes, timingSafeEqual } = require("node:crypto");
+const { createHmac, randomInt, timingSafeEqual } = require("node:crypto");
 
 const COOKIE_NAME = "educhi_referral";
 const INVITE_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
-const REFERRAL_CODE_PATTERN = /^EC[A-F0-9]{10}$/;
+const REFERRAL_CODE_PATTERN = /^[A-Z0-9]{6}$/;
+const LEGACY_REFERRAL_CODE_PATTERN = /^EC[A-F0-9]{10}$/;
 
 /** Opaque, unpredictable public sharing code (not a login credential). */
 function newReferralCode() {
-  return "EC" + randomBytes(5).toString("hex").toUpperCase();
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  return Array.from({ length: 6 }, () => alphabet[randomInt(alphabet.length)]).join("");
 }
 
 /** @param {string} inviterId @param {string} secret @param {number} [issuedAt] */
@@ -43,6 +45,6 @@ function calculateReferralRewardVnd(paidAmountVnd) {
 }
 
 module.exports = {
-  COOKIE_NAME, INVITE_LIFETIME_MS, REFERRAL_CODE_PATTERN,
+  COOKIE_NAME, INVITE_LIFETIME_MS, REFERRAL_CODE_PATTERN, LEGACY_REFERRAL_CODE_PATTERN,
   newReferralCode, createInviteToken, parseInviteToken, calculateReferralRewardVnd,
 };

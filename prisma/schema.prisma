@@ -144,7 +144,8 @@ model User {
   role                     Role      @default(STUDENT)
   coins                    Int       @default(0)
   exp                      Int       @default(0)
-  referralCode             String?   @unique @db.VarChar(16)
+  referralCode             String?   @unique @db.VarChar(6)
+  referralLegacyCode       String?   @unique @db.VarChar(16)
   referredByUserId         String?
   referralBalanceVnd       Int       @default(0)
   equippedDashboardImageId String?

@@ -15,12 +15,12 @@ type MockSubscription = {
   startsAt: Date; endsAt: Date;
 };
 
-function createFakeDb(opts?: { payment?: Partial<MockPayment>; failUpdate?: boolean; receipts?: MockSePayReceipt[]; inviterId?: string }) {
+function createFakeDb(opts?: { payment?: Partial<MockPayment>; failUpdate?: boolean; receipts?: MockSePayReceipt[]; inviterId?: string; legacyInviterId?: string }) {
   let state = {
     payment: {
       id: "payment-1", userId: "student-1", planId: "plan-1",
       status: "PENDING", provider: "manual-bank-transfer",
-      reference: "EDUVA-SMOKE", metadata: {},
+      reference: "EDUVA-SMOKE", metadata: opts?.inviterId ? { referralInviterId: opts.inviterId, referralCodeApplied: "ABC123" } : {},
       plan: { id: "plan-1", name: "VIP", interval: "MONTH" },
       ...opts?.payment,
     } as MockPayment,
@@ -29,7 +29,7 @@ function createFakeDb(opts?: { payment?: Partial<MockPayment>; failUpdate?: bool
     receipts: opts?.receipts ?? [] as MockSePayReceipt[],
     rewards: [] as Array<{ inviterId: string; buyerId: string; paymentId: string; amountVnd: number }>,
     users: {
-      "student-1": { referredByUserId: opts?.inviterId ?? null, referralBalanceVnd: 0 },
+      "student-1": { referredByUserId: opts?.legacyInviterId ?? null, referralBalanceVnd: 0 },
       "inviter-1": { referredByUserId: null as string | null, referralBalanceVnd: 0 },
     } as Record<string, { referredByUserId: string | null; referralBalanceVnd: number }>,
   };
@@ -181,6 +181,20 @@ describe("atomic manual VIP transitions", () => {
     assert.equal(db.state.rewards.length, 1);
     assert.equal(db.state.users["inviter-1"].referralBalanceVnd, 9900);
     assert.equal(db.state.notifications.length, 2);
+  });
+
+  it("does not award existing signup relationships without a code entered at VIP checkout", async () => {
+    const db = createFakeDb({ payment: { amount: 99000 }, legacyInviterId: "inviter-1" });
+    await transitionManualPayment(db, "payment-1", "PAID");
+    assert.equal(db.state.rewards.length, 0);
+    assert.equal(db.state.users["inviter-1"].referralBalanceVnd, 0);
+    assert.equal(db.state.subscriptions.length, 1);
+  });
+
+  it("rejects self-referrals even if inconsistent invoice metadata was injected", async () => {
+    const db = createFakeDb({ payment: { amount: 99000, metadata: { referralInviterId: "student-1" } } });
+    await transitionManualPayment(db, "payment-1", "PAID");
+    assert.equal(db.state.rewards.length, 0);
   });
 
   it("does not issue referral commission on failed payment or rollback", async () => {

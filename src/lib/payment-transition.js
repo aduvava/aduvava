@@ -145,11 +145,10 @@ async function transitionManualPayment(db, paymentId, nextStatus, sepayEventId =
         // duplicate SePay callbacks, VIP grants, or a missing inviter.
         const rewardAmount = calculateReferralRewardVnd(current.amount);
         if (rewardAmount > 0) {
-          const buyer = await tx.user.findUnique({
-            where: { id: current.userId },
-            select: { referredByUserId: true },
-          });
-          const inviterId = buyer?.referredByUserId;
+          // Only a voluntary six-character code applied to THIS invoice counts.
+          // Previous sign-up attribution cannot silently create commissions.
+          const inviterId = typeof metadata.referralInviterId === "string"
+            ? metadata.referralInviterId : null;
           if (inviterId && inviterId !== current.userId) {
             await tx.referralReward.create({
               data: {

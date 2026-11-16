@@ -68,7 +68,7 @@ export async function getReferralOverview(userId: string) {
   const [code, account, invitedCount, rewardedBuyers, rewardHistory] = await Promise.all([
     getOrCreateReferralCode(userId),
     prisma.user.findUnique({ where: { id: userId }, select: { referralBalanceVnd: true } }),
-    prisma.user.count({ where: { referredByUserId: userId } }),
+    prisma.referralReward.count({ where: { inviterId: userId } }),
     prisma.referralReward.groupBy({ by: ["buyerId"], where: { inviterId: userId } }),
     prisma.referralReward.findMany({
       where: { inviterId: userId }, orderBy: { createdAt: "desc" }, take: 10,
@@ -79,7 +79,7 @@ export async function getReferralOverview(userId: string) {
   return {
     code,
     balanceVnd: account?.referralBalanceVnd ?? 0,
-    invitedCount,
+    totalRewardedPurchases: invitedCount,
     vipBuyersCount: rewardedBuyers.length,
     history: rewardHistory.map(({ id, paymentAmountVnd, amountVnd, createdAt }) => ({
       id, paymentAmountVnd, amountVnd, createdAt: createdAt.toISOString(),
