@@ -22,6 +22,18 @@ jobs:
             grep -iE '^(HTTP/|location:|content-type:)' /tmp/educhi-headers.txt || true
             grep -ioE '<title[^>]*>[^<]{0,140}</title>' /tmp/educhi-response.html | head -n 1 || true
           done
+          echo "--- CHECK PUBLIC REGISTRATION CONTENT ---"
+          curl --silent --show-error --max-time 12 --output /tmp/educhi-register.html 'https://educhi.xyz/register?role=student&ref=ECC2E5FE260C'
+          if grep -q 'Tạo tài khoản học sinh' /tmp/educhi-register.html; then
+            echo 'STUDENT_SIGNUP_PRESENT=yes'
+          else
+            echo 'STUDENT_SIGNUP_PRESENT=no'
+          fi
+          if grep -q 'Đăng nhập quản trị' /tmp/educhi-register.html; then
+            echo 'ADMIN_LOGIN_TEXT_PRESENT=yes'
+          else
+            echo 'ADMIN_LOGIN_TEXT_PRESENT=no'
+          fi
           echo "--- FOLLOW REFERRAL CHAIN ---"
           curl --silent --show-error --location --max-redirs 5 --max-time 20 --output /tmp/educhi-final.html --write-out 'status=%{http_code} effective_url=%{url_effective}\n' 'https://educhi.xyz/r/ECC2E5FE260C' || true
           grep -ioE '<title[^>]*>[^<]{0,140}</title>' /tmp/educhi-final.html | head -n 1 || true
