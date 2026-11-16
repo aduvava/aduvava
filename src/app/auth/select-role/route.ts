@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { COOKIE_NAME } from "@/lib/referral-invites";
+import { attachReferralToNewGoogleUser } from "@/lib/referrals";
 import { isStudentOnboardingComplete, isTeacherOnboardingComplete, safePostLoginPath } from "@/lib/onboarding";
 
 const selectedRoles = new Set(["student", "teacher", "admin"]);
@@ -41,6 +43,11 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  // Only genuinely new Google accounts may attach the original signed invite.
+  // Existing Educhi users never gain a referrer merely by opening an invite.
+  const inviteCookie = request.cookies.get(COOKIE_NAME)?.value;
+  if (inviteCookie) await attachReferralToNewGoogleUser(user.id, inviteCookie);
+
   // An existing profile is reusable across sessions and roles. Only request
   // missing fields, without forcing a grade on teachers.
   const profile = role === "admin" ? null : await prisma.studentProfile.findUnique({
@@ -59,6 +66,7 @@ export async function GET(request: NextRequest) {
     ? safeDestination
     : "/onboarding?callbackUrl=" + encodeURIComponent(safeDestination);
   const response = redirectOnSameHost(target);
+  if (inviteCookie) response.cookies.delete(COOKIE_NAME);
   response.cookies.set("educhi_active_role", role.toUpperCase(), {
     httpOnly: true,
     sameSite: "lax",

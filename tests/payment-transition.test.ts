@@ -5,7 +5,7 @@ const { transitionManualPayment, extendUtcMonths, PaymentTransitionError } =
   require("../src/lib/payment-transition.js");
 
 type MockPayment = {
-  id: string; userId: string; planId: string; status: string;
+  id: string; userId: string; planId: string; status: string; amount?: number;
   provider: string; reference: string; metadata: Record<string, unknown>;
   plan: { id: string; name: string; interval: string };
 };
@@ -15,7 +15,7 @@ type MockSubscription = {
   startsAt: Date; endsAt: Date;
 };
 
-function createFakeDb(opts?: { payment?: Partial<MockPayment>; failUpdate?: boolean; receipts?: MockSePayReceipt[] }) {
+function createFakeDb(opts?: { payment?: Partial<MockPayment>; failUpdate?: boolean; receipts?: MockSePayReceipt[]; inviterId?: string }) {
   let state = {
     payment: {
       id: "payment-1", userId: "student-1", planId: "plan-1",
@@ -27,6 +27,11 @@ function createFakeDb(opts?: { payment?: Partial<MockPayment>; failUpdate?: bool
     subscriptions: [] as MockSubscription[],
     notifications: [] as Array<{ userId: string; href: string }>,
     receipts: opts?.receipts ?? [] as MockSePayReceipt[],
+    rewards: [] as Array<{ inviterId: string; buyerId: string; paymentId: string; amountVnd: number }>,
+    users: {
+      "student-1": { referredByUserId: opts?.inviterId ?? null, referralBalanceVnd: 0 },
+      "inviter-1": { referredByUserId: null as string | null, referralBalanceVnd: 0 },
+    } as Record<string, { referredByUserId: string | null; referralBalanceVnd: number }>,
   };
   const db = {
     get state() { return state; },
@@ -65,6 +70,22 @@ function createFakeDb(opts?: { payment?: Partial<MockPayment>; failUpdate?: bool
             const item = { ...data, id: "subscription-" + (snapshot.subscriptions.length + 1) };
             snapshot.subscriptions.push(item);
             return item;
+          },
+        },
+        user: {
+          findUnique: async ({ where }: { where: { id: string } }) => snapshot.users[where.id] ?? null,
+          update: async ({ where, data }: { where: { id: string }; data: { referralBalanceVnd: { increment: number } } }) => {
+            const user = snapshot.users[where.id];
+            if (!user) throw new Error("Missing referrer");
+            user.referralBalanceVnd += data.referralBalanceVnd.increment;
+            return user;
+          },
+        },
+        referralReward: {
+          create: async ({ data }: { data: { inviterId: string; buyerId: string; paymentId: string; amountVnd: number } }) => {
+            if (snapshot.rewards.some((reward) => reward.paymentId === data.paymentId)) throw new Error("Duplicate reward");
+            snapshot.rewards.push(data);
+            return data;
           },
         },
         notification: {
@@ -145,6 +166,33 @@ describe("atomic manual VIP transitions", () => {
     const legacy = createFakeDb({ payment: { status: "PAID", metadata: { adminVipActivatedAt: "old" } } });
     await assert.rejects(transitionManualPayment(legacy, "payment-1", "PAID"), /reconciliation/);
     assert.equal(legacy.state.subscriptions.length, 0);
+  });
+
+  it("atomically issues exactly one 10% reward and notification after a verified VIP payment", async () => {
+    const db = createFakeDb({ payment: { amount: 99000 }, inviterId: "inviter-1" });
+    await transitionManualPayment(db, "payment-1", "PAID", "785521");
+    assert.equal(db.state.rewards.length, 1);
+    assert.equal(db.state.rewards[0].paymentId, "payment-1");
+    assert.equal(db.state.rewards[0].amountVnd, 9900);
+    assert.equal(db.state.users["inviter-1"].referralBalanceVnd, 9900);
+    assert.equal(db.state.notifications.length, 2); // Buyer + inviter
+
+    await transitionManualPayment(db, "payment-1", "PAID", "785521");
+    assert.equal(db.state.rewards.length, 1);
+    assert.equal(db.state.users["inviter-1"].referralBalanceVnd, 9900);
+    assert.equal(db.state.notifications.length, 2);
+  });
+
+  it("does not issue referral commission on failed payment or rollback", async () => {
+    const failed = createFakeDb({ payment: { amount: 299000 }, inviterId: "inviter-1" });
+    await transitionManualPayment(failed, "payment-1", "FAILED");
+    assert.equal(failed.state.rewards.length, 0);
+    assert.equal(failed.state.users["inviter-1"].referralBalanceVnd, 0);
+
+    const rejected = createFakeDb({ payment: { amount: 39000 }, inviterId: "inviter-1", failUpdate: true });
+    await assert.rejects(transitionManualPayment(rejected, "payment-1", "PAID", "55001"), /Simulated database/);
+    assert.equal(rejected.state.rewards.length, 0);
+    assert.equal(rejected.state.users["inviter-1"].referralBalanceVnd, 0);
   });
 
   it("does not issue VIP for FAILED and correctly clamps calendar month ends", async () => {

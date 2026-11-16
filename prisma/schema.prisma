@@ -144,6 +144,9 @@ model User {
   role                     Role      @default(STUDENT)
   coins                    Int       @default(0)
   exp                      Int       @default(0)
+  referralCode             String?   @unique @db.VarChar(16)
+  referredByUserId         String?
+  referralBalanceVnd       Int       @default(0)
   equippedDashboardImageId String?
   equippedAvatarFrameId    String?
   equippedNameColorId      String?
@@ -172,6 +175,10 @@ model User {
   ownedExams         Exam[]              @relation("OwnedExams")
   examAccessGrants   ExamAccessGrant[]
   supportConversations SupportConversation[]
+  referredBy         User?            @relation("UserReferrals", fields: [referredByUserId], references: [id], onDelete: SetNull)
+  referredUsers      User[]           @relation("UserReferrals")
+  referralRewards    ReferralReward[] @relation("ReferralRewardsEarned")
+  referralPurchases  ReferralReward[] @relation("ReferralRewardsPurchased")
 }
 
 model Account {
@@ -536,6 +543,27 @@ model Payment {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   plan Plan @relation(fields: [planId], references: [id], onDelete: Restrict)
+  referralReward ReferralReward?
+}
+
+// An immutable 10% VND-equivalent internal commission, issued only in the
+// same transaction as a VERIFIED and activated VIP bank payment.
+// paymentId is unique to prevent replayed webhooks and manual reconfirmation.
+model ReferralReward {
+  id               String   @id @default(cuid())
+  inviterId        String
+  buyerId          String
+  paymentId        String   @unique
+  paymentAmountVnd Int
+  amountVnd        Int
+  createdAt        DateTime @default(now())
+
+  inviter User    @relation("ReferralRewardsEarned", fields: [inviterId], references: [id], onDelete: Restrict)
+  buyer   User    @relation("ReferralRewardsPurchased", fields: [buyerId], references: [id], onDelete: Restrict)
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([inviterId, createdAt])
+  @@index([buyerId])
 }
 
 model LeadMessage {
