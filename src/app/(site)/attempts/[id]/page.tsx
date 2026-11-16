@@ -80,6 +80,7 @@ export default async function AttemptPage({ params }: { params: Promise<{ id: st
   return (
     <ExamRunner
       attemptId={attempt.id}
+      mode={attempt.mode === "PRACTICE" ? "PRACTICE" : "MOCK"}
       examTitle={attempt.exam.title}
       examDescription={attempt.exam.description}
       subjectSlug={attempt.exam.subject.slug}
