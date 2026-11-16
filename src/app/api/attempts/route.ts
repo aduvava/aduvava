@@ -3,12 +3,12 @@ import { prisma } from "@/lib/db";
 import { canAccessExam } from "@/lib/access";
 import { handleRouteError, HttpError, jsonOk, readJson, requireUser } from "@/lib/api";
 
-const startSchema = z.object({ examId: z.string().min(1) });
+const startSchema = z.object({ examId: z.string().min(1), mode: z.enum(["PRACTICE", "MOCK"]).default("MOCK"), timeLimitMinutes: z.number().int().min(5).max(180).optional() });
 
 export async function POST(request: Request) {
   try {
     const user = await requireUser();
-    const { examId } = startSchema.parse(await readJson<unknown>(request));
+    const { examId, mode, timeLimitMinutes } = startSchema.parse(await readJson<unknown>(request));
     const exam = await prisma.exam.findFirst({
       where: { OR: [{ id: examId }, { slug: examId }, { code: examId }], isPublished: true },
       include: { questions: true }
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     if (existing) return jsonOk({ attemptId: existing.id, reused: true });
 
     const maxScore = exam.questions.reduce((sum, question) => sum + question.points, 0);
-    const attempt = await prisma.attempt.create({ data: { userId: user.id, examId: exam.id, maxScore } });
+    const attempt = await prisma.attempt.create({ data: { userId: user.id, examId: exam.id, maxScore, mode, timeLimitMinutes: mode === "PRACTICE" ? (timeLimitMinutes ?? exam.durationMinutes) : null } });
     return jsonOk({ attemptId: attempt.id, reused: false }, 201);
   } catch (error) {
     return handleRouteError(error);
