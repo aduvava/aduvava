@@ -7,6 +7,7 @@ import { ButtonLink } from "@/components/ui";
 import { MascotAvatar } from "@/components/mascot-avatar";
 import { HeaderAccountControls } from "@/components/header-account-controls";
 import { MobileSiteNavigation } from "@/components/mobile-site-navigation";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const studentNav = [
   { href: "/exams", label: "Đề thi" },
@@ -88,6 +89,7 @@ export async function SiteHeader() {
             ))}
           </nav>
 
+          <ThemeToggle />
           <div className="desktop-header-actions hidden items-center gap-2 text-sm font-extrabold text-slate-600 sm:flex sm:gap-3">
             <Link href="/#gioi-thieu" className="hidden rounded-full px-4 py-2.5 transition hover:bg-orange-50 hover:text-orange-500 sm:inline-flex">
               Giới thiệu
@@ -177,6 +179,7 @@ export async function SiteHeader() {
             <Crown className="h-4 w-4 fill-current" aria-hidden="true" />
             Nâng VIP
           </Link>
+          <ThemeToggle />
           <HeaderAccountControls
             canUseAdmin={account?.role === "ADMIN"}
             activeRole={session.user.role}

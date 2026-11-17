@@ -18,7 +18,25 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="vi" className={vietnameseSans.variable}>
+    <html lang="vi" className={vietnameseSans.variable} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(() => {
+              const root = document.documentElement;
+              try {
+                const saved = window.localStorage.getItem("educhi-theme");
+                const systemPrefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
+                const theme = saved === "dark" || saved === "light" ? saved : systemPrefersDark ? "dark" : "light";
+                root.dataset.theme = theme;
+                root.classList.toggle("dark", theme === "dark");
+              } catch {
+                root.dataset.theme = "light";
+              }
+            })();`,
+          }}
+        />
+      </head>
       <body className="font-body antialiased">{children}</body>
     </html>
   );
