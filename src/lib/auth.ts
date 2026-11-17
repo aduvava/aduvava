@@ -109,3 +109,17 @@ export async function getCurrentUser() {
   const selected = (await cookies()).get("educhi_active_role")?.value;
   return { ...user, role: resolveActiveRole(user.role, selected) };
 }
+
+/**
+ * Returns the database-backed entitlement without applying the selectable
+ * student/teacher mode cookie. Privileged checks must use this helper so an
+ * Admin who switches to Student mode keeps their actual Admin permission.
+ */
+export async function getCurrentUserEntitlement() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) return null;
+  return prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true, name: true, email: true, image: true, role: true },
+  });
+}

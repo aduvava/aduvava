@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { resolveActiveRole } from "../src/lib/roles";
+import { hasAdminEntitlement, resolveActiveRole } from "../src/lib/roles";
 
 describe("student/teacher mode selection", () => {
   it("never elevates a student via a forged role cookie", () => {
@@ -20,5 +20,13 @@ describe("student/teacher mode selection", () => {
     assert.equal(resolveActiveRole("ADMIN", "TEACHER"), "TEACHER");
     assert.equal(resolveActiveRole("ADMIN", "STUDENT"), "STUDENT");
     assert.equal(resolveActiveRole("ADMIN", null), "ADMIN");
+  });
+
+  it("keeps Admin entitlement when the active mode cookie selects Student", () => {
+    assert.equal(resolveActiveRole("ADMIN", "STUDENT"), "STUDENT");
+    assert.equal(hasAdminEntitlement("ADMIN"), true);
+    assert.equal(hasAdminEntitlement("STUDENT"), false);
+    assert.equal(hasAdminEntitlement("TEACHER"), false);
+    assert.equal(hasAdminEntitlement(null), false);
   });
 });

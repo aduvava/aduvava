@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUserEntitlement } from "@/lib/auth";
+import { hasAdminEntitlement } from "@/lib/roles";
 import { AdminLoginForm } from "./admin-login-form";
 
 export const metadata: Metadata = {
@@ -15,13 +16,13 @@ function getSafeCallbackUrl(value: string | undefined) {
 
 export default async function AdminLoginPage({ searchParams }: { searchParams: Promise<{ callbackUrl?: string }> }) {
   const params = await searchParams;
-  const user = await getCurrentUser();
+  const user = await getCurrentUserEntitlement();
   const callbackUrl = getSafeCallbackUrl(params.callbackUrl);
   const previewCredentials = process.env.NODE_ENV !== "production" && process.env.CODESPACE_NAME && process.env.SEED_ADMIN_EMAIL && process.env.SEED_ADMIN_PASSWORD
     ? { email: process.env.SEED_ADMIN_EMAIL, password: process.env.SEED_ADMIN_PASSWORD }
     : null;
 
-  if (user?.role === "ADMIN") redirect(callbackUrl);
+  if (hasAdminEntitlement(user?.role)) redirect(callbackUrl);
 
   return (
     <main className="grid min-h-screen place-items-center bg-slate-950 px-4 py-12 text-white">

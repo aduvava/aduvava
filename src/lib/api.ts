@@ -4,7 +4,8 @@ import { PaymentTransitionError } from "@/lib/payment-transition";
 import { TooManyRequestsError } from "@/lib/security-throttle";
 import { DocumentScanError } from "@/lib/document-malware-scan";
 import { InvalidJsonBodyError, RequestBodyTooLargeError } from "@/lib/limited-json";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserEntitlement } from "@/lib/auth";
+import { hasAdminEntitlement } from "@/lib/roles";
 
 export class HttpError extends Error {
   status: number;
@@ -38,8 +39,9 @@ export async function requireUser() {
 }
 
 export async function requireAdmin() {
-  const user = await requireUser();
-  if (user.role !== "ADMIN") throw new HttpError(403, "Admin access required");
+  const user = await getCurrentUserEntitlement();
+  if (!user) throw new HttpError(401, "Authentication required");
+  if (!hasAdminEntitlement(user.role)) throw new HttpError(403, "Admin access required");
   return user;
 }
 

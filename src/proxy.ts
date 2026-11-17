@@ -44,18 +44,10 @@ export async function proxy(request: NextRequest) {
     );
   }
 
-  if (isAdmin && token.role !== "ADMIN") {
-    if (isAdminApi) {
-      return NextResponse.json({ error: "Admin access required" }, {
-        status: 403, headers: { "Cache-Control": "no-store" },
-      });
-    }
-    return NextResponse.redirect(new URL("/dashboard", process.env.NEXTAUTH_URL || request.nextUrl.origin), 303);
-  }
-
-  // Student/teacher is now a selectable authenticated mode. A JWT role
-  // may be stale immediately after opting into teaching; the destination
-  // Server Component checks the current DB entitlement and selected mode.
+  // Do not authorize Admin from token.role: JWTs keep the role from sign-in,
+  // so a user promoted to Admin would be incorrectly rejected until signing
+  // in again. Every /admin page and /api/admin handler checks the live DB role
+  // through getCurrentUserEntitlement()/requireAdmin before returning data.
   // The proxy only rejects unauthenticated requests here.
 
   return NextResponse.next();

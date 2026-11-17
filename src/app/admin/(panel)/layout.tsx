@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUserEntitlement } from "@/lib/auth";
 import {
   ClipboardList,
   CreditCard,
@@ -14,6 +14,7 @@ import {
   MessageCircleMore,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { hasAdminEntitlement } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -32,9 +33,9 @@ const adminNav = [
 
 export default async function AdminPanelLayout({ children }: { children: ReactNode }) {
   // Protect all admin UI pages, including those without individual checks.
-  const user = await getCurrentUser();
+  const user = await getCurrentUserEntitlement();
   if (!user) redirect("/admin/login");
-  if (user.role !== "ADMIN") redirect("/dashboard");
+  if (!hasAdminEntitlement(user.role)) redirect("/dashboard");
   return (
     <main className="admin-shell min-h-screen bg-slate-100 text-slate-950 lg:grid lg:grid-cols-[280px_1fr]">
       <aside className="hidden border-r border-slate-200 bg-slate-950 text-white lg:block">

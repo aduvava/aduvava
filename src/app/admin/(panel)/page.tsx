@@ -21,7 +21,8 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { clsx } from "clsx";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUserEntitlement } from "@/lib/auth";
+import { hasAdminEntitlement } from "@/lib/roles";
 import { prisma } from "@/lib/db";
 
 export const metadata: Metadata = {
@@ -181,9 +182,9 @@ const systemStatuses: {
 ];
 
 export default async function AdminPage() {
-  const user = await getCurrentUser();
+  const user = await getCurrentUserEntitlement();
   if (!user) redirect("/login?callbackUrl=/admin");
-  if (user.role !== "ADMIN") redirect("/dashboard");
+  if (!hasAdminEntitlement(user.role)) redirect("/dashboard");
 
   const [
     studentCount,

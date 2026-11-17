@@ -4,6 +4,11 @@
  */
 export type ActiveRole = "STUDENT" | "TEACHER" | "ADMIN";
 
+/** Admin permission comes from the stored database entitlement, never a mode cookie or JWT claim. */
+export function hasAdminEntitlement(storedRole: string | null | undefined): boolean {
+  return storedRole === "ADMIN";
+}
+
 export function resolveActiveRole(
   storedRole: ActiveRole | null | undefined,
   requestedRole: string | null | undefined,
