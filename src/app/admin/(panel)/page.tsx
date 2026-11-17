@@ -156,15 +156,15 @@ function StatCard({
   tone: string;
 }) {
   return (
-    <article className="rounded-[1.5rem] border border-orange-100 bg-white p-5 shadow-sm">
+    <article className="admin-stat-card">
       <div className="flex items-start justify-between gap-4">
         <span className={clsx("grid h-12 w-12 place-items-center rounded-2xl", tone)}>
           <Icon className="h-6 w-6" />
         </span>
-        <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-extrabold text-slate-500">{note}</span>
+        <span className="admin-stat-note">{note}</span>
       </div>
-      <p className="mt-5 text-sm font-extrabold text-slate-500">{label}</p>
-      <p className="mt-1 text-3xl font-black text-slate-950">{value}</p>
+      <p className="admin-stat-label">{label}</p>
+      <p className="admin-stat-value">{value}</p>
     </article>
   );
 }
@@ -246,60 +246,60 @@ export default async function AdminPage() {
   };
 
   return (
-    <main className="admin-dashboard min-h-screen bg-orange-50/40 pb-20">
-      <div className="mx-auto max-w-[1440px] px-4 py-7 sm:px-6 lg:px-8">
-        <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+    <main className="admin-dashboard">
+      <div className="admin-dashboard-inner">
+        <header className="admin-hero">
           <div>
-            <p className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-orange-500 shadow-sm">
+            <p className="admin-hero-eyebrow">
               <LayoutDashboard className="h-4 w-4" />
-              Admin
+              CONTROL CENTER <span>•</span> OVERVIEW
             </p>
-            <h1 className="mt-4 text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">Bảng điều khiển quản trị</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
-              Theo dõi vận hành Educhi, duyệt nội dung và đi nhanh vào các khu vực CRUD quan trọng.
+            <h1>Xin chào, quản trị viên <span>👋</span></h1>
+            <p>
+              Đây là trung tâm điều hành Educhi. Theo dõi hoạt động học tập, nội dung và dịch vụ trên cùng một màn hình.
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/admin/documents" className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-5 py-3 text-sm font-extrabold text-white shadow-md shadow-orange-200">
+          <div className="admin-hero-actions">
+            <Link href="/admin/documents" className="admin-hero-primary-action">
               <FileClock className="h-4 w-4" />
               Duyệt tài liệu
             </Link>
-            <Link href="/admin/users" className="inline-flex items-center gap-2 rounded-2xl border border-orange-100 bg-white px-5 py-3 text-sm font-extrabold text-slate-700 shadow-sm">
+            <Link href="/admin/users" className="admin-hero-secondary-action">
               <Users className="h-4 w-4" />
-              Tạo tài khoản
+              Quản lý người dùng
             </Link>
           </div>
         </header>
 
-        <section className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="admin-stats-grid">
           <StatCard label="Học sinh" value={formatNumber(studentCount)} note={`${formatNumber(teacherCount)} giáo viên`} Icon={GraduationCap} tone="bg-blue-50 text-blue-600" />
           <StatCard label="Đề thi" value={formatNumber(examCount)} note={`${formatNumber(questionCount)} câu hỏi`} Icon={ClipboardList} tone="bg-orange-50 text-orange-600" />
           <StatCard label="Cần duyệt" value={formatNumber(pendingDocumentCount)} note={`${formatNumber(openReportCount)} báo cáo`} Icon={FileClock} tone="bg-amber-50 text-amber-600" />
           <StatCard label="Doanh thu" value={formatCurrency(paidRevenue)} note={`${formatNumber(pendingPaymentCount)} đang chờ`} Icon={ReceiptText} tone="bg-emerald-50 text-emerald-600" />
         </section>
 
-        <section className="mt-7 grid gap-6 xl:grid-cols-[1fr_380px]">
-          <div className="rounded-[1.75rem] border border-orange-100 bg-white p-5 shadow-sm">
+        <section className="admin-overview-grid">
+          <div className="admin-card admin-modules-card">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-xl font-black text-slate-950">Module quản trị</h2>
-                <p className="mt-1 text-sm text-slate-500">Mỗi module dẫn tới trang CRUD hoặc hàng đợi xử lý riêng.</p>
+                <h2 className="admin-section-title">Module quản trị</h2>
+                <p className="admin-section-description">Truy cập nhanh các khu vực vận hành và quản lý dữ liệu.</p>
               </div>
-              <span className="w-fit rounded-full bg-slate-50 px-3 py-1 text-xs font-extrabold text-slate-500">{resourceLinks.length} khu vực</span>
+              <span className="admin-section-count">{resourceLinks.length} khu vực</span>
             </div>
-            <div className="mt-5 grid gap-3 md:grid-cols-2">
+            <div className="admin-module-grid">
               {resourceLinks.map(({ href, title, description, Icon, tone }) => (
-                <Link key={href} href={href} className="group rounded-2xl border border-slate-100 bg-slate-50/70 p-4 transition hover:border-orange-200 hover:bg-orange-50">
+                <Link key={href} href={href} className="admin-module-card group">
                   <div className="flex items-start gap-4">
                     <span className={clsx("grid h-11 w-11 shrink-0 place-items-center rounded-xl", tone)}>
                       <Icon className="h-5 w-5" />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center justify-between gap-3">
-                        <strong className="text-sm text-slate-950">{title}</strong>
+                        <strong>{title}</strong>
                         <ArrowRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-orange-500" />
                       </span>
-                      <span className="mt-1 block text-xs leading-5 text-slate-500">{description}</span>
+                      <span className="admin-module-description">{description}</span>
                     </span>
                   </div>
                 </Link>
@@ -307,44 +307,45 @@ export default async function AdminPage() {
             </div>
           </div>
 
-          <aside className="rounded-[1.75rem] border border-orange-100 bg-white p-5 shadow-sm">
-            <h2 className="text-xl font-black text-slate-950">Tình trạng hệ thống</h2>
-            <div className="mt-5 grid gap-3">
+          <aside className="admin-card admin-system-card">
+            <h2 className="admin-section-title">Tình trạng hệ thống</h2>
+            <p className="admin-section-description">Số liệu đồng bộ trực tiếp từ database.</p>
+            <div className="admin-system-list">
               {systemStatuses.map(({ label, value, Icon: StatusIcon, tone }) => (
-                <div key={label} className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4">
+                <div key={label} className="admin-system-row">
                   <span className={clsx("grid h-10 w-10 place-items-center rounded-xl", tone)}>
                     <StatusIcon className="h-5 w-5" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-extrabold text-slate-900">{label}</span>
-                    <span className="text-xs text-slate-500">Cập nhật từ database</span>
+                    <span className="admin-system-label">{label}</span>
+                    <span className="admin-system-caption">Cập nhật từ database</span>
                   </span>
-                  <strong className="text-sm text-slate-700">{systemStatusValues[value]}</strong>
+                  <strong className="admin-system-value">{systemStatusValues[value]}</strong>
                 </div>
               ))}
             </div>
           </aside>
         </section>
 
-        <section className="mt-7 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-[1.75rem] border border-orange-100 bg-white p-5 shadow-sm">
+        <section className="admin-lower-grid">
+          <div className="admin-card">
             <div className="flex items-center justify-between gap-4">
-              <h2 className="text-xl font-black text-slate-950">Tài liệu chờ duyệt</h2>
+              <h2 className="admin-section-title">Tài liệu chờ duyệt</h2>
               <Link href="/admin/documents" className="inline-flex items-center gap-1.5 text-sm font-extrabold text-orange-600">
                 Xem tất cả
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
-            <div className="mt-5 overflow-hidden rounded-2xl border border-slate-100">
+            <div className="admin-activity-list">
               {pendingDocuments.length ? (
                 pendingDocuments.map((document) => (
-                  <div key={document.id} className="flex flex-col gap-3 border-b border-slate-100 p-4 last:border-0 sm:flex-row sm:items-center">
+                  <div key={document.id} className="admin-activity-row">
                     <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600">
                       <FileText className="h-5 w-5" />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <h3 className="truncate text-sm font-black text-slate-900">{document.title}</h3>
-                      <p className="mt-1 text-xs text-slate-500">
+                      <h3 className="admin-activity-title">{document.title}</h3>
+                      <p className="admin-activity-meta">
                         {document.subject} · {document.grade} · {document.uploader.name ?? document.uploader.email}
                       </p>
                     </div>
@@ -360,17 +361,17 @@ export default async function AdminPage() {
             </div>
           </div>
 
-          <div className="rounded-[1.75rem] border border-orange-100 bg-white p-5 shadow-sm">
-            <h2 className="text-xl font-black text-slate-950">Người dùng mới</h2>
-            <div className="mt-5 grid gap-3">
+          <div className="admin-card">
+            <h2 className="admin-section-title">Người dùng mới</h2>
+            <div className="admin-recent-users">
               {recentUsers.map((account) => (
-                <div key={account.id} className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4">
+                <div key={account.id} className="admin-recent-user-row">
                   <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-sm font-black text-orange-500 shadow-sm">
                     {(account.name ?? account.email).slice(0, 2).toUpperCase()}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-black text-slate-900">{account.name ?? account.email}</p>
-                    <p className="truncate text-xs text-slate-500">{account.email}</p>
+                    <p className="admin-activity-title">{account.name ?? account.email}</p>
+                    <p className="admin-activity-meta">{account.email}</p>
                   </div>
                   <span className="rounded-full bg-white px-3 py-1 text-[11px] font-black text-slate-500">{account.role}</span>
                 </div>
@@ -380,9 +381,9 @@ export default async function AdminPage() {
           </div>
         </section>
 
-        <section className="mt-7 rounded-[1.75rem] border border-orange-100 bg-white p-5 shadow-sm">
+        <section className="admin-card admin-payments-card">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-xl font-black text-slate-950">Thanh toán gần đây</h2>
+            <h2 className="admin-section-title">Thanh toán gần đây</h2>
             <Link href="/admin/payments" className="inline-flex items-center gap-1.5 text-sm font-extrabold text-orange-600">
               Quản lý
               <ArrowRight className="h-4 w-4" />
