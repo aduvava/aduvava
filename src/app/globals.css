@@ -182,8 +182,22 @@ body {
     linear-gradient(180deg, #0e1723 0%, #0b111b 70%);
 }
 
+/* Keep the signed-in dashboard on one cool charcoal canvas; the orange glow
+   belongs on accents and cards, not as a brown wash behind the whole page. */
+:root[data-theme="dark"] .site-layout:has(.student-dashboard) {
+  background: #0e1723;
+}
+
 :root[data-theme="dark"] .student-dashboard {
   background: #0e1723;
+}
+
+/* The subject picker had a hard-coded ivory background outside Tailwind's
+   palette, so it stayed bright while every surrounding dashboard card went dark. */
+:root[data-theme="dark"] .student-dashboard #mon-hoc {
+  background-color: #111b29;
+  border-top: 1px solid rgba(116, 139, 165, 0.12);
+  border-bottom: 1px solid rgba(116, 139, 165, 0.12);
 }
 
 :root[data-theme="dark"] .admin-shell {
