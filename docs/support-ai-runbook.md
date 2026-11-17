@@ -3,7 +3,7 @@
 ## What it does
 
 - Uses an Educhi logged-in user's database ID for ownership checks; each user sees only their own conversations.
-- Calls OpenAI Responses API with `store: false` and recent text context only. No Google account, email, student profile or password is sent to the model.
+- Calls an OpenAI-compatible Chat Completions endpoint using a configurable server-side base URL/model and recent text context only. No Google account, email, student profile or password is sent to the model.
 - Auto-escalates account/payment complaints, failed AI requests and exhausted AI budgets to the Admin inbox at `/admin/support`.
 - Users can click **Nhờ Admin** at any time. Admin can reply and resolve each thread.
 - Chat transcript stored in PostgreSQL until the operator manages its retention/deletion. Do not claim live human presence or instant support.
@@ -16,10 +16,14 @@
 4. In the *private VPS .env*, set:
 
 ```dotenv
-OPENAI_API_KEY="your-real-secret-api-key"
+EDUCHI_AI_API_KEY="your-real-secret-api-key"
+EDUCHI_AI_BASE_URL="https://api.example.com"
+EDUCHI_AI_MODEL="your-model-id"
 EDUCHI_AI_ENABLED="true"
 EDUCHI_AI_DAILY_LIMIT="10"
 EDUCHI_AI_MONTHLY_BUDGET_USD="5"
+EDUCHI_AI_INPUT_USD_PER_MILLION="1"
+EDUCHI_AI_OUTPUT_USD_PER_MILLION="5"
 ```
 
 5. Deploy safely:
@@ -37,11 +41,12 @@ If Admin is a separate deployed service, its navigation does not need changes; t
 
 ## Security and costs
 
-- Never put OPENAI_API_KEY in `NEXT_PUBLIC_*`, GitHub or browser JavaScript.
-- The default OpenAI model is GPT-6 Luna; code keeps conservative pricing estimates of $0.10 input / $0.50 output per 1M tokens. Model/price changes must be reviewed together in `src/lib/support-ai.ts`.
+- Never put `EDUCHI_AI_API_KEY` in `NEXT_PUBLIC_*`, GitHub or browser JavaScript. `OPENAI_API_KEY` remains a backwards-compatible fallback only.
+- The endpoint is formed as `/v1/chat/completions` when the base URL has no `/v1` path, or `/chat/completions` when the base URL already ends in `/v1`. The provider must implement the OpenAI Chat Completions request/response shape.
+- Configure token-price estimates to match the gateway tariff. The Admin cost panel is an internal estimate; the gateway's own usage/billing page is authoritative.
 - The application reserves $0.02 in a database transaction-safe monthly budget ledger *before* each request. Unused reservation is released or settled with estimated token usage. By default, the application refuses new AI calls beyond a $5 calendar-month cap and allows 10 AI calls per user per rolling 24 hours.
 - Actual charges may differ (for example timeouts where upstream billed but response was not received). Also configure a project-level budget/alerts in the OpenAI Platform and reconcile the billing dashboard; an app-side cap is not a guaranteed provider hard stop.
-- The AI is optional and off unless explicitly enabled and OPENAI_API_KEY is present. The site can still accept Admin support messages without a key, after the database migration.
+- The AI is optional and off unless explicitly enabled and a server-side API key is present. The site can still accept Admin support messages without a key, after the database migration.
 - Write endpoints check the request Origin and server-side NextAuth/Prisma identity. Admin list/reply endpoints require an active Admin role. POSTs have size caps and database-backed rate limits.
 - The chat widget never asks for OTPs or passwords. Add a user-facing privacy notice and establish a retention/deletion policy for student messages before large-scale launch.
 

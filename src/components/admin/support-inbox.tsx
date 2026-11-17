@@ -184,7 +184,7 @@ export function AdminSupportInbox() {
           ) : null}
         </section>
       </div>
-      <p className="text-xs text-slate-500">Báo cáo chi phí chỉ là ước tính theo số token. Đối chiếu với OpenAI Platform Billing để biết phí thực tế.</p>
+      <p className="text-xs text-slate-500">Chi phí hiển thị là ước tính theo đơn giá đã cấu hình. Đối chiếu bảng Usage/Billing của nhà cung cấp API để biết phí thực tế.</p>
     </div>
   );
 }
