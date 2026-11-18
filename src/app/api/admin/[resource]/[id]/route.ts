@@ -222,8 +222,14 @@ async function deleteResource(resource: string, id: string, confirmDeleteWithRes
     }
     case "blogs":
       return prisma.blogPost.delete({ where: { id } });
-    case "users":
+    case "users": {
+      const ownedExams = await prisma.exam.count({ where: { ownerId: id } });
+      if (ownedExams > 0) {
+        throw new HttpError(409, "Tài khoản vẫn sở hữu đề cá nhân. Hãy xử lý các đề và lịch sử làm bài trước khi xóa tài khoản.");
+      }
+      // The database FK also uses RESTRICT to close the deletion race.
       return prisma.user.delete({ where: { id } });
+    }
     case "subscriptions":
       return prisma.subscription.delete({ where: { id } });
     case "payments":

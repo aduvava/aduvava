@@ -16,7 +16,15 @@ export async function hasActiveSubscription(userId: string, db: AccessDb = prism
   return count > 0;
 }
 
-export async function canAccessExam(userId: string, exam: { accessLevel: "FREE" | "PRO" }, db: AccessDb = prisma) {
+/** The USER- prefix is reserved for personal exams. A legacy orphan must never
+ * be treated as an unrestricted system exam just because its owner was deleted.
+ */
+export function isOrphanedPersonalExam(exam: { ownerId?: string | null; code?: string }) {
+  return !exam.ownerId && exam.code?.startsWith("USER-") === true;
+}
+
+export async function canAccessExam(userId: string, exam: { accessLevel: "FREE" | "PRO"; code: string }, db: AccessDb = prisma) {
+  if (isOrphanedPersonalExam(exam as { ownerId?: string | null; code: string })) return false;
   if (exam.accessLevel !== "FREE") {
     const active = await hasActiveSubscription(userId, db);
     if (!active) return false;
@@ -24,6 +32,7 @@ export async function canAccessExam(userId: string, exam: { accessLevel: "FREE" 
 
   const sharedExam = exam as {
     id?: string;
+    code?: string;
     ownerId?: string | null;
     shareMode?: "PUBLIC" | "PASSWORD" | "RESTRICTED";
   };

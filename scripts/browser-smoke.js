@@ -16,6 +16,23 @@ if (process.env.BROWSER_SMOKE_CI_ONLY !== "yes" ||
   process.exit(2);
 }
 
+// The registration/onboarding client may finish a same-URL navigation while
+// Playwright initiates an explicit dashboard visit. Retry only that specific
+// harmless race, not unrelated navigation or authorization errors.
+async function gotoDashboard(page, options = {}) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await page.goto(base + "/dashboard", options);
+      return;
+    } catch (error) {
+      if (!String(error).includes("is interrupted by another navigation") || attempt === 2) {
+        throw error;
+      }
+      await page.waitForTimeout(150);
+    }
+  }
+}
+
 async function main() {
   const email = "browser-smoke-" + Date.now() + "@example.test";
   const leaderboardPeerEmail = "podium-" + Date.now() + "@example.test";
@@ -31,7 +48,7 @@ async function main() {
     await page.getByRole("heading", { name: /Luyện Đề Thông Minh/i }).waitFor({ timeout: 30000 });
 
     // Server authorization should protect logged-in pages in a real browser.
-    await page.goto(base + "/dashboard");
+    await gotoDashboard(page);
     await page.waitForURL(/\/login\?/, { timeout: 15000 });
 
     await page.goto(base + "/register");
@@ -50,7 +67,7 @@ async function main() {
     assert.equal(account.role, "STUDENT", "browser-created accounts must be STUDENT");
 
     // Completing the post-authentication profile is required before dashboard access.
-    await page.goto(base + "/dashboard");
+    await gotoDashboard(page);
     await page.waitForURL(/\/onboarding(?:\?|$)/, { timeout: 15000 });
     assert.equal(await page.locator('[name="aspiration"]').count(), 0);
     assert.equal(await page.locator('[name="targetScore"]').count(), 0);
@@ -76,7 +93,7 @@ async function main() {
     const session = await sessionResult.json();
     assert.equal(session.user?.email, email);
 
-    await page.goto(base + "/dashboard", { waitUntil: "domcontentloaded" });
+    await gotoDashboard(page, { waitUntil: "domcontentloaded" });
     assert.equal(new URL(page.url()).pathname, "/dashboard", "completed students should not be sent back to onboarding");
 
     // The mobile subject tab was intentionally removed. The exam tab
@@ -165,7 +182,7 @@ async function main() {
     await invitePage.getByLabel("Mã giới thiệu không bắt buộc").waitFor();
     assert.equal(await invitePage.getByLabel("Mã giới thiệu không bắt buộc").inputValue(), inviteCode);
     await adminPage.goto(base + "/admin");
-    await adminPage.getByRole("heading", { name: "Bảng điều khiển quản trị" }).waitFor();
+    await adminPage.getByRole("heading", { name: /Xin chào, quản trị viên/i }).waitFor();
 
     const unique = Date.now().toString(36);
     const subjectResponse = await adminPage.request.post(base + "/api/admin/subjects", { data: {
