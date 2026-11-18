@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     // The public exam catalog contains ADMIN/system exams only.
     // Personal uploads belong to /exams/my, regardless of their shareMode.
     // Direct share links continue to use the exam access rules.
-    const where: Record<string, unknown> = { isPublished: true, ownerId: null };
+    const where: Record<string, unknown> = { isPublished: true, ownerId: null, code: { not: { startsWith: "USER-" } } };
     if (family === "THPTQG" || family === "DGNL") where.family = family;
     if (track !== null) {
       const special = getSpecialExamTrack(track);
