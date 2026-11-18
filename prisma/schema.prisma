@@ -332,7 +332,7 @@ model Exam {
   updatedAt         DateTime        @updatedAt
 
   subject      Subject           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  owner        User?             @relation("OwnedExams", fields: [ownerId], references: [id], onDelete: SetNull)
+  owner        User?             @relation("OwnedExams", fields: [ownerId], references: [id], onDelete: Restrict)
   questions    Question[]
   attempts     Attempt[]
   accessGrants ExamAccessGrant[]
