@@ -4,7 +4,7 @@ export async function getPublicSubjects(family?: "THPTQG" | "DGNL") {
   try {
     return await prisma.subject.findMany({
       where: family ? { family } : undefined,
-      include: { _count: { select: { exams: { where: { isPublished: true, ownerId: null } } } } },
+      include: { _count: { select: { exams: { where: { isPublished: true, ownerId: null, code: { not: { startsWith: "USER-" } } } } } } },
       orderBy: { name: "asc" }
     });
   } catch (error) {
