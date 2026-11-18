@@ -7,6 +7,7 @@ import { validateDocumentBuffer, InvalidDocumentError, MAX_FILE_SIZE } from "@/l
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { rateLimitOperation } from "@/lib/security-throttle";
+import { readLimitedFormData } from "@/lib/limited-form-data";
 import { documentCatalog, documentTypes } from "@/lib/document-catalog";
 import { handleRouteError, HttpError, jsonOk, requireUser } from "@/lib/api";
 
@@ -98,7 +99,8 @@ export async function POST(request: Request) {
   try {
     const user = await requireUser();
     await rateLimitOperation(prisma, "upload", user.id, request.headers);
-    const formData = await request.formData();
+    // Bound raw multipart bytes (including omitted/chunked Content-Length) before parsing.
+    const formData = await readLimitedFormData(request, 17 * 1024 * 1024);
     const payload = metadataSchema.parse({
       title: formData.get("title"),
       description: formData.get("description"),
