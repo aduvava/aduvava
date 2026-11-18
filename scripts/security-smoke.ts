@@ -269,6 +269,14 @@ async function run() {
       },
     });
     createdExamIds.push(privateExam.id);
+
+    // User deletion must not silently convert their private exams into system exams.
+    const deniedOwnerDeletion = await request(`/api/admin/users/${adminId}`,
+      { method: "DELETE" }, adminAuth.jar);
+    await assertStatus(deniedOwnerDeletion, 409, "cannot delete an account with owned personal exams");
+    assert.equal((await prisma.exam.findUniqueOrThrow({ where: { id: privateExam.id } })).ownerId,
+      adminId, "private exam must retain its owner");
+
     const proExam = await prisma.exam.create({
       data: {
         code: `SEC-PRO-${nonce}`, slug: `smoke-pro-${nonce}`,
@@ -323,6 +331,15 @@ async function run() {
     const started = await postJson("/api/attempts", { examId: privateExam.id }, studentAuth.jar);
     await assertStatus(started, 201, "start privately shared exam");
     const privateAttemptId = (await started.json() as { attemptId: string }).attemptId;
+    const concurrentStarts = await Promise.all(Array.from({ length: 4 },
+      () => postJson("/api/attempts", { examId: privateExam.id }, studentAuth.jar)));
+    for (const response of concurrentStarts) {
+      await assertStatus(response, 200, "concurrent start should reuse existing attempt");
+      assert.equal((await response.json() as { attemptId: string }).attemptId, privateAttemptId);
+    }
+    assert.equal(await prisma.attempt.count({
+      where: { userId: studentId, examId: privateExam.id, status: "IN_PROGRESS" },
+    }), 1, "concurrent tabs must not create duplicate IN_PROGRESS attempts");
     const privateQuestion = await prisma.question.findFirstOrThrow({
       where: { examId: privateExam.id },
       select: { id: true },
@@ -367,9 +384,14 @@ async function run() {
     await assertStatus(await postJson(`/api/attempts/${privateAttemptId}/helpers`,
       { itemId: "fake-helper-id" }, studentAuth.jar),
       409, "expired attempt cannot use a helper");
-    const lateSubmission = await postJson(`/api/attempts/${privateAttemptId}/submit`,
-      {}, studentAuth.jar);
-    await assertStatus(lateSubmission, 200, "late submit grades only previously saved answers");
+    const simultaneousSubmissions = await Promise.all(Array.from({ length: 3 },
+      () => postJson(`/api/attempts/${privateAttemptId}/submit`, {}, studentAuth.jar)));
+    for (const submitted of simultaneousSubmissions) {
+      await assertStatus(submitted, 200, "simultaneous submit is idempotent");
+    }
+    assert.equal(await prisma.walletTransaction.count({
+      where: { reference: `attempt-exp-${privateAttemptId}` },
+    }), 1, "one attempt must produce exactly one EXP transaction");
     const finalizedAttempt = await prisma.attempt.findUniqueOrThrow({ where: { id: privateAttemptId } });
     assert.equal(finalizedAttempt.status, "SUBMITTED");
     assert.ok(finalizedAttempt.durationSeconds <= 30 * 60,
@@ -414,6 +436,25 @@ async function run() {
     });
     assert.equal(storedOptions, 302, "bulk insert must keep all answer choices");
     await prisma.exam.delete({ where: { id: flexibleExam.id } });
+
+    // Simulate a legacy orphan, previously created by ON DELETE SET NULL.
+    // Even when an old record remains published, it must never be visible.
+    const orphaned = await prisma.exam.create({
+      data: {
+        code: `USER-ORPHAN-${nonce}`, slug: `smoke-orphan-${nonce}`,
+        title: "Orphaned private user exam", description: "Must never become public",
+        family: "THPTQG", type: "PRACTICE", accessLevel: "FREE",
+        year: 2026, durationMinutes: 30, subjectId,
+        ownerId: null, shareMode: "PUBLIC", isPublished: true,
+      },
+    });
+    createdExamIds.push(orphaned.id);
+    await assertStatus(await request(`/api/exams/${orphaned.id}`, {}, studentAuth.jar),
+      403, "legacy orphaned personal exam cannot be accessed directly");
+    const orphanCatalog = await request("/api/exams", {}, studentAuth.jar);
+    await assertStatus(orphanCatalog, 200, "orphaned exam catalog filtering");
+    assert.ok(!(await orphanCatalog.text()).includes(orphaned.id),
+      "legacy orphaned personal exam must not appear in public catalog");
 
     const adminRead = await request("/api/admin/payments", {}, adminAuth.jar);
     await assertStatus(adminRead, 200, "admin list payments");
