@@ -14,6 +14,7 @@ import { MascotAvatar } from "@/components/mascot-avatar";
 import { getDashboardSubjects, getSubjectCatalogSize } from "@/lib/dashboard-subjects";
 import { getItemVisual } from "@/lib/subject-visuals";
 import { specialExamTracks } from "@/lib/special-exam-tracks";
+import { getDefaultDashboardClass } from "@/lib/default-dashboard-class";
 
 type ExamItem = {
   id: string;
@@ -35,6 +36,7 @@ type DashboardSubject = {
 };
 
 type DashboardProps = {
+  defaultGrade: string | null;
   firstName: string;
   greeting: string;
   dashboardImageKey: string | null;
@@ -404,6 +406,7 @@ function ExamCenter({ exams }: { exams: ExamItem[] }) {
 }
 
 export function StudentDashboard({
+  defaultGrade,
   firstName,
   greeting,
   dashboardImageKey,
@@ -417,12 +420,14 @@ export function StudentDashboard({
   rankingScope = "THPTQG · Tất cả môn",
   rankings = [],
 }: DashboardProps) {
-  const [activeGroup, setActiveGroup] = useState(studyGroups[0].id);
+  // The saved profile grade is the home default; selecting another grade is temporary.
+  const defaultClass = getDefaultDashboardClass(defaultGrade);
+  const [activeGroup, setActiveGroup] = useState(defaultClass.groupId as string);
   const currentGroup = useMemo(() => studyGroups.find((group) => group.id === activeGroup) ?? studyGroups[0], [activeGroup]);
-  const [activeClass, setActiveClass] = useState(studyGroups[0].classes[0]);
+  const [activeClass, setActiveClass] = useState(defaultClass.className as string);
   const visibleSubjects = useMemo(() => getDashboardSubjects(subjects, activeGroup), [subjects, activeGroup]);
   const showingSpecialExams = activeGroup === "national-exam" && activeClass === "Kỳ thi riêng";
-  const [activeSubject, setActiveSubject] = useState(getDashboardSubjects(subjects, studyGroups[0].id)[0]?.slug ?? "");
+  const [activeSubject, setActiveSubject] = useState(getDashboardSubjects(subjects, defaultClass.groupId)[0]?.slug ?? "");
   const [communityMessages, setCommunityMessages] = useState<CommunityMessage[]>([]);
   const [communityDraft, setCommunityDraft] = useState("");
   const [replyTarget, setReplyTarget] = useState<CommunityMessage | null>(null);

@@ -8,12 +8,12 @@ import { equipmentSlotFor } from "@/lib/store-equipment";
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?callbackUrl=/dashboard");
-  if (user.role === "STUDENT") {
-    const profile = await prisma.studentProfile.findUnique({
-      where: { userId: user.id },
-      select: { grade: true, school: true, province: true },
-    });
-    if (!isStudentOnboardingComplete(profile)) redirect("/onboarding?callbackUrl=/dashboard");
+  const profile = await prisma.studentProfile.findUnique({
+    where: { userId: user.id },
+    select: { grade: true, school: true, province: true },
+  });
+  if (user.role === "STUDENT" && !isStudentOnboardingComplete(profile)) {
+    redirect("/onboarding?callbackUrl=/dashboard");
   }
 
   const [inProgressAttempt, attempts, account, subjects] = await Promise.all([
@@ -174,6 +174,8 @@ export default async function DashboardPage() {
 
   return (
     <StudentDashboard
+      key={profile?.grade ?? "no-profile-grade"}
+      defaultGrade={profile?.grade ?? null}
       firstName={firstName}
       greeting={greeting}
       dashboardImageKey={equippedDashboardImage?.imageKey ?? null}
