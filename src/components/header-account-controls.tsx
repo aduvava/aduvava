@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { normalizeSchoolGrade, SCHOOL_GRADES } from "@/data/profile-options";
 import { Crown, Gem, GraduationCap, History, LogOut, PackageCheck, School, UserRound, X } from "lucide-react";
 
 type HeaderAccountControlsProps = {
@@ -29,6 +31,7 @@ const profileFields = [
 ] as const;
 
 export function HeaderAccountControls({ initialExp, vipDaysLeft, activeRole, canUseAdmin, user }: HeaderAccountControlsProps) {
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profile, setProfile] = useState<StudentProfileForm>(emptyProfile);
@@ -55,7 +58,7 @@ export function HeaderAccountControls({ initialExp, vipDaysLeft, activeRole, can
         const savedProfile = data.profile?.profile;
         if (!active || !savedProfile) return;
         setProfile({
-          grade: savedProfile.grade ?? "",
+          grade: normalizeSchoolGrade(savedProfile.grade),
           school: savedProfile.school ?? "",
         });
       } catch {
@@ -85,17 +88,24 @@ export function HeaderAccountControls({ initialExp, vipDaysLeft, activeRole, can
   }
 
   async function saveProfile() {
+    const grade = normalizeSchoolGrade(profile.grade);
+    if (activeRole === "STUDENT" && !grade) {
+      setProfileMessage("Vui lòng chọn lớp từ 6 đến 12.");
+      return;
+    }
     setProfileSaving(true);
     setProfileMessage(null);
     try {
       const response = await fetch("/api/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...profile, source: "avatar-menu" }),
+        body: JSON.stringify({ ...profile, grade, source: "avatar-menu" }),
       });
       if (!response.ok) throw new Error("Save failed");
       setProfileMessage("Đã lưu thông tin cá nhân.");
       setProfileOpen(false);
+      // Refresh the server-owned home grade without persisting temporary browsing choices.
+      router.refresh();
     } catch {
       setProfileMessage("Lưu thất bại. Vui lòng thử lại.");
     } finally {
@@ -213,12 +223,23 @@ export function HeaderAccountControls({ initialExp, vipDaysLeft, activeRole, can
                         <Icon className="h-4 w-4 text-orange-500" />
                         {label}
                       </span>
-                      <input
-                        value={profile[key]}
-                        onChange={(event) => setProfile((current) => ({ ...current, [key]: event.target.value }))}
-                        placeholder={placeholder}
-                        className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-orange-300 focus:bg-white focus:ring-4 focus:ring-orange-100"
-                      />
+                      {key === "grade" ? (
+                        <select
+                          value={profile.grade}
+                          onChange={(event) => setProfile((current) => ({ ...current, grade: event.target.value }))}
+                          className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-800 outline-none transition focus:border-orange-300 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                        >
+                          <option value="">Chọn lớp</option>
+                          {SCHOOL_GRADES.map((grade) => <option key={grade} value={grade}>Lớp {grade}</option>)}
+                        </select>
+                      ) : (
+                        <input
+                          value={profile[key]}
+                          onChange={(event) => setProfile((current) => ({ ...current, [key]: event.target.value }))}
+                          placeholder={placeholder}
+                          className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-orange-300 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                        />
+                      )}
                     </label>
                   ))}
                   {profileMessage ? <p className="rounded-2xl bg-orange-50 px-4 py-3 text-sm font-bold text-orange-600">{profileMessage}</p> : null}
