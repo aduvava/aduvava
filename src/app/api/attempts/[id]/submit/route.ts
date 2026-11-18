@@ -44,7 +44,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       return { attemptId: attempt.id, resultId: attempt.id, score: attempt.score, maxScore: attempt.maxScore };
     }
     if (attempt.status !== "IN_PROGRESS") throw new HttpError(409, "Bài thi đã kết thúc.");
-    if (!(await canAccessExam(user.id, attempt.exam))) throw new HttpError(403, "Bạn không còn quyền truy cập đề thi này.");
+    if (!(await canAccessExam(user.id, attempt.exam, tx))) throw new HttpError(403, "Bạn không còn quyền truy cập đề thi này.");
     // Submission may happen after the deadline to grade answers already saved.
     // Answer writes are separately rejected at the server-side deadline.
 
