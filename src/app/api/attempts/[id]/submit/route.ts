@@ -9,7 +9,21 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   try {
     const { id } = await params;
     const user = await requireUser();
-    const attempt = await prisma.attempt.findFirst({
+    // Serialize rewards per user, not just per attempt: two different attempts
+    // must not both calculate EXP against the same remaining daily allowance.
+    // Every answer save/helper use locks the attempt row, so acquiring it here
+    // also ensures scoring sees the last committed answers.
+    const outcome = await prisma.$transaction(async (tx) => {
+      const userLock = await tx.$queryRaw<{ id: string }[]>`
+        SELECT "id" FROM "User" WHERE "id" = ${user.id} FOR UPDATE
+      `;
+      if (!userLock.length) throw new HttpError(401, "Authentication required");
+      const attemptLock = await tx.$queryRaw<{ id: string }[]>`
+        SELECT "id" FROM "Attempt" WHERE "id" = ${id} AND "userId" = ${user.id} FOR UPDATE
+      `;
+      if (!attemptLock.length) throw new HttpError(404, "Attempt not found");
+
+    const attempt = await tx.attempt.findFirst({
       where: { id, userId: user.id },
       include: {
         answers: true,
@@ -27,7 +41,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
     if (!attempt) throw new HttpError(404, "Attempt not found");
     if (attempt.status === "SUBMITTED") {
-      return jsonOk({ attemptId: attempt.id, resultId: attempt.id, score: attempt.score, maxScore: attempt.maxScore });
+      return { attemptId: attempt.id, resultId: attempt.id, score: attempt.score, maxScore: attempt.maxScore };
     }
     if (attempt.status !== "IN_PROGRESS") throw new HttpError(409, "Bài thi đã kết thúc.");
     if (!(await canAccessExam(user.id, attempt.exam))) throw new HttpError(403, "Bạn không còn quyền truy cập đề thi này.");
@@ -63,7 +77,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       attempt.exam.questions.map((question) => {
         const current = answerMap.get(question.id);
         const scored = scoreByQuestion.get(question.id);
-        return prisma.attemptAnswer.upsert({
+        return tx.attemptAnswer.upsert({
           where: { attemptId_questionId: { attemptId: attempt.id, questionId: question.id } },
           update: { isCorrect: scored?.isCorrect ?? null, score: scored?.score ?? 0 },
           create: {
@@ -101,14 +115,14 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
         ? "Bạn đang kiểm soát tốt đề này. Ưu tiên luyện tốc độ và giảm lỗi sai nhỏ."
         : "Nên chữa kỹ câu sai và ôn lại các chuyên đề yếu trước khi làm đề mới.";
 
-    await prisma.resultSummary.upsert({
+    await tx.resultSummary.upsert({
       where: { attemptId: attempt.id },
       update: { weakTopics, topicScores, feedback },
       create: { attemptId: attempt.id, weakTopics, topicScores, feedback },
     });
 
     const dayRange = getVietnamDayRange(now);
-    const previousAttemptCount = await prisma.attempt.count({
+    const previousAttemptCount = await tx.attempt.count({
       where: {
         userId: user.id,
         examId: attempt.examId,
@@ -117,7 +131,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       },
     });
     const [todayEarned, activity] = await Promise.all([
-      prisma.walletTransaction.aggregate({
+      tx.walletTransaction.aggregate({
         where: {
           userId: user.id,
           currency: "EXP",
@@ -127,7 +141,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
         },
         _sum: { amount: true },
       }),
-      prisma.walletTransaction.findMany({
+      tx.walletTransaction.findMany({
         where: {
           userId: user.id,
           currency: "EXP",
@@ -161,16 +175,16 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
           ? `Hoàn thành ${attempt.exam.title}: không cộng EXP vì đã làm đề này từ lần 3`
           : `Hoàn thành ${attempt.exam.title}: không cộng EXP vì đã đạt giới hạn EXP hôm nay`;
 
-    await prisma.$transaction([
-      prisma.attempt.update({
+    await Promise.all([
+      tx.attempt.update({
         where: { id: attempt.id },
         data: { status: "SUBMITTED", submittedAt: now, durationSeconds, score: result.score, maxScore: result.maxScore },
       }),
-      prisma.user.update({
+      tx.user.update({
         where: { id: user.id },
         data: { exp: { increment: expReward } },
       }),
-      prisma.walletTransaction.create({
+      tx.walletTransaction.create({
         data: {
           userId: user.id,
           currency: "EXP",
@@ -187,7 +201,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
           },
         },
       }),
-      prisma.notification.create({
+      tx.notification.create({
         data: {
           userId: user.id,
           title: expReward > 0 ? `Bạn nhận được ${expReward} EXP` : "Bài làm đã được ghi nhận",
@@ -197,7 +211,9 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       }),
     ]);
 
-    return jsonOk({ attemptId: attempt.id, resultId: attempt.id, score: result.score, maxScore: result.maxScore, weakTopics, expReward, expBreakdown });
+    return { attemptId: attempt.id, resultId: attempt.id, score: result.score, maxScore: result.maxScore, weakTopics, expReward, expBreakdown };
+    }, { maxWait: 15000, timeout: 45000 });
+    return jsonOk(outcome);
   } catch (error) {
     return handleRouteError(error);
   }
