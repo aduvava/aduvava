@@ -29,7 +29,7 @@ const schemas = {
     durationMinutes: z.number().int().min(1).max(600),
     educationLevel: z.enum(["THCS", "THPT", "EXAM_10", "THPTQG"]).nullable(),
     grade: z.string().trim().max(50).nullable(),
-    specialExamTrack: z.enum(["HSA", "TSA", "V_ACT", "QDA", "BQA", "DGNL_BCA"]).nullable(),
+    specialExamTrack: z.enum(["HSA", "TSA", "V_ACT", "QDA", "DGNL_BCA"]).nullable(),
     targetScore: z.number().finite().nonnegative().nullable(),
     subjectId: id, isPublished: z.boolean(),
   }),
