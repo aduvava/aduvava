@@ -188,6 +188,14 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
           </div>
         </section>
 
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link href="/so-loi-sai" className="rounded-xl bg-orange-500 px-5 py-3 text-sm font-extrabold text-white hover:bg-orange-600">
+            📚 Luyện lại câu sai
+          </Link>
+          <Link href="/nang-luc" className="rounded-xl border border-orange-200 bg-white px-5 py-3 text-sm font-extrabold text-orange-700 hover:bg-orange-50">
+            📊 Xem điểm yếu theo chuyên đề
+          </Link>
+        </div>
         <h2 className="mt-10 text-3xl font-black text-slate-900">Xem lại chi tiết</h2>
         <div className="mx-auto mt-6 max-w-5xl space-y-6">
           {attempt.exam.questions.map((question) => {
