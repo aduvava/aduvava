@@ -638,6 +638,18 @@ async function main() {
     for (const width of [320, 390, 1366]) {
       await adminPage.setViewportSize({ width, height: 844 });
       await adminPage.goto(base + "/dashboard");
+      assert.equal(await adminPage.locator('nav[aria-label="Công cụ ôn tập cá nhân"]').count(), 0,
+        "review tools are no longer shown as large dashboard cards");
+      const studyTrigger = width < 1024
+        ? adminPage.getByRole("button", { name: "Mở công cụ ôn tập" })
+        : adminPage.getByRole("button", { name: "Ôn tập", exact: true });
+      await studyTrigger.click();
+      const studyMenu = adminPage.getByRole("navigation", { name: "Công cụ ôn tập", exact: true });
+      await studyMenu.getByRole("link", { name: /Sổ lỗi sai/ }).waitFor();
+      await studyMenu.getByRole("link", { name: /Bản đồ năng lực/ }).waitFor();
+      await studyMenu.getByRole("link", { name: /Sổ lỗi sai/ }).click();
+      await adminPage.getByRole("heading", { name: "Sổ lỗi sai" }).waitFor();
+      await adminPage.goto(base + "/dashboard");
       await adminPage.getByRole("button", { name: "Ôn thi THPTQG" }).click();
       const subjectTab = adminPage.getByRole("button", { name: "Môn thi", exact: true });
       assert.equal(await subjectTab.getAttribute("class").then((name) => name?.includes("bg-blue-500")), true,
