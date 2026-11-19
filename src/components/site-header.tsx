@@ -8,6 +8,7 @@ import { MascotAvatar } from "@/components/mascot-avatar";
 import { HeaderAccountControls } from "@/components/header-account-controls";
 import { MobileSiteNavigation } from "@/components/mobile-site-navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { StudyToolsMenu } from "@/components/study-tools-menu";
 
 const studentNav = [
   { href: "/exams", label: "Đề thi" },
@@ -134,16 +135,20 @@ export async function SiteHeader() {
           </Link>
         </nav>
 
-        <nav className="hidden items-center gap-4 text-[13px] font-bold text-slate-600 lg:flex xl:gap-5 xl:text-sm">
+        <nav className="hidden items-center gap-3 text-[12px] font-bold text-slate-600 lg:flex xl:gap-4 xl:text-[13px] 2xl:gap-5 2xl:text-sm" aria-label="Điều hướng học tập">
           {nav.map((item) => (
-            <Link key={item.label} href={item.href} className="whitespace-nowrap transition hover:text-orange-500">
-              {item.label}
-            </Link>
+            <div key={item.label} className="contents">
+              <Link href={item.href} className="whitespace-nowrap transition hover:text-orange-500">
+                {item.label}
+              </Link>
+              {item.href === "/exams" ? <StudyToolsMenu /> : null}
+            </div>
           ))}
         </nav>
 
         <div className="desktop-header-actions flex min-w-0 items-center justify-end gap-1 sm:gap-3">
-          <label className="hidden h-10 w-48 items-center gap-2 rounded-full bg-slate-100 px-4 xl:flex 2xl:w-60">
+          <div className="lg:hidden"><StudyToolsMenu compact /></div>
+          <label className="hidden h-10 w-48 items-center gap-2 rounded-full bg-slate-100 px-4 2xl:flex 2xl:w-52">
             <Search className="h-4 w-4 shrink-0 text-slate-400" />
             <input
               aria-label="Tìm kiếm"
