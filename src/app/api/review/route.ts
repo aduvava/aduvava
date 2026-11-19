@@ -124,6 +124,7 @@ export async function POST(request: Request) {
       correctOptions: question.answerOptions.filter((option) => option.isCorrect).map((option) => ({
         id: option.id, label: option.label,
       })),
+      correctSelections: Object.fromEntries(question.answerOptions.map((option) => [option.id, option.isCorrect])),
       nextReviewAt: schedule.nextReviewAt,
     });
   } catch (error) {
