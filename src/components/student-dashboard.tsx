@@ -557,19 +557,24 @@ export function StudentDashboard({
             ))}
           </div>
           {showingSpecialExams ? (
-            <div className="mx-auto mt-5 max-w-[690px]">
-              <nav aria-label="Các kỳ thi riêng" className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
-                {specialExamTracks.map((track) => (
+            <div className="mx-auto mt-5 w-full max-w-[850px]">
+              <nav aria-label="Các kỳ thi riêng" className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-6 lg:gap-4">
+                {specialExamTracks.map((track, index) => (
                   <Link
                     key={track.id}
                     data-testid="special-exam-track"
                     href={`/exams/special/${track.slug}`}
-                    className="group flex min-h-[92px] flex-col items-center justify-center gap-1.5 rounded-[1.25rem] border border-orange-100 bg-white px-2 py-2 text-center shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 sm:min-h-[124px] sm:gap-3 sm:px-3 sm:py-4"
+                    className={clsx(
+                      "group flex min-h-[130px] w-full flex-col items-center justify-center gap-2 rounded-[1.5rem] border border-orange-100 bg-white px-3 py-4 text-center shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-blue-300 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 sm:min-h-[154px] lg:col-span-2",
+                      index === 3 && "lg:col-start-2",
+                      index === 4 && "col-span-2 max-w-[240px] justify-self-center sm:max-w-[290px] lg:col-start-4 lg:max-w-none",
+                    )}
                   >
-                    <span className="grid h-11 w-11 place-items-center rounded-2xl bg-blue-50 text-blue-600 transition group-hover:bg-blue-600 group-hover:text-white">
+                    <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-blue-50 text-blue-600 transition-colors group-hover:bg-blue-600 group-hover:text-white">
                       <GraduationCap className="h-6 w-6" aria-hidden="true" />
                     </span>
-                    <span className="text-sm font-black text-slate-900 group-hover:text-blue-600">{track.label}</span>
+                    <span className="text-base font-black text-slate-900 transition-colors group-hover:text-blue-600 sm:text-lg">{track.label}</span>
+                    <span className="text-[11px] font-semibold leading-tight text-slate-500 sm:text-xs">{track.description}</span>
                   </Link>
                 ))}
               </nav>
