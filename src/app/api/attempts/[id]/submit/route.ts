@@ -121,6 +121,27 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       create: { attemptId: attempt.id, weakTopics, topicScores, feedback },
     });
 
+
+    // Each submitted wrong/partial-credit answer becomes an independent review item.
+    // Repeated submission is guarded above by status === SUBMITTED.
+    const wrongAnswers = result.questionScores.filter((item) => item.isCorrect === false);
+    await Promise.all(wrongAnswers.map((item) => tx.reviewItem.upsert({
+      where: { userId_questionId: { userId: user.id, questionId: item.questionId } },
+      create: {
+        userId: user.id,
+        questionId: item.questionId,
+        nextReviewAt: now,
+        lastWrongAt: now,
+      },
+      update: {
+        wrongCount: { increment: 1 },
+        correctStreak: 0,
+        masteredAt: null,
+        nextReviewAt: now,
+        lastWrongAt: now,
+      },
+    })));
+
     const dayRange = getVietnamDayRange(now);
     const previousAttemptCount = await tx.attempt.count({
       where: {
