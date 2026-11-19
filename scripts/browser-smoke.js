@@ -644,8 +644,8 @@ async function main() {
         "normal THPTQG subject tab remains the default");
       await adminPage.getByRole("button", { name: "Kỳ thi riêng", exact: true }).click();
       const tracks = adminPage.getByTestId("special-exam-track");
-      assert.equal(await tracks.count(), 6, "exactly six special exam groups");
-      assert.deepEqual(await tracks.allTextContents(), ["HSA", "TSA", "V-ACT", "QDA", "BQA", "ĐGNL BCA"]);
+      assert.equal(await tracks.count(), 5, "exactly five configured special exam groups");
+      assert.deepEqual(await tracks.allTextContents(), ["HSA", "TSA", "V-ACT", "QDA", "ĐGNL BCA"]);
       assert.equal(await adminPage.locator('a[href^="/subjects/"]').filter({ hasText: "Toán" }).count(), 0,
         "subject grid is hidden inside special track tab");
       const docWidth = await adminPage.evaluate(() => document.documentElement.scrollWidth);
