@@ -510,17 +510,6 @@ export function StudentDashboard({
           <StreakCard learningStreak={learningStreak} weekActivity={weekActivity} />
         </div>
 
-        <nav aria-label="Công cụ ôn tập cá nhân" className="mt-5 grid grid-cols-2 gap-3">
-          <Link href="/so-loi-sai" className="rounded-2xl border border-orange-200 bg-white p-4 text-center text-sm font-extrabold text-orange-700 shadow-sm transition hover:border-orange-400 hover:bg-orange-50">
-            📚 Sổ lỗi sai
-            <span className="mt-1 block text-xs font-medium text-slate-500">Ôn lại câu bạn từng sai</span>
-          </Link>
-          <Link href="/nang-luc" className="rounded-2xl border border-blue-200 bg-white p-4 text-center text-sm font-extrabold text-blue-700 shadow-sm transition hover:border-blue-400 hover:bg-blue-50">
-            📊 Bản đồ năng lực
-            <span className="mt-1 block text-xs font-medium text-slate-500">Biết phần nào cần cải thiện</span>
-          </Link>
-        </nav>
-
         <section id="mon-hoc" className="-mx-4 mt-6 scroll-mt-20 bg-[#fffdf0] px-4 py-6 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
           <div className={clsx("mx-auto grid max-w-[1180px] items-start gap-5", !showingSpecialExams && "lg:grid-cols-[minmax(0,760px)_minmax(320px,360px)]")}>
             <div>
