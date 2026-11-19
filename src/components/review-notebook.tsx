@@ -30,6 +30,7 @@ type Feedback = {
   explanation: string | null;
   correctText: string | null;
   correctOptions: { id: string; label: string }[];
+  correctSelections: Record<string, boolean>;
 };
 
 export function ReviewNotebook() {
@@ -194,6 +195,7 @@ export function ReviewNotebook() {
                 <p className="mt-1 text-sm">Điểm: {feedback.score}/{feedback.maxScore}</p>
                 {question.type === "SHORT_ANSWER" ? <p className="mt-2 text-sm">Đáp án: {feedback.correctText || "Xem lời giải bên dưới."}</p> : null}
                 {question.type === "SINGLE_CHOICE" ? <p className="mt-2 text-sm">Đáp án: {feedback.correctOptions.map((option) => option.label).join(", ")}</p> : null}
+                {question.type === "TRUE_FALSE_SET" ? <p className="mt-2 text-sm">Đáp án: {question.options.map((option) => option.label + ": " + (feedback.correctSelections[option.id] ? "Đúng" : "Sai")).join(" · ")}</p> : null}
                 {feedback.explanation ? <div className="mt-3 border-t border-current/10 pt-3 text-sm leading-7"><RichContent value={feedback.explanation} /></div> : null}
                 <p className="mt-3 text-xs">{feedback.mastered ? "Bạn đã thuộc câu này!" : "Educhi đã lưu lịch ôn tiếp theo."}</p>
               </div>
