@@ -161,6 +161,7 @@ model User {
   sessions           Session[]
   profile            StudentProfile?
   attempts           Attempt[]
+  reviewItems        ReviewItem[]
   subscriptions      Subscription[]
   payments           Payment[]
   aiFeedbacks        AiFeedback[]
@@ -379,6 +380,7 @@ model Question {
   topic          Topic?          @relation(fields: [topicId], references: [id], onDelete: SetNull)
   answerOptions  AnswerOption[]
   attemptAnswers AttemptAnswer[]
+  reviewItems    ReviewItem[]
 
   @@index([examId, position])
 }
@@ -860,4 +862,28 @@ model CommunityMessage {
 
   @@index([createdAt, id])
   @@index([userId, createdAt])
+}
+
+
+// Per-user spaced repetition based on graded attempts. Never store answer keys here.
+model ReviewItem {
+  id             String    @id @default(cuid())
+  userId         String
+  questionId     String
+  wrongCount     Int       @default(1)
+  reviewCount    Int       @default(0)
+  correctStreak  Int       @default(0)
+  nextReviewAt   DateTime  @default(now())
+  lastWrongAt    DateTime  @default(now())
+  lastReviewedAt DateTime?
+  masteredAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questionId])
+  @@index([userId, nextReviewAt])
+  @@index([userId, masteredAt])
 }
