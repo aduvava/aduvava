@@ -53,6 +53,7 @@ export function RegisterForm() {
           {VIETNAM_PROVINCES.map((province) => <option key={province} value={province}>{province}</option>)}
         </select>
       </div>
+      <p className="text-xs leading-6 text-slate-600">Trước khi đăng ký, vui lòng xem <Link href="/chinh-sach/dieu-khoan" className="font-bold text-orange-700 underline">Điều khoản sử dụng</Link> và <Link href="/chinh-sach/bao-mat" className="font-bold text-orange-700 underline">Chính sách bảo mật</Link>.</p>
       <button className="min-h-12 w-full rounded-full px-5 py-3 font-extrabold text-white shadow-md transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2" style={{ backgroundColor: "#f97316", color: "#ffffff", visibility: "visible", opacity: 1 }} type="submit">TẠO TÀI KHOẢN</button>
       {message ? <p role="status" className="text-sm font-semibold text-ink/65">{message}</p> : null}
       {existingAccount ? (

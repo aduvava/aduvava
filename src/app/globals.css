@@ -66,6 +66,12 @@ body {
     linear-gradient(180deg, #fffdf8 0%, #fff8ed 48%, #fffdf8 100%);
 }
 
+/* Keep the last exam submit button reachable above fixed mobile navigation.
+   Legal links remain available on all other pages outside an active attempt. */
+.site-layout:has([data-testid="exam-submit-final"]) > footer {
+  display: none;
+}
+
 .site-main {
   padding-top: 64px;
 }

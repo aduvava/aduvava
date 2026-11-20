@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Check, Copy, Crown, QrCode, X } from "lucide-react";
 import { clsx } from "clsx";
 import { ReferralWidget, type ReferralOverview } from "@/components/referral-widget";
@@ -170,6 +171,7 @@ function PlanCard({ plan, featured, referralCode }: { plan: Plan; featured: bool
             </p>
           ))}
         </div>
+        <p className="mt-5 text-xs leading-5 text-slate-600">Trước khi chuyển tiền, hãy xem <Link href="/chinh-sach/thanh-toan" className="font-bold text-orange-700 underline">Chính sách thanh toán và hoàn tiền</Link> và <Link href="/chinh-sach/dieu-khoan" className="font-bold text-orange-700 underline">Điều khoản sử dụng</Link>.</p>
         <button type="button" onClick={() => void checkout()} disabled={loading}
           className={clsx("mt-6 w-full rounded-2xl px-6 py-3.5 text-base font-black transition disabled:opacity-60", featured ? "bg-orange-500 text-white hover:bg-orange-600" : "bg-slate-950 text-white hover:bg-orange-500")}>
           {loading ? "Đang tạo mã chuyển khoản..." : bankTransfer ? "Xem lại mã QR chuyển khoản" : "Đăng ký ngay"}

@@ -21,6 +21,7 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
         <div className="mt-6">
           <GoogleSignInButton enabled={googleEnabled} label="Đăng ký nhanh bằng Google" role={teacher ? "teacher" : "student"} callbackUrl={teacher ? "/teacher" : "/dashboard"} />
           <p className="mt-2 text-center text-xs text-slate-500">Chỉ hoàn thiện thông tin lần đầu, tài khoản cũ sẽ không phải nhập lại.</p>
+          <p className="mt-2 text-center text-xs text-slate-500">Đọc <Link href="/chinh-sach/bao-mat" className="font-bold text-orange-700 underline">Chính sách bảo mật</Link> trước khi tiếp tục với Google.</p>
           <div className="my-5 flex items-center gap-3 text-xs font-bold text-slate-400">
             <span className="h-px flex-1 bg-slate-200" /> hoặc đăng ký bằng email <span className="h-px flex-1 bg-slate-200" />
           </div>
