@@ -27,9 +27,13 @@ function formatVnd(value: number) {
 }
 
 function durationLabel(plan: Plan) {
-  if (plan.slug.includes("quarter") || plan.interval === "QUARTER") return "3 tháng";
-  if (plan.interval === "YEAR") return "1 năm";
+  if (plan.interval === "QUARTER") return "3 tháng";
+  if (plan.interval === "YEAR") return "12 tháng";
   return "1 tháng";
+}
+
+function priceDigits(price: number) {
+  return new Intl.NumberFormat("vi-VN").format(price);
 }
 
 // Shared learning tools are already implemented on Educhi. They are listed
@@ -42,16 +46,6 @@ const learningTools = [
   "Làm lại đề và giữ kết quả của các lần làm trước",
   "Theo dõi lịch sử luyện tập, tích lũy EXP và xem bảng xếp hạng",
 ];
-
-// These older marketing claims are not supported by the current code:
-// AI essay scoring returns 503; exam creation is rate-limited; and the
-// advertised percentage discount has no verified pricing baseline.
-// Keep stored admin data intact, but don't repeat unverified promises publicly.
-function publicPlanFeatures(features: string[]) {
-  return features.filter((feature) =>
-    !/AI\s*Ava\s*chấm|Tiết kiệm\s*\d+%|Tự tạo đề thi nhanh.*không giới hạn/i.test(feature)
-  );
-}
 
 type BankTransferDetails = {
   bankName: string;
@@ -173,38 +167,27 @@ function PlanCard({ plan, featured, referralCode }: { plan: Plan; featured: bool
   }
 
   return (
-    <article className={clsx("relative flex min-h-full flex-col overflow-hidden rounded-[2rem] border bg-white shadow-[0_18px_45px_rgba(15,23,42,.08)]", featured ? "border-orange-300 ring-4 ring-orange-100" : "border-orange-100")}>
-      {featured ? <Crown className="absolute right-6 top-5 h-7 w-7 fill-amber-300 text-amber-300" /> : null}
-      <div className={clsx("border-b p-6 sm:p-7", featured ? "bg-orange-50/80" : "bg-slate-50")}>
-        <p className={clsx("text-lg font-black", featured ? "text-orange-700" : "text-slate-700")}>{plan.name}</p>
-        <div className="mt-5 flex flex-wrap items-end gap-x-3 gap-y-1">
-          <span className="text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">{formatVnd(plan.price)}</span>
-          <span className="pb-2 text-lg font-semibold text-slate-600">/ {durationLabel(plan)}</span>
+    <article className={clsx("relative flex h-full flex-col overflow-hidden rounded-[1.6rem] border bg-white shadow-sm", featured ? "border-orange-400 ring-2 ring-orange-100" : "border-slate-200")}>
+      <div className="flex flex-1 flex-col p-5 sm:p-6">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-lg font-black text-slate-900">{plan.name}</h3>
+          {featured ? <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-3 py-1 text-[11px] font-black text-orange-700"><Crown className="h-3.5 w-3.5" /> Giá thấp nhất</span> : null}
         </div>
-      </div>
-      <div className="flex flex-1 flex-col p-6 sm:p-7">
+        <p className="mt-3 flex flex-wrap items-baseline gap-2">
+          <span className="text-4xl font-black tracking-tight text-slate-950">{priceDigits(plan.price)}</span>
+          <span className="text-xl font-black text-slate-950">đ</span>
+          <span className="text-sm font-semibold text-slate-500">/ {durationLabel(plan)}</span>
+        </p>
+        <p className="mt-2 text-sm leading-6 text-slate-600">Mở khóa nội dung VIP trong {durationLabel(plan)}.</p>
+        <div className="my-5 h-px bg-slate-100" />
         <div className="flex-1 space-y-3">
-          {publicPlanFeatures(plan.features).map((feature, index) => (
-            <p key={`${feature}-${index}`} className="flex gap-3 text-sm font-semibold leading-6 text-slate-600">
-              <Check className="mt-1 h-4 w-4 shrink-0 text-orange-600" />
-              <span>{feature}</span>
-            </p>
+          {["Đề thi VIP đã xuất bản", "Lý thuyết và học liệu VIP nâng cao", "Thanh toán một lần, không tự gia hạn"].map((benefit) => (
+            <p key={benefit} className="flex gap-2.5 text-sm font-semibold leading-6 text-slate-700"><Check className="mt-1 h-4 w-4 shrink-0 text-orange-600" /><span>{benefit}</span></p>
           ))}
         </div>
-        <div className="mt-5 border-t border-orange-100 pt-4">
-          <p className="text-xs font-black uppercase tracking-wide text-orange-700">Tiện ích học tập đi kèm</p>
-          <div className="mt-3 space-y-2.5">
-            {learningTools.map((benefit) => (
-              <p key={benefit} className="flex gap-2.5 text-sm font-medium leading-5 text-slate-600">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
-                <span>{benefit}</span>
-              </p>
-            ))}
-          </div>
-        </div>
         <button type="button" onClick={() => void checkout()} disabled={loading}
-          className={clsx("mt-6 w-full rounded-2xl px-6 py-3.5 text-base font-black transition disabled:opacity-60", featured ? "bg-orange-500 text-white hover:bg-orange-600" : "bg-slate-950 text-white hover:bg-orange-500")}>
-          {loading ? "Đang tạo mã chuyển khoản..." : bankTransfer ? "Xem lại mã QR chuyển khoản" : "Đăng ký ngay"}
+          className={clsx("mt-6 w-full rounded-xl px-5 py-3.5 text-sm font-black transition disabled:opacity-60", featured ? "bg-orange-500 text-white hover:bg-orange-600" : "bg-slate-950 text-white hover:bg-orange-500")}>
+          {loading ? "Đang tạo mã chuyển khoản..." : bankTransfer ? "Xem lại mã QR" : "Chọn gói này"}
         </button>
         {bankTransfer ? (
           <p className="mt-3 text-xs font-semibold leading-5 text-slate-600">
@@ -297,66 +280,53 @@ function PlanCard({ plan, featured, referralCode }: { plan: Plan; featured: bool
 
 export function VipPricing({ plans, activeSubscription, referralOverview, initialReferralCode = "" }: VipPricingProps) {
   const [referralCode, setReferralCode] = useState(/^[A-Z0-9]{6}$/.test(initialReferralCode.toUpperCase()) ? initialReferralCode.toUpperCase() : "");
-  const featured = plans.find((plan) => plan.slug.includes("monthly"))?.id ?? plans[1]?.id;
+  // PRO access is identical for all current plans. Highlight the lowest price.
+  const featured = [...plans].sort((a, b) => a.price - b.price)[0]?.id;
 
   return (
-    <main className="min-h-screen bg-[#fffdf7] px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-[1320px]">
-        <section className="overflow-hidden rounded-[3rem] bg-gradient-to-br from-orange-500 via-orange-500 to-rose-500 p-7 text-white shadow-xl shadow-orange-100 sm:p-8">
-          <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-100">Nạp VIP Educhi</p>
-          <div className="mt-4 grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
+    <main className="min-h-screen bg-[#fffdf7] px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1180px]">
+        <section className="rounded-[1.75rem] bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-6 text-white sm:px-8">
+          <p className="text-xs font-black uppercase tracking-widest text-orange-100">Educhi VIP</p>
+          <div className="mt-2 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="max-w-4xl text-3xl font-black leading-tight sm:text-5xl">Mở khóa trọn bộ đề thi và nội dung nâng cao</h1>
-              <p className="mt-4 max-w-3xl text-sm font-semibold leading-7 text-orange-50">
-                Chọn gói VIP để luyện đề từ lớp 6-12, ôn thi vào 10, THPTQG và xem lý thuyết nâng cao do Admin xuất bản.
-              </p>
+              <h1 className="text-2xl font-black sm:text-3xl">Mở khóa thêm đề thi và học liệu nâng cao</h1>
+              <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-orange-50">Mọi gói hiện có cùng quyền truy cập VIP, khác nhau ở mức giá và thời hạn sử dụng.</p>
             </div>
-            {activeSubscription ? (
-              <div className="rounded-[2rem] bg-white/15 p-4 text-sm font-bold backdrop-blur">
-                Đang dùng {activeSubscription.planName}
-                <br />
-                đến {new Date(activeSubscription.endsAt).toLocaleDateString("vi-VN")}
-              </div>
-            ) : (
-              <div className="rounded-[2rem] bg-white/15 p-4 text-sm font-bold backdrop-blur">
-                Chưa có VIP. Chọn gói bên dưới để bắt đầu.
-              </div>
-            )}
+            {activeSubscription ? <p className="shrink-0 rounded-xl bg-white/15 px-4 py-3 text-sm font-semibold">Đang dùng {activeSubscription.planName}<span className="block text-xs">Đến {new Date(activeSubscription.endsAt).toLocaleDateString("vi-VN")}</span></p> : null}
           </div>
         </section>
 
-        <section aria-labelledby="optional-referral-title" className="mt-8 rounded-[1.75rem] border border-orange-100 bg-white p-5 shadow-sm sm:p-6">
-          <label id="optional-referral-title" htmlFor="vip-referral-code" className="block text-base font-black text-slate-900">
-            Mã giới thiệu (không bắt buộc)
-          </label>
-          <p className="mt-1 text-sm font-medium text-slate-600">
-            Tài khoản mới hay cũ đều có thể nhập mã gồm 6 chữ hoặc số khi mua VIP.
-            Nếu thanh toán thành công, người giới thiệu nhận 10% giá trị gói.
-            Không có mã vẫn đăng ký VIP bình thường.
-          </p>
-          <input
-            id="vip-referral-code"
-            aria-label="Mã giới thiệu không bắt buộc"
-            type="text"
-            maxLength={6}
-            autoComplete="off"
-            autoCapitalize="characters"
+        <section aria-labelledby="optional-referral-title" className="mt-5 flex flex-col gap-3 rounded-2xl border border-orange-100 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <label id="optional-referral-title" htmlFor="vip-referral-code" className="text-sm font-black text-slate-900">Có mã giới thiệu?</label>
+            <p className="mt-1 text-xs leading-5 text-slate-600">Không bắt buộc. Người giới thiệu nhận thưởng 10% khi đơn đủ điều kiện.</p>
+          </div>
+          <input id="vip-referral-code" aria-label="Mã giới thiệu không bắt buộc" type="text" maxLength={6} autoComplete="off" autoCapitalize="characters"
             value={referralCode}
             onChange={(event) => setReferralCode(event.currentTarget.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))}
-            placeholder="Ví dụ: ABC123"
-            className="mt-4 h-12 w-full max-w-xs rounded-xl border border-orange-200 bg-orange-50/40 px-4 text-base font-black uppercase tracking-widest text-slate-950 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+            placeholder="Mã 6 ký tự (nếu có)"
+            className="h-11 w-full rounded-xl border border-orange-200 bg-orange-50/40 px-4 text-sm font-bold uppercase tracking-wide text-slate-950 focus:border-orange-500 focus:outline-none sm:w-64"
           />
-          <p className="mt-2 text-xs font-medium text-slate-500">
-            Mã được gắn vào đơn trước khi chuyển khoản. Không thể dùng mã của chính mình.
-          </p>
         </section>
-        <section className="mt-6 grid gap-6 lg:grid-cols-3">
+        <div className="mt-7 mb-4">
+          <h2 className="text-xl font-black text-slate-950 sm:text-2xl">Chọn gói VIP phù hợp</h2>
+          <p className="mt-1 text-sm text-slate-600">Giá và thời hạn lấy từ các gói đang mở bán, không tự động trừ tiền gia hạn.</p>
+        </div>
+        <section className="grid items-stretch gap-4 lg:grid-cols-3">
           {plans.map((plan) => <PlanCard key={plan.id} plan={plan} featured={plan.id === featured} referralCode={referralCode} />)}
           {!plans.length ? (
             <div className="rounded-[2rem] border border-orange-100 bg-white p-10 text-center text-sm font-semibold text-slate-500 lg:col-span-3">
               Chưa có gói VIP. Admin có thể tạo gói mới trong mục Gói thành viên.
             </div>
           ) : null}
+        </section>
+        <section aria-labelledby="learning-benefits-title" className="mt-7 rounded-[1.75rem] border border-orange-100 bg-white p-5 sm:p-7">
+          <h2 id="learning-benefits-title" className="text-xl font-black text-slate-950">Công cụ học tập có trên Educhi</h2>
+          <p className="mt-1 text-sm leading-6 text-slate-600">Các công cụ dưới đây sử dụng được cả với đề miễn phí. VIP giúp mở khóa thêm nội dung nâng cao.</p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {learningTools.map((tool) => <p key={tool} className="flex gap-2.5 text-sm font-medium leading-6 text-slate-700"><Check className="mt-1 h-4 w-4 shrink-0 text-orange-600" /><span>{tool}</span></p>)}
+          </div>
         </section>
         <ReferralWidget overview={referralOverview} />
       </div>
