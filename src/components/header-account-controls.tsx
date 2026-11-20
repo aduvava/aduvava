@@ -184,6 +184,9 @@ export function HeaderAccountControls({ initialExp, vipDaysLeft, activeRole, can
               <button type="button" onClick={openProfile} className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-extrabold text-slate-700 transition hover:bg-orange-50 hover:text-orange-600">
                 <UserRound className="h-5 w-5" /> Thông tin cá nhân
               </button>
+              <a href="/quyen-du-lieu" className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-extrabold text-slate-700 transition hover:bg-orange-50 hover:text-orange-600">
+                <UserRound className="h-5 w-5" /> Quyền dữ liệu & xóa tài khoản
+              </a>
               <a href="/kho-do" className="flex w-full items-center gap-3 rounded-2xl bg-orange-50 px-4 py-3 text-sm font-extrabold text-orange-700 transition hover:bg-orange-100">
                 <PackageCheck className="h-5 w-5" /> Kho đồ của tôi
               </a>
