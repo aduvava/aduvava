@@ -5,13 +5,13 @@ import { Check, Pencil, Plus, RefreshCw, ShieldCheck } from "lucide-react";
 
 type Plan = {
   id: string; slug: string; name: string; description: string; price: number;
-  interval: "MONTH" | "QUARTER" | "YEAR"; features: unknown; isActive: boolean;
+  interval: "MONTH" | "QUARTER" | "HALF_YEAR" | "YEAR"; features: unknown; isActive: boolean;
 };
 
 function vnd(amount: number) { return new Intl.NumberFormat("vi-VN").format(amount) + "đ"; }
 const field = "w-full min-h-11 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100";
 const label = "grid gap-1.5 text-sm font-bold text-slate-700";
-const intervalNames: Record<Plan["interval"], string> = { MONTH: "1 tháng", QUARTER: "3 tháng", YEAR: "12 tháng" };
+const intervalNames: Record<Plan["interval"], string> = { MONTH: "1 tháng", QUARTER: "3 tháng", HALF_YEAR: "6 tháng", YEAR: "12 tháng" };
 const slugify = (input: string) => input.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[đĐ]/g, "d").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 export function PlanManager() {
@@ -83,7 +83,7 @@ export function PlanManager() {
           <div className="grid grid-cols-2 gap-3">
             <label className={label}>Giá bán (VNĐ)<input className={field} type="number" min={1000} max={1000000000} step={1000} required value={price} onChange={(event) => setPrice(event.target.value)} /></label>
             <label className={label}>Thời hạn<select className={field} value={interval} onChange={(event) => setInterval(event.target.value as Plan["interval"])}>
-              <option value="MONTH">1 tháng</option><option value="QUARTER">3 tháng</option><option value="YEAR">12 tháng</option>
+              <option value="MONTH">1 tháng</option><option value="QUARTER">3 tháng</option><option value="HALF_YEAR">6 tháng</option><option value="YEAR">12 tháng</option>
             </select></label>
           </div>
           <label className={label}>Quyền lợi (mỗi dòng một quyền lợi)
