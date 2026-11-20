@@ -42,7 +42,7 @@ export default function ContactPage() {
               Thông tin chủ quản chưa được xác minh để công bố đầy đủ. Educhi cần bổ sung tên chủ thể, địa chỉ và thông tin đăng ký hợp lệ. Bạn vẫn có thể gửi hỗ trợ qua biểu mẫu.
             </p>
           )}
-          <p className="mt-6 text-xs leading-6 text-slate-500">Xem <Link href="/chinh-sach/bao-mat" className="font-bold text-orange-700 underline">Chính sách bảo mật</Link> về việc xử lý thông tin bạn gửi.</p>
+          <p className="mt-6 text-xs leading-6 text-slate-500">Xem <Link href="/chinh-sach/bao-mat" className="font-bold text-orange-700 underline">Chính sách bảo mật</Link> về việc xử lý thông tin bạn gửi. Người đã đăng nhập có thể <Link href="/quyen-du-lieu" className="font-bold text-orange-700 underline">theo dõi yêu cầu về dữ liệu</Link>.</p>
         </section>
         <section className="rounded-[2rem] border border-orange-100 bg-white p-6 shadow-sm sm:p-8">
           <h2 className="text-xl font-black">Gửi yêu cầu</h2>
