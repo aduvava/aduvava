@@ -654,6 +654,11 @@ async function main() {
       assert.equal(await cards.count(), 2, "only two ranked students must create two podium cards");
       assert.equal(await cards.nth(0).getAttribute("data-rank"), "1", "first card is leader");
       assert.equal(await cards.nth(1).getAttribute("data-rank"), "2", "second card is runner-up");
+      assert.ok((await cards.nth(1).innerText()).includes("Học viên #"),
+        "leaderboard must display another student's pseudonym");
+      assert.equal(await cards.nth(1).getByText("Học viên bảng xếp hạng CI", { exact: true }).count(), 0,
+        "the other student's legal name must not be published");
+
       assert.match(await cards.nth(0).getAttribute("aria-label"), /95 điểm trên 100/);
       const cardRect = await cards.nth(0).boundingBox();
       assert.ok(cardRect && cardRect.width > 100, "podium card stays usable at " + width + "px");
