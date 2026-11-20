@@ -1964,7 +1964,7 @@ async function deleteDocument(req, res, id) {
 }
 
 const paymentStatuses = ["PENDING", "PAID", "FAILED"];
-const planIntervals = ["MONTH", "QUARTER", "YEAR"];
+const planIntervals = ["MONTH", "QUARTER", "HALF_YEAR", "YEAR"];
 
 function planIntervalLabel(value) {
   if (value === "MONTH") return "Tháng";
