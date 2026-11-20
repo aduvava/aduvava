@@ -26,6 +26,8 @@ export default async function LeaderboardPage() {
         submittedAt: true,
         user: {
           select: {
+            name: true,
+            image: true,
             equippedAvatarFrameId: true,
             equippedNameColorId: true,
             equippedTitleId: true,
@@ -117,11 +119,8 @@ export default async function LeaderboardPage() {
       attempts={attempts.map((attempt) => ({
         id: attempt.id,
         userId: attempt.userId,
-        // Only the signed-in member sees their own real name and profile photo.
-        userName: attempt.userId === user.id
-          ? (user.name ?? "Học sinh Educhi")
-          : displayCommunityMember({ id: attempt.userId, role: "STUDENT" }),
-        userImage: attempt.userId === user.id ? (user.image ?? null) : null,
+        userName: displayCommunityMember(attempt.user),
+        userImage: attempt.user.image,
         cosmetics: cosmeticsFrom(attempt.user),
         educationLevel: mapEducationLevel(
           attempt.exam.educationLevel,
