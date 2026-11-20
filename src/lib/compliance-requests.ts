@@ -28,11 +28,13 @@ export function optionLabel<T extends { value: string; label: string }>(
 export function displayCommunityMember(user: { id: string; role: string } | null) {
   if (!user) return "Thành viên Educhi";
   if (user.role === "ADMIN") return "Quản trị Educhi";
-  if (user.role === "TEACHER") return "Giáo viên Educhi";
+  if (user.role === "TEACHER") return "Thành viên #" + user.id.slice(-6).toUpperCase();
   // Stable pseudonym: keep real student names out of public community history.
   return "Học viên #" + user.id.slice(-6).toUpperCase();
 }
 
 export function initialsOfDisplayName(name: string) {
+  if (name.startsWith("Học viên #")) return "HS";
+  if (name.startsWith("Thành viên #")) return "TV";
   return name.split(/\s+/).slice(-2).map((part) => part[0] || "").join("").toUpperCase();
 }
