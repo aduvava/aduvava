@@ -19,7 +19,7 @@ async function history() {
   })).reverse();
   const users = await prisma.user.findMany({
     where: { id: { in: [...new Set(rows.map((row) => row.userId))] } },
-    select: { id: true, role: true },
+    select: { id: true, name: true, role: true },
   });
   const names = new Map(users.map((user) => [user.id, { name: displayCommunityMember(user), role: user.role }]));
   const byId = new Map(rows.map((row) => [row.id, row]));

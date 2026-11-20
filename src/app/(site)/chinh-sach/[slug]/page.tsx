@@ -26,7 +26,7 @@ const policies: Record<string, Policy> = {
       ] },
       { title: "3. Chia sẻ dữ liệu và dịch vụ bên thứ ba", paragraphs: [
         "Tùy tính năng thực tế, dữ liệu có thể được xử lý bởi đơn vị hạ tầng, Google (đăng nhập), ngân hàng và SePay (đối soát thanh toán) hoặc đơn vị cung cấp AI nếu chức năng này được sử dụng. Phạm vi chia sẻ phải phù hợp với mục đích hợp pháp.",
-        "Nội dung bạn chủ động đăng công khai trong cộng đồng hoặc kho tài liệu có thể được người khác xem. Không công khai dữ liệu cá nhân nhạy cảm của mình hoặc của người khác.",
+        "Trong cộng đồng, tên theo hồ sơ Educhi của người gửi và nội dung tin nhắn được các thành viên đang đăng nhập nhìn thấy. Bảng xếp hạng cũng hiển thị tên và ảnh đại diện theo hồ sơ của học sinh có kết quả được xếp hạng. Không đăng công khai dữ liệu cá nhân nhạy cảm của mình hoặc của người khác.",
         "Nếu có chuyển dữ liệu cá nhân ra nước ngoài, Educhi phải tuân thủ các yêu cầu pháp luật liên quan."
       ] },
       { title: "4. Thời hạn lưu trữ và bảo mật", paragraphs: [

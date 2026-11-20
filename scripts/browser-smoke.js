@@ -227,9 +227,8 @@ async function main() {
     const communityHistory = await adminPage.request.get(base + "/api/community");
     assert.equal(communityHistory.status(), 200);
     const sharedMessage = (await communityHistory.json()).messages.find((m) => m.id === reportedMessage.id);
-    assert.ok(sharedMessage && sharedMessage.name.startsWith("Học viên #"),
-      "student real name must not be exposed in community history");
-    assert.ok(!sharedMessage.name.includes("Referral Guest"));
+    assert.equal(sharedMessage?.name, "Referral Guest",
+      "community shows the member's profile name");
     const report = await adminPage.request.post(base + "/api/community/report", {
       headers: { Origin: base },
       data: { messageId: reportedMessage.id, reason: "PRIVACY", details: "CI community report" },
@@ -654,10 +653,8 @@ async function main() {
       assert.equal(await cards.count(), 2, "only two ranked students must create two podium cards");
       assert.equal(await cards.nth(0).getAttribute("data-rank"), "1", "first card is leader");
       assert.equal(await cards.nth(1).getAttribute("data-rank"), "2", "second card is runner-up");
-      assert.ok((await cards.nth(1).innerText()).includes("Học viên #"),
-        "leaderboard must display another student's pseudonym");
-      assert.equal(await cards.nth(1).getByText("Học viên bảng xếp hạng CI", { exact: true }).count(), 0,
-        "the other student's legal name must not be published");
+      assert.equal(await cards.nth(1).getByText("Học viên bảng xếp hạng CI", { exact: true }).count(), 1,
+        "leaderboard shows another student's profile name");
 
       assert.match(await cards.nth(0).getAttribute("aria-label"), /95 điểm trên 100/);
       const cardRect = await cards.nth(0).boundingBox();

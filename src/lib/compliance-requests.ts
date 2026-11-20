@@ -25,16 +25,12 @@ export function optionLabel<T extends { value: string; label: string }>(
   return options.find((option) => option.value === value)?.label ?? null;
 }
 
-export function displayCommunityMember(user: { id: string; role: string } | null) {
-  if (!user) return "Thành viên Educhi";
-  if (user.role === "ADMIN") return "Quản trị Educhi";
-  if (user.role === "TEACHER") return "Thành viên #" + user.id.slice(-6).toUpperCase();
-  // Stable pseudonym: keep real student names out of public community history.
-  return "Học viên #" + user.id.slice(-6).toUpperCase();
+// Display the name supplied in the user's Educhi profile in community and rankings.
+// A missing name falls back to a generic label. Account IDs never become public aliases.
+export function displayCommunityMember(user: { name?: string | null } | null) {
+  return user?.name?.trim() || "Thành viên Educhi";
 }
 
 export function initialsOfDisplayName(name: string) {
-  if (name.startsWith("Học viên #")) return "HS";
-  if (name.startsWith("Thành viên #")) return "TV";
-  return name.split(/\s+/).slice(-2).map((part) => part[0] || "").join("").toUpperCase();
+  return name.trim().split(/\s+/).filter(Boolean).slice(-2).map((part) => part[0] || "").join("").toUpperCase() || "ED";
 }

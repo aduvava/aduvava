@@ -731,7 +731,7 @@ export function StudentDashboard({
               />
               <button type="button" onClick={sendCommunityMessage} disabled={communitySending} aria-label="Gửi tin nhắn" className="grid h-11 w-11 place-items-center rounded-[1.25rem] bg-orange-500 text-white transition hover:bg-orange-600"><Send className="h-4 w-4" /></button>
             </div>
-            <p className="mt-2 text-[11px] leading-5 text-slate-500">Tin nhắn có thể được mọi thành viên đọc. Educhi ẩn tên thật khi hiển thị, nhưng đừng gửi số điện thoại, địa chỉ, tên trường hoặc thông tin riêng tư.</p>
+            <p className="mt-2 text-[11px] leading-5 text-slate-500">Tin nhắn có thể được mọi thành viên đọc. Tên theo hồ sơ của bạn hiển thị với mọi thành viên. Không gửi số điện thoại, địa chỉ, tên trường hoặc thông tin riêng tư.</p>
           </section>
 
           <aside className="space-y-6">
