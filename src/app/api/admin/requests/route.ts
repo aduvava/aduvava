@@ -1,7 +1,8 @@
+import { readLimitedJson } from "@/lib/limited-json";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { handleRouteError, HttpError, readJson, requireAdmin } from "@/lib/api";
+import { handleRouteError, HttpError, requireAdmin } from "@/lib/api";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,7 +46,7 @@ export async function PATCH(request: Request) {
   try {
     checkOrigin(request);
     await requireAdmin();
-    const data = updateSchema.parse(await readJson<unknown>(request));
+    const data = updateSchema.parse(await readLimitedJson(request, 8192));
     const result = await prisma.leadMessage.updateMany({
       where: { id: data.id },
       data: {
@@ -62,7 +63,7 @@ export async function DELETE(request: Request) {
   try {
     checkOrigin(request);
     const admin = await requireAdmin();
-    const data = removeSchema.parse(await readJson<unknown>(request));
+    const data = removeSchema.parse(await readLimitedJson(request, 8192));
     const report = await prisma.leadMessage.findFirst({
       where: { id: data.id, source: "community-report" }, select: { message: true },
     });
