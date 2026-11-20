@@ -1685,7 +1685,7 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
           officeWarnings.style.display = "none";
           officeConfirm.style.display = "none";
           officeChecked.checked = false;
-          if (/\.(xlsx|docx)$/i.test(file.name)) {
+          if (/\\.(xlsx|docx)$/i.test(file.name)) {
             officeWarnings.style.display = "block";
             officeWarnings.textContent = "Đang đọc hình minh họa trong " + file.name + "...";
             try {
@@ -1696,7 +1696,7 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
               if (!response.ok || !result.ok) throw new Error(result.error || "Không thể phân tích file Office.");
               bulk.value = result.importText;
               officeWarnings.textContent = "Đã nhập " + result.imageCount + " hình minh họa từ " + file.name + "."
-                + ((result.warnings || []).length ? "\nCảnh báo:\n" + result.warnings.join("\n") : "\nHãy xem trước để chắc chắn hình nằm đúng câu.");
+                + ((result.warnings || []).length ? "\\nCảnh báo:\\n" + result.warnings.join("\\n") : "\\nHãy xem trước để chắc chắn hình nằm đúng câu.");
               if ((result.warnings || []).length) officeConfirm.style.display = "block";
               schedulePreview();
             } catch (error) {
@@ -1704,7 +1704,7 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
             }
             return;
           }
-          if (/\.pdf$/i.test(file.name)) {
+          if (/\\.pdf$/i.test(file.name)) {
             officeWarnings.style.display = "block";
             officeWarnings.textContent = "PDF chưa hỗ trợ trích xuất ảnh tự động. Hãy chuyển sang Word DOCX hoặc chèn ảnh bằng nút ảnh.";
             return;
