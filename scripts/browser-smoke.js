@@ -96,6 +96,29 @@ async function main() {
     await gotoDashboard(page, { waitUntil: "domcontentloaded" });
     assert.equal(new URL(page.url()).pathname, "/dashboard", "completed students should not be sent back to onboarding");
 
+    // Logged-in students must control their own privacy cases, without giving
+    // anonymous callers access to the Admin queue or accepting cross-site writes.
+    await page.goto(base + "/quyen-du-lieu");
+    await page.getByRole("heading", { name: "Quyền dữ liệu của tôi" }).waitFor();
+    assert.equal((await page.request.get(base + "/api/admin/requests")).status(), 403,
+      "students must not access confidential compliance requests");
+    assert.equal((await page.request.post(base + "/api/privacy-requests", {
+      headers: { Origin: "https://example.invalid" },
+      data: { type: "ACCESS", details: "CI privacy rights" },
+    })).status(), 403, "privacy requests must enforce same-origin");
+    const privacyCaseResponse = await page.request.post(base + "/api/privacy-requests", {
+      headers: { Origin: base },
+      data: { type: "ACCESS", details: "CI privacy rights" },
+    });
+    assert.equal(privacyCaseResponse.status(), 201, "students can file privacy requests");
+    const privacyCaseId = (await privacyCaseResponse.json()).request.id;
+    const ownCases = await page.request.get(base + "/api/privacy-requests");
+    assert.equal(ownCases.status(), 200);
+    assert.ok((await ownCases.json()).items.some((item) => item.id === privacyCaseId),
+      "authenticated students may view only their own privacy request history");
+    await gotoDashboard(page);
+
+
     // The mobile subject tab was intentionally removed. The exam tab
     // remains visible and navigates directly to the exam catalogue.
     await page.setViewportSize({ width: 390, height: 844 });
@@ -183,6 +206,47 @@ async function main() {
     assert.equal(await invitePage.getByLabel("Mã giới thiệu không bắt buộc").inputValue(), inviteCode);
     await adminPage.goto(base + "/admin");
     await adminPage.getByRole("heading", { name: /Xin chào, quản trị viên/i }).waitFor();
+
+    // Admin can review data-rights requests; users' names are not published
+    // in shared community history, and reports trigger a human moderation flow.
+    const adminPrivacy = await adminPage.request.get(base + "/api/admin/requests?source=privacy-request");
+    assert.equal(adminPrivacy.status(), 200, "Admin compliance inbox is protected and reachable");
+    assert.ok((await adminPrivacy.json()).items.some((item) => item.id === privacyCaseId));
+    await adminPage.goto(base + "/admin/requests");
+    await adminPage.getByRole("heading", { name: "Yêu cầu dữ liệu & báo cáo vi phạm" }).waitFor();
+
+    const reviewed = await adminPage.request.patch(base + "/api/admin/requests", {
+      headers: { Origin: base },
+      data: { id: privacyCaseId, status: "IN_REVIEW", adminNote: "CI: xác minh tài khoản" },
+    });
+    assert.equal(reviewed.status(), 200, "Admin can track an open request");
+
+    const reportedMessage = await prisma.communityMessage.create({
+      data: { userId: referredAccount.id, content: "Tin nhắn kiểm thử báo cáo của học sinh" },
+    });
+    const communityHistory = await adminPage.request.get(base + "/api/community");
+    assert.equal(communityHistory.status(), 200);
+    const sharedMessage = (await communityHistory.json()).messages.find((m) => m.id === reportedMessage.id);
+    assert.ok(sharedMessage && sharedMessage.name.startsWith("Học viên #"),
+      "student real name must not be exposed in community history");
+    assert.ok(!sharedMessage.name.includes("Referral Guest"));
+    const report = await adminPage.request.post(base + "/api/community/report", {
+      headers: { Origin: base },
+      data: { messageId: reportedMessage.id, reason: "PRIVACY", details: "CI community report" },
+    });
+    assert.equal(report.status(), 201, "community reporting should create an admin case");
+    const reportId = (await report.json()).reportId;
+    assert.ok((await (await adminPage.request.get(base + "/api/admin/requests?source=community-report")).json())
+      .items.some((item) => item.id === reportId));
+    const removed = await adminPage.request.delete(base + "/api/admin/requests", {
+      headers: { Origin: base },
+      data: { id: reportId, messageId: reportedMessage.id },
+    });
+    assert.equal(removed.status(), 200, "Admin can remove a reported community message");
+    assert.equal((await removed.json()).removed, 1);
+    assert.equal(await prisma.communityMessage.count({ where: { id: reportedMessage.id } }), 0);
+
+
 
     const unique = Date.now().toString(36);
     const subjectResponse = await adminPage.request.post(base + "/api/admin/subjects", { data: {
