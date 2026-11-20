@@ -1969,12 +1969,14 @@ const planIntervals = ["MONTH", "QUARTER", "HALF_YEAR", "YEAR"];
 function planIntervalLabel(value) {
   if (value === "MONTH") return "Tháng";
   if (value === "QUARTER") return "Quý";
+  if (value === "HALF_YEAR") return "6 tháng";
   if (value === "YEAR") return "Năm";
   return value;
 }
 
 function planDurationMonths(value) {
   if (value === "QUARTER") return 3;
+  if (value === "HALF_YEAR") return 6;
   if (value === "YEAR") return 12;
   return 1;
 }
