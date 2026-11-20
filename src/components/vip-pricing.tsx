@@ -208,7 +208,7 @@ function PlanCard({ plan, featured, referralCode, baseMonthlyPrice }: { plan: Pl
         </div>
         <button type="button" onClick={() => void checkout()} disabled={loading}
           className={clsx("mt-6 w-full rounded-xl px-5 py-3.5 text-sm font-black transition disabled:opacity-60", featured ? "bg-orange-500 text-white hover:bg-orange-600" : "bg-slate-950 text-white hover:bg-orange-500")}>
-          {loading ? "Đang tạo mã chuyển khoản..." : bankTransfer ? "Xem lại mã QR" : `Chọn gói ${durationLabel(plan)}`}
+          {loading ? "Đang tạo mã chuyển khoản..." : bankTransfer ? "Xem lại mã QR" : "Đăng ký ngay"}
         </button>
         {bankTransfer ? (
           <p className="mt-3 text-xs font-semibold leading-5 text-slate-600">
