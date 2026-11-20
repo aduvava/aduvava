@@ -7,14 +7,14 @@ import {
 
 test("community API displays student pseudonyms instead of names", () => {
   assert.equal(displayCommunityMember({ id: "student-id-123456", role: "STUDENT" }), "Học viên #123456");
-  assert.equal(displayCommunityMember({ id: "teacher-id", role: "TEACHER" }), "Giáo viên Educhi");
+  assert.equal(displayCommunityMember({ id: "teacher-id", role: "TEACHER" }), "Thành viên #HER-ID");
   assert.equal(displayCommunityMember({ id: "admin-id", role: "ADMIN" }), "Quản trị Educhi");
   assert.equal(displayCommunityMember(null), "Thành viên Educhi");
 });
 
 test("community initials derive from pseudonym, not real name", () => {
-  assert.equal(initialsOfDisplayName("Học viên #123456"), "V#");
-  assert.equal(initialsOfDisplayName("Giáo viên Educhi"), "VE");
+  assert.equal(initialsOfDisplayName("Học viên #123456"), "HS");
+  assert.equal(initialsOfDisplayName("Thành viên #123456"), "TV");
 });
 
 test("privacy and report options use a strict allow-list", () => {
