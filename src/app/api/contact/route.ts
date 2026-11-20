@@ -1,7 +1,8 @@
+import { readLimitedJson } from "@/lib/limited-json";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { rateLimitOperation } from "@/lib/security-throttle";
-import { handleRouteError, jsonOk, readJson } from "@/lib/api";
+import { handleRouteError, jsonOk } from "@/lib/api";
 
 const contactSchema = z.object({
   name: z.string().trim().min(2).max(120),
@@ -14,7 +15,7 @@ const contactSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const payload = contactSchema.parse(await readJson<unknown>(request));
+    const payload = contactSchema.parse(await readLimitedJson(request, 32768));
     await rateLimitOperation(prisma, "contact", payload.email, request.headers);
     const lead = await prisma.leadMessage.create({ data: payload });
     return jsonOk({ id: lead.id, message: "Cảm ơn bạn đã liên hệ." }, 201);
