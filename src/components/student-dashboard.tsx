@@ -14,6 +14,7 @@ import { MascotAvatar } from "@/components/mascot-avatar";
 import { getDashboardSubjects, getSubjectCatalogSize } from "@/lib/dashboard-subjects";
 import { getItemVisual } from "@/lib/subject-visuals";
 import { specialExamTracks } from "@/lib/special-exam-tracks";
+import { communityReportOptions, type CommunityReportType } from "@/lib/compliance-requests";
 import { getDefaultDashboardClass } from "@/lib/default-dashboard-class";
 
 type ExamItem = {
@@ -431,6 +432,11 @@ export function StudentDashboard({
   const [communityMessages, setCommunityMessages] = useState<CommunityMessage[]>([]);
   const [communityDraft, setCommunityDraft] = useState("");
   const [replyTarget, setReplyTarget] = useState<CommunityMessage | null>(null);
+  const [reportTargetId, setReportTargetId] = useState<string | null>(null);
+  const [reportReason, setReportReason] = useState<CommunityReportType>("PRIVACY");
+  const [reportDetails, setReportDetails] = useState("");
+  const [reportSending, setReportSending] = useState(false);
+  const [reportNotice, setReportNotice] = useState("");
 
   function selectGroup(group: (typeof studyGroups)[number]) {
     setActiveGroup(group.id);
@@ -466,6 +472,26 @@ export function StudentDashboard({
     const timer = setInterval(() => { if (document.visibilityState === "visible") void loadCommunity(); }, 5000);
     return () => clearInterval(timer);
   }, []);
+
+  async function sendCommunityReport() {
+    if (!reportTargetId || reportSending) return;
+    setReportSending(true);
+    setReportNotice("");
+    try {
+      const response = await fetch("/api/community/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId: reportTargetId, reason: reportReason, details: reportDetails }),
+      });
+      const result = await response.json() as { error?: string; message?: string };
+      if (!response.ok) throw new Error(result.error || "Không gửi được báo cáo.");
+      setReportNotice(result.message || "Báo cáo đã được tiếp nhận.");
+      setReportTargetId(null);
+      setReportDetails("");
+    } catch (error) {
+      setReportNotice(error instanceof Error ? error.message : "Lỗi gửi báo cáo.");
+    } finally { setReportSending(false); }
+  }
 
   async function sendCommunityMessage() {
     const text = communityDraft.trim();
@@ -648,6 +674,9 @@ export function StudentDashboard({
                       <p className="text-sm font-extrabold text-slate-700">{message.name}</p>
                       <div className="flex items-center gap-2">
                         <button type="button" onClick={() => setReplyTarget(message)} className="text-[11px] font-bold text-orange-500 hover:text-orange-600">Trích dẫn</button>
+                        <button type="button" onClick={() => { setReportTargetId(message.id); setReportNotice(""); }}
+                          className="text-[11px] font-semibold text-slate-500 hover:text-red-600"
+                          aria-label={"Báo cáo tin nhắn của " + message.name}>Báo cáo</button>
                         <span className="text-[11px] text-slate-400">{new Date(message.time).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</span>
                       </div>
                     </div>
@@ -656,6 +685,30 @@ export function StudentDashboard({
                 </div>
               ))}
             </div>
+            {reportTargetId ? (
+              <div className="mt-3 space-y-3 rounded-2xl border border-red-100 bg-red-50/50 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-extrabold text-slate-800">Báo cáo tin nhắn không phù hợp</p>
+                  <button type="button" onClick={() => setReportTargetId(null)} className="text-xs font-bold text-slate-500">Hủy</button>
+                </div>
+                <label className="block text-xs font-bold text-slate-600">Lý do
+                  <select value={reportReason} onChange={(event) => setReportReason(event.target.value as CommunityReportType)}
+                    className="mt-1 block w-full rounded-xl border bg-white p-2.5 text-sm font-medium">
+                    {communityReportOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </label>
+                <label className="block text-xs font-bold text-slate-600">Mô tả bổ sung (tùy chọn)
+                  <textarea rows={2} maxLength={500} value={reportDetails} onChange={(event) => setReportDetails(event.target.value)}
+                    className="mt-1 block w-full rounded-xl border bg-white p-2.5 text-sm"
+                    placeholder="Nêu rõ vấn đề, không gửi thêm thông tin nhạy cảm." />
+                </label>
+                <button type="button" disabled={reportSending} onClick={() => void sendCommunityReport()}
+                  className="rounded-xl bg-red-600 px-4 py-2.5 text-xs font-black text-white disabled:opacity-50">
+                  {reportSending ? "Đang gửi..." : "Gửi báo cáo cho Admin"}
+                </button>
+              </div>
+            ) : null}
+            {reportNotice ? <p role="status" className="mt-2 rounded-xl bg-orange-50 p-3 text-xs text-slate-700">{reportNotice}</p> : null}
             {communityError ? <p role="alert" className="mt-2 text-xs text-red-600">{communityError}</p> : null}
             {replyTarget ? (
               <div className="mt-4 flex items-start justify-between gap-3 rounded-2xl bg-orange-50 px-4 py-3 text-xs text-slate-600">
@@ -678,6 +731,7 @@ export function StudentDashboard({
               />
               <button type="button" onClick={sendCommunityMessage} disabled={communitySending} aria-label="Gửi tin nhắn" className="grid h-11 w-11 place-items-center rounded-[1.25rem] bg-orange-500 text-white transition hover:bg-orange-600"><Send className="h-4 w-4" /></button>
             </div>
+            <p className="mt-2 text-[11px] leading-5 text-slate-500">Tin nhắn có thể được mọi thành viên đọc. Educhi ẩn tên thật khi hiển thị, nhưng đừng gửi số điện thoại, địa chỉ, tên trường hoặc thông tin riêng tư.</p>
           </section>
 
           <aside className="space-y-6">
