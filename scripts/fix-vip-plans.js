@@ -2,85 +2,34 @@ const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 
+// Run only after the HALF_YEAR migration. Keep legacy plan IDs to preserve
+// every existing payment, subscription, and outstanding bank transfer.
+const features = [
+  "Mở khóa đề thi VIP đã xuất bản",
+  "Truy cập lý thuyết và học liệu VIP nâng cao",
+  "Thanh toán một lần, không tự động gia hạn",
+];
+
 const plans = [
-  {
-    slug: "ava-basic",
-    name: "Gói 39k",
-    description: "Gói cơ bản để mở khóa kho đề và AI Ava chấm văn ở mức vừa đủ.",
-    price: 39000,
-    interval: "MONTH",
-    features: [
-      "Mở khóa trọn bộ đề thi tất cả các môn từ lớp 6 - 12, các kì thi quan trọng như Ôn thi vào 10, ôn thi THPTQG",
-      "Hệ thống đáp án và cơ sở lý thuyết bám sát sách giáo khoa",
-      "Tự tạo đề thi nhanh không giới hạn",
-      "AI Ava chấm bài thi môn Ngữ văn (Tối đa 2 bài)",
-    ],
-  },
-  {
-    slug: "ava-monthly",
-    name: "Gói 99k",
-    description: "Gói toàn diện cho học sinh luyện đều mỗi tháng.",
-    price: 99000,
-    interval: "MONTH",
-    features: [
-      "Mở khóa trọn bộ đề thi tất cả các môn từ lớp 6 - 12, các kì thi quan trọng như Ôn thi vào 10, ôn thi THPTQG",
-      "Hệ thống đáp án và cơ sở lý thuyết bám sát sách giáo khoa",
-      "Tự tạo đề thi nhanh KHÔNG GIỚI HẠN",
-      "AI Ava chấm bài thi môn Ngữ văn (Tối đa 6 bài)",
-      "Phân tích biểu đồ năng lực chi tiết",
-      "Bảng xếp hạng thi đua",
-      "Tiết kiệm 45% so với gói mua lẻ theo tuần",
-    ],
-  },
-  {
-    slug: "ava-quarter",
-    name: "Gói 299k",
-    description: "Gói dài hạn cho học sinh ôn luyện nghiêm túc.",
-    price: 299000,
-    interval: "QUARTER",
-    features: [
-      "Mở khóa trọn bộ đề thi tất cả các môn từ lớp 6 - 12, các kì thi quan trọng như Ôn thi vào 10, ôn thi THPTQG",
-      "Hệ thống đáp án và cơ sở lý thuyết bám sát sách giáo khoa",
-      "Tự tạo đề thi nhanh KHÔNG GIỚI HẠN",
-      "AI Ava chấm bài thi môn Ngữ văn KHÔNG GIỚI HẠN",
-      "Phân tích biểu đồ năng lực chi tiết",
-      "Bảng xếp hạng thi đua",
-      "Tiết kiệm 50% so với gói mua lẻ theo tuần",
-    ],
-  },
+  { slug: "educhi-vip-1m", name: "Gói 1 tháng", description: "39.000đ/tháng", price: 39000, interval: "MONTH" },
+  { slug: "educhi-vip-3m", name: "Gói 3 tháng", description: "33.000đ/tháng, tiết kiệm 18.000đ so với mua lẻ", price: 99000, interval: "QUARTER" },
+  { slug: "educhi-vip-6m", name: "Gói 6 tháng", description: "31.500đ/tháng, tiết kiệm 45.000đ so với mua lẻ", price: 189000, interval: "HALF_YEAR" },
 ];
 
 async function main() {
-  for (const plan of plans) {
-    await prisma.plan.upsert({
-      where: { slug: plan.slug },
-      update: {
-        name: plan.name,
-        description: plan.description,
-        price: plan.price,
-        interval: plan.interval,
-        features: plan.features,
-        isActive: true,
-      },
-      create: {
-        slug: plan.slug,
-        name: plan.name,
-        description: plan.description,
-        price: plan.price,
-        interval: plan.interval,
-        features: plan.features,
-        isActive: true,
-      },
-    });
-  }
+  await prisma.$transaction(async (tx) => {
+    await tx.plan.updateMany({ where: { isActive: true }, data: { isActive: false } });
+    for (const plan of plans) {
+      await tx.plan.upsert({
+        where: { slug: plan.slug },
+        update: { ...plan, features, isActive: true },
+        create: { ...plan, features, isActive: true },
+      });
+    }
+  });
+  console.log("Educhi VIP: 39k/1 month, 99k/3 months, 189k/6 months. Legacy history preserved.");
 }
 
 main()
-  .then(async () => {
-    await prisma.$disconnect();
-  })
-  .catch(async (error) => {
-    console.error(error);
-    await prisma.$disconnect();
-    process.exit(1);
-  });
+  .catch((error) => { console.error(error); process.exitCode = 1; })
+  .finally(async () => { await prisma.$disconnect(); });

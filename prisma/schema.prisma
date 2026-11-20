@@ -55,6 +55,7 @@ enum BlogStatus {
 enum PlanInterval {
   MONTH
   QUARTER
+  HALF_YEAR
   YEAR
 }
 

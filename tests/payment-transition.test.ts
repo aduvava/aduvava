@@ -220,4 +220,25 @@ describe("atomic manual VIP transitions", () => {
     assert.equal(extendUtcMonths(new Date("2028-01-31T10:00:00Z"), 1).toISOString(),
       "2028-02-29T10:00:00.000Z");
   });
+  it("activates six calendar months for HALF_YEAR and three for QUARTER", async () => {
+    for (const [interval, months, amount] of [
+      ["QUARTER", 3, 99000],
+      ["HALF_YEAR", 6, 189000],
+    ] as const) {
+      const db = createFakeDb({ payment: {
+        amount, plan: { id: "plan-1", name: "VIP", interval },
+      } });
+      const result = await transitionManualPayment(db, "payment-1", "PAID");
+      assert.equal(result.activated, true);
+      assert.equal(db.state.payment.status, "PAID");
+      assert.equal(db.state.payment.amount, amount);
+      assert.equal(db.state.subscriptions.length, 1);
+      const subscription = db.state.subscriptions[0];
+      assert.equal(
+        subscription.endsAt.toISOString(),
+        extendUtcMonths(subscription.startsAt, months).toISOString(),
+      );
+    }
+  });
+
 });

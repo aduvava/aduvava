@@ -16,6 +16,7 @@ class PaymentTransitionError extends Error {
 
 function planMonths(interval) {
   if (interval === "QUARTER") return 3;
+  if (interval === "HALF_YEAR") return 6;
   if (interval === "YEAR") return 12;
   if (interval === "MONTH") return 1;
   throw new Error("Unknown subscription interval");
