@@ -23,6 +23,7 @@ import { RichContent as FormattedContent } from "@/components/rich-content";
 import { parseDelimited, rowsToObjects } from "@/lib/spreadsheet-import";
 import { parseAdminExamRows } from "@/lib/admin-exam-file-import";
 import { buildReadingExcelTemplate } from "@/lib/reading-template";
+import { isSafeRichImageUrl } from "@/lib/rich-image-security";
 
 type Subject = { id: string; name: string; slug: string; family: "THPTQG" | "DGNL" };
 type EducationLevel = "THCS" | "THPT" | "EXAM_10" | "THPTQG";
@@ -239,32 +240,50 @@ function parseQuestions(text: string): DraftQuestion[] {
   });
 }
 
-async function parseSpreadsheetFile(file: File): Promise<DraftQuestion[]> {
-  if (file.size > 5 * 1024 * 1024) throw new Error("Spreadsheet file too large");
+type ImportedFile = { questions: DraftQuestion[]; imageCount: number; warnings: string[] };
+
+async function parseSpreadsheetFile(file: File): Promise<ImportedFile> {
+  if (file.size > 8 * 1024 * 1024) throw new Error("Excel vượt quá 8 MB. Hãy chia nhỏ đề thi.");
   const lowerName = file.name.toLowerCase();
-  let rawRows: readonly (readonly unknown[])[];
+  let rawRows: readonly (readonly unknown[])[] = [];
+  let pictures = new Map<number, string[]>();
+  let imageCount = 0;
+  const warnings: string[] = [];
+
   if (lowerName.endsWith(".xlsx")) {
     const { default: readWorkbook } = await import("read-excel-file/browser");
-    const sheets = await readWorkbook(file);
+    const sheets = await readWorkbook(file) as unknown as Array<{ sheet: string; data: readonly (readonly unknown[])[] }>;
+    if (!sheets.length) throw new Error("Không tìm thấy sheet nào trong Excel.");
     const questionSheet = sheets.find((sheet) => normalizeKey(sheet.sheet) === "cauhoi");
     const passageSheet = sheets.find((sheet) => normalizeKey(sheet.sheet) === "baidoc");
+    const selectedSheet = questionSheet ?? sheets[0];
+    const { extractXlsxEmbeddedImages } = await import("@/lib/office-image-import");
+    const embedded = await extractXlsxEmbeddedImages(file, selectedSheet.sheet);
+    pictures = embedded.byRow;
+    imageCount = embedded.imageCount;
+    warnings.push(...embedded.warnings);
     if (passageSheet) {
       if (!questionSheet) throw new Error("File có BAI_DOC phải có thêm sheet CAU_HOI.");
-      return parseAdminExamRows(questionSheet.data, passageSheet.data).map((question) => ({
+      const questions = parseAdminExamRows(questionSheet.data, passageSheet.data).map((question, index) => ({
         id: crypto.randomUUID(),
-        prompt: question.prompt,
+        prompt: [question.prompt, ...(pictures.get(index + 2) ?? []).map((src) => "![Hình minh họa](" + src + ")")].join("\n"),
         passage: question.passage,
         options: question.options,
         correctIndex: question.correctIndex,
         explanation: question.explanation,
       }));
+      if (pictures.size > 0 && questionSheet.data.length - 1 !== questions.length) {
+        warnings.push("Có dòng Excel trống/không hợp lệ. Hãy kiểm tra vị trí ảnh trong bản xem trước.");
+      }
+      return { questions, imageCount, warnings };
     }
-    rawRows = questionSheet?.data ?? sheets[0].data;
+    rawRows = selectedSheet.data;
   } else {
     rawRows = parseDelimited(await file.text(), lowerName.endsWith(".tsv") ? "\t" : ",");
   }
+
   const rows = rowsToObjects(rawRows);
-  return rows.flatMap((row) => {
+  const questions = rows.flatMap((row, index) => {
     const prompt = getRowField(row, ["question", "prompt", "cau hoi", "câu hỏi", "noi dung cau hoi", "nội dung câu hỏi"]);
     const image = getRowField(row, ["image", "anh", "ảnh", "hinh anh", "hình ảnh", "url anh", "image url"]);
     const options = ["A", "B", "C", "D", "E", "F"]
@@ -273,17 +292,27 @@ async function parseSpreadsheetFile(file: File): Promise<DraftQuestion[]> {
     const correct = getRowField(row, ["correct", "answer", "dap an dung", "đáp án đúng", "dap an", "đáp án"]);
     const explanation = getRowField(row, ["explanation", "solution", "giai thich", "giải thích", "loi giai", "lời giải"]);
     const passage = getRowField(row, ["passage", "ngữ liệu", "đoạn văn"]);
-
-    if (!prompt || options.length < 2) return [];
+    if (!prompt || options.length < 2) {
+      if (pictures.has(index + 2)) warnings.push("Ảnh ở dòng " + (index + 2) + " không có câu hỏi hợp lệ.");
+      return [];
+    }
+    let promptWithImage = prompt;
+    if (image) {
+      if (isSafeRichImageUrl(image)) promptWithImage = appendImageMarkdown(promptWithImage, image);
+      else warnings.push("Dòng " + (index + 2) + ": URL ảnh ngoài không được nhúng vì lý do bảo mật; hãy chèn ảnh trực tiếp trong Excel hoặc trên Educhi.");
+    }
+    const attached = pictures.get(index + 2) ?? [];
+    for (const src of attached) promptWithImage = appendImageMarkdown(promptWithImage, src);
     return [{
       id: crypto.randomUUID(),
-      prompt: appendImageMarkdown(prompt, image),
+      prompt: promptWithImage,
       options,
       correctIndex: correctIndexFrom(correct || "A", options),
       explanation,
       passage,
     }];
   });
+  return { questions, imageCount, warnings };
 }
 
 export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[]; role?: UserRole }) {
@@ -308,6 +337,9 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
   const visiblePage = Math.min(questionsPage, questionPages);
   const firstVisibleQuestion = (visiblePage - 1) * QUESTIONS_PER_PAGE;
   const [fileName, setFileName] = useState("");
+  const [importWarnings, setImportWarnings] = useState<string[]>([]);
+  const [importImageCount, setImportImageCount] = useState(0);
+  const [confirmedMissingImages, setConfirmedMissingImages] = useState(false);
   const [imageTarget, setImageTarget] = useState<ImageTarget | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -361,6 +393,9 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
     if (!file) return;
     setFileName(file.name);
     setMessage("Đang phân tích tệp...");
+    setImportWarnings([]);
+    setImportImageCount(0);
+    setConfirmedMissingImages(false);
 
     const lowerName = file.name.toLowerCase();
     if (lowerName.endsWith(".txt")) {
@@ -378,13 +413,42 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
 
     if (/\.(xlsx|csv|tsv)$/i.test(lowerName)) {
       try {
-        const parsed = await parseSpreadsheetFile(file);
-        setQuestions(parsed);
+        const result = await parseSpreadsheetFile(file);
+        setQuestions(result.questions);
+        setImportWarnings(result.warnings);
+        setImportImageCount(result.imageCount);
         setQuestionsPage(1);
-        setMessage(parsed.length ? `Đã nhập ${parsed.length} câu hỏi từ ${file.name}.` : "Excel cần có các cột question, A, B, C, D, correct.");
+        setMessage(result.questions.length
+          ? "Đã nhập " + result.questions.length + " câu hỏi, đính kèm " + result.imageCount + " hình minh họa từ " + file.name + "."
+          : "Excel cần có các cột question, A, B, C, D, correct.");
       } catch (error) {
         setMessage(error instanceof Error ? error.message : "Không đọc được file Excel. Hãy tải file mẫu rồi điền theo đúng cột.");
       }
+      return;
+    }
+
+    if (lowerName.endsWith(".docx")) {
+      try {
+        const { extractDocxWithImages } = await import("@/lib/office-image-import");
+        const result = await extractDocxWithImages(file);
+        const parsed = parseQuestions(result.text);
+        setQuestions(parsed);
+        setQuestionsPage(1);
+        setImportWarnings(result.warnings);
+        setImportImageCount(result.imageCount);
+        setMessage(parsed.length
+          ? "Đã nhập " + parsed.length + " câu hỏi và " + result.imageCount + " hình từ Word. Hãy đối chiếu bản xem trước."
+          : "Đã đọc Word nhưng chưa nhận dạng được câu hỏi. Dùng mẫu Câu 1, A/B/C/D, Đáp án.");
+      } catch (error) {
+        setQuestions([]);
+        setMessage(error instanceof Error ? error.message : "Không đọc được file Word.");
+      }
+      return;
+    }
+
+    if (lowerName.endsWith(".pdf")) {
+      setQuestions([]);
+      setMessage("Chưa hỗ trợ tự tách ảnh từ PDF. Hãy chuyển sang DOCX/XLSX để giữ ảnh hoặc chèn ảnh thủ công; không được xuất bản đề mất hình.");
       return;
     }
 
@@ -475,6 +539,9 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
     if (!title.trim() || !subjectId) return setMessage("Vui lòng nhập tên đề và chọn môn học.");
     if (shareMode === "PASSWORD" && !sharePassword.trim()) return setMessage("Vui lòng nhập mật khẩu cho đề thi.");
     if (!validQuestions.length) return setMessage("Đề thi cần ít nhất một câu hỏi.");
+    if (importWarnings.length && !confirmedMissingImages) {
+      return setMessage("Còn cảnh báo về hình minh họa. Hãy kiểm tra từng câu và xác nhận trước khi tạo đề.");
+    }
     if (validQuestions.some((question) => !question.prompt || question.options.some((option) => !option))) {
       return setMessage("Vui lòng điền đầy đủ câu hỏi và các phương án.");
     }
@@ -696,14 +763,30 @@ export function ExamCreator({ subjects, role = "STUDENT" }: { subjects: Subject[
               </div>
               {templateButtons}
             </div>
-            <input ref={fileInput} type="file" accept=".txt,.xlsx,.csv,.tsv,.pdf,image/*" className="hidden" onChange={(event) => void handleFile(event.target.files?.[0])} />
+            <input ref={fileInput} type="file" accept=".txt,.xlsx,.csv,.tsv,.docx,.pdf,image/*" className="hidden" onChange={(event) => void handleFile(event.target.files?.[0])} />
             <button type="button" onClick={() => fileInput.current?.click()} className="mt-5 grid min-h-56 w-full place-items-center rounded-3xl border-2 border-dashed border-blue-200 bg-blue-50/40 p-6 text-center transition hover:border-blue-400">
               <span>
                 <UploadCloud className="mx-auto h-12 w-12 text-blue-500" />
-                <span className="mt-4 block text-lg font-black text-slate-800">{fileName || "Chọn TXT, Excel, CSV, PDF hoặc ảnh"}</span>
-                <span className="mt-2 block text-sm text-slate-500">TXT/Excel được tách trực tiếp. Ảnh có thể chèn vào câu hỏi bằng nút Chèn ảnh.</span>
+                <span className="mt-4 block text-lg font-black text-slate-800">{fileName || "Chọn TXT, Excel, CSV, Word DOCX hoặc ảnh"}</span>
+                <span className="mt-2 block text-sm text-slate-500">Excel/Word: nhận ảnh được nhúng trong file. PDF hiện cần chuyển sang Word hoặc chèn ảnh thủ công.</span>
               </span>
             </button>
+            {importImageCount > 0 ? (
+              <p role="status" className="mt-3 text-sm font-bold text-emerald-700">Đã lấy {importImageCount} hình minh họa và đính kèm vào bản xem trước.</p>
+            ) : null}
+            {importWarnings.length > 0 ? (
+              <div role="alert" className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+                <p className="font-black">Cần kiểm tra {importWarnings.length} cảnh báo hình ảnh trước khi tạo đề</p>
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  {importWarnings.slice(0, 12).map((warning, index) => <li key={index}>{warning}</li>)}
+                </ul>
+                {importWarnings.length > 12 ? <p className="mt-2">Còn cảnh báo khác; hãy chia đề để kiểm tra đầy đủ.</p> : null}
+                <label className="mt-3 flex items-start gap-2 font-bold">
+                  <input type="checkbox" className="mt-1" checked={confirmedMissingImages} onChange={(event) => setConfirmedMissingImages(event.target.checked)} />
+                  Tôi đã kiểm tra từng hình minh họa trong bản xem trước và đồng ý tạo đề.
+                </label>
+              </div>
+            ) : null}
           </section>
         ) : null}
 
