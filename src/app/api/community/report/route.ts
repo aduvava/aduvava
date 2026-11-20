@@ -1,7 +1,8 @@
+import { readLimitedJson } from "@/lib/limited-json";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { handleRouteError, HttpError, readJson, requireUser } from "@/lib/api";
+import { handleRouteError, HttpError, requireUser } from "@/lib/api";
 import { rateLimitOperation } from "@/lib/security-throttle";
 import { communityReportOptions, optionLabel } from "@/lib/compliance-requests";
 
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
   try {
     checkOrigin(request);
     const session = await requireUser();
-    const input = reportSchema.parse(await readJson<unknown>(request));
+    const input = reportSchema.parse(await readLimitedJson(request, 4096));
     const user = await prisma.user.findUnique({
       where: { id: session.id }, select: { id: true, name: true, email: true },
     });
