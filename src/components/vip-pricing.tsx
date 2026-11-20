@@ -177,7 +177,6 @@ function PlanCard({ plan, featured, referralCode }: { plan: Plan; featured: bool
       {featured ? <Crown className="absolute right-6 top-5 h-7 w-7 fill-amber-300 text-amber-300" /> : null}
       <div className={clsx("border-b p-6 sm:p-7", featured ? "bg-orange-50/80" : "bg-slate-50")}>
         <p className={clsx("text-lg font-black", featured ? "text-orange-700" : "text-slate-700")}>{plan.name}</p>
-        {plan.description ? <p className="mt-2 max-w-sm text-sm font-medium leading-6 text-slate-600">{plan.description}</p> : null}
         <div className="mt-5 flex flex-wrap items-end gap-x-3 gap-y-1">
           <span className="text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">{formatVnd(plan.price)}</span>
           <span className="pb-2 text-lg font-semibold text-slate-600">/ {durationLabel(plan)}</span>
