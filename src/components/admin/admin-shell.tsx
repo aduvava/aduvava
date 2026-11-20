@@ -45,6 +45,7 @@ const navGroups = [
     items: [
       { href: "/admin/users", label: "Người dùng", description: "Học sinh và giáo viên", Icon: Users },
       { href: "/admin/support", label: "Hỗ trợ AI & Admin", description: "Hộp thư hỗ trợ", Icon: MessageCircleMore },
+      { href: "/admin/requests", label: "Quyền dữ liệu & báo cáo", description: "Yêu cầu pháp lý và kiểm duyệt", Icon: ShieldCheck },
       { href: "/admin/store-items", label: "Cửa hàng EXP", description: "Vật phẩm và kho đồ", Icon: Package },
     ],
   },
