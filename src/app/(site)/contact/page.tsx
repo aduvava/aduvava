@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ContactForm } from "@/components/contact-form";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Liên hệ và hỗ trợ | Educhi",
   description: "Liên hệ Educhi để báo lỗi, đối soát VIP, yêu cầu về dữ liệu cá nhân hoặc phản ánh bản quyền.",
