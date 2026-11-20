@@ -6,6 +6,7 @@ const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
 const { createCsv } = require("./csv-export");
 const { parseAdminExamQuestions } = require("./exam-question-import");
+const { convertOfficeFile } = require("./office-file-import");
 const nationalExamTemplates = require("../src/data/national-exam-templates.json");
 const { transitionManualPayment } = require("../src/lib/payment-transition.js");
 const { trustedPostOrigin, cookieSecuritySuffix } = require("./request-security");
@@ -1307,7 +1308,7 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
     <div class="topbar" style="margin-bottom:16px">
       <div>
         <h1 style="font-size:26px">Tạo đề theo cấp học và môn học</h1>
-        <div class="subtitle">Chọn đúng luồng cấp học như màn học sinh, sau đó tạo đề bằng file TXT/CSV/JSON hoặc dán nội dung import.</div>
+        <div class="subtitle">Chọn đúng cấp học rồi tải Excel XLSX/Word DOCX (tự lấy ảnh nhúng), hoặc nhập TXT/CSV/JSON.</div>
       </div>
     </div>
     <form class="form" method="post" action="/exams/create">
@@ -1357,8 +1358,8 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
       <div class="helper-card">
         <h2>Tạo nhanh từ file</h2>
         <div class="file-strip">
-          <label>Chọn file .txt, .csv, .tsv hoặc .json
-            <input id="examImportFile" type="file" accept=".txt,.csv,.tsv,.json,text/plain,application/json,text/csv" />
+          <label>Chọn file .xlsx, .docx, .txt, .csv, .tsv hoặc .json
+            <input id="examImportFile" type="file" accept=".xlsx,.docx,.txt,.csv,.tsv,.json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,application/json,text/csv" />
           </label>
           <label>Chèn ảnh từ máy vào câu hỏi
             <input id="questionImageFiles" type="file" accept="image/*" multiple />
@@ -1375,6 +1376,8 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
         <label style="margin-top:12px">Nội dung import
           <textarea class="bulk-textarea" name="bulkQuestions" id="bulkQuestions" required placeholder="Dán nội dung file vào đây hoặc chọn file phía trên. Admin chỉ tạo đề bằng import, không nhập từng câu thủ công."></textarea>
         </label>
+        <div id="officeImportWarnings" class="mini-note" style="display:none;white-space:pre-wrap;border:1px solid #fbbf24;background:#fffbeb;padding:12px;margin:10px 0"></div>
+        <label id="officeImportConfirm" style="display:none;font-size:13px"><input type="checkbox" id="officeImagesChecked" /> Tôi đã kiểm tra ảnh minh họa và xác nhận các ảnh cảnh báo được xử lý đúng trước khi tạo đề.</label>
         <div class="formula-kit">
           <span class="formula-chip">$x^2+2x+1$</span>
           <span class="formula-chip">$\\Delta=b^2-4ac$</span>
@@ -1396,6 +1399,10 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
         const grade = document.getElementById("examGrade");
         const subject = document.getElementById("examSubject");
         const importFile = document.getElementById("examImportFile");
+        const officeWarnings = document.getElementById("officeImportWarnings");
+        const officeConfirm = document.getElementById("officeImportConfirm");
+        const officeChecked = document.getElementById("officeImagesChecked");
+        const createForm = document.querySelector('form[action="/exams/create"]');
         const imageFiles = document.getElementById("questionImageFiles");
         const bulk = document.getElementById("bulkQuestions");
         const preview = document.getElementById("importPreview");
@@ -1666,9 +1673,42 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
           bulk.focus();
           schedulePreview();
         });
+        createForm.addEventListener("submit", (event) => {
+          if (officeConfirm.style.display !== "none" && !officeChecked.checked) {
+            event.preventDefault();
+            alert("Hãy xem lại ảnh minh họa và xác nhận cảnh báo trước khi tạo đề.");
+          }
+        });
         importFile.addEventListener("change", async () => {
           const file = importFile.files && importFile.files[0];
           if (!file) return;
+          officeWarnings.style.display = "none";
+          officeConfirm.style.display = "none";
+          officeChecked.checked = false;
+          if (/\.(xlsx|docx)$/i.test(file.name)) {
+            officeWarnings.style.display = "block";
+            officeWarnings.textContent = "Đang đọc hình minh họa trong " + file.name + "...";
+            try {
+              const data = new FormData();
+              data.append("file", file);
+              const response = await fetch("/exams/import-office", { method: "POST", body: data });
+              const result = await response.json();
+              if (!response.ok || !result.ok) throw new Error(result.error || "Không thể phân tích file Office.");
+              bulk.value = result.importText;
+              officeWarnings.textContent = "Đã nhập " + result.imageCount + " hình minh họa từ " + file.name + "."
+                + ((result.warnings || []).length ? "\nCảnh báo:\n" + result.warnings.join("\n") : "\nHãy xem trước để chắc chắn hình nằm đúng câu.");
+              if ((result.warnings || []).length) officeConfirm.style.display = "block";
+              schedulePreview();
+            } catch (error) {
+              officeWarnings.textContent = error?.message || "Lỗi đọc file Office.";
+            }
+            return;
+          }
+          if (/\.pdf$/i.test(file.name)) {
+            officeWarnings.style.display = "block";
+            officeWarnings.textContent = "PDF chưa hỗ trợ trích xuất ảnh tự động. Hãy chuyển sang Word DOCX hoặc chèn ảnh bằng nút ảnh.";
+            return;
+          }
           bulk.value = await file.text();
           bulk.focus();
           schedulePreview();
@@ -2710,6 +2750,20 @@ async function deleteExam(res, id) {
   }
 }
 
+async function importOfficeExam(req, res) {
+  try {
+    const form = await readMultipartForm(req);
+    const file = form.files.get("file");
+    if (!file || !/\.(xlsx|docx)$/i.test(file.filename) || file.size > 8 * 1024 * 1024) {
+      return sendJson(res, { ok: false, error: "Chọn file XLSX/DOCX nhỏ hơn 8 MB." }, 400);
+    }
+    const converted = await convertOfficeFile(file.filename, file.buffer);
+    return sendJson(res, { ok: true, ...converted });
+  } catch (error) {
+    return sendJson(res, { ok: false, error: error?.message || "Không thể đọc Office." }, 400);
+  }
+}
+
 async function previewExamImport(req, res) {
   const form = await readForm(req);
   const importSource = String(form.get("bulkQuestions") || "").trim();
@@ -2792,6 +2846,7 @@ async function router(req, res) {
   }
   if (pathname === "/exams/create" && req.method === "POST") return createExam(req, res);
   if (pathname === "/exams/preview" && req.method === "POST") return previewExamImport(req, res);
+  if (pathname === "/exams/import-office" && req.method === "POST") return importOfficeExam(req, res);
   if (pathname.startsWith("/exams/") && pathname.endsWith("/grade") && req.method === "POST") {
     return updateExamGrade(req, res, pathname.split("/")[2]);
   }
