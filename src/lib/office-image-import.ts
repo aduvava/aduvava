@@ -108,6 +108,8 @@ async function openOffice(file: File): Promise<JSZip> {
   if (file.size > MAX_FILE_BYTES) throw new Error("Tệp Office vượt quá 8 MB. Hãy chia đề thành các tệp nhỏ.");
   const zip = await JSZip.loadAsync(file);
   if (Object.keys(zip.files).length > 1500) throw new Error("Tệp Office chứa quá nhiều thành phần.");
+  const uncompressed = Object.values(zip.files).reduce((sum, entry) => sum + Number((entry as unknown as { _data?: { uncompressedSize?: number } })._data?.uncompressedSize ?? 0), 0);
+  if (uncompressed > 36 * 1024 * 1024) throw new Error("Tệp Office có dữ liệu giải nén quá lớn.");
   return zip;
 }
 function imageCollector(zip: JSZip, warnings: string[]) {
