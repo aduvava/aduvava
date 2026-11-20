@@ -17,6 +17,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const document = await prisma.document.findUnique({ where: { id } });
     if (!document) throw new HttpError(404, "Không tìm thấy tài liệu.");
 
+    // Already-moderated documents are idempotent: do not rescan or send another
+    // notification when an admin presses the same action twice.
+    if (payload.action === "APPROVE" && document.status === "APPROVED") {
+      return jsonOk({ document, message: "Tài liệu đã được phê duyệt trước đó." });
+    }
+    if (payload.action === "REJECT" && document.status === "REJECTED") {
+      return jsonOk({ document, message: "Tài liệu đã bị từ chối trước đó." });
+    }
+
     if (payload.action === "REJECT") {
       const rejected = await prisma.document.update({
         where: { id },
