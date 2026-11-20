@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { Check, Copy, Crown, QrCode, X } from "lucide-react";
 import { clsx } from "clsx";
 import { ReferralWidget, type ReferralOverview } from "@/components/referral-widget";
@@ -31,6 +30,27 @@ function durationLabel(plan: Plan) {
   if (plan.slug.includes("quarter") || plan.interval === "QUARTER") return "3 tháng";
   if (plan.interval === "YEAR") return "1 năm";
   return "1 tháng";
+}
+
+// Shared learning tools are already implemented on Educhi. They are listed
+// separately so users don't mistake them for exclusive, tier-gated benefits.
+const learningTools = [
+  "Luyện đề: xem đáp án, giải thích từng câu khi đề có lời giải",
+  "Thi thử: chỉ xem đáp án và điểm sau khi nộp bài",
+  "Tùy chọn thời gian luyện đề từ 15 đến 180 phút",
+  "Xem điểm, câu sai và các chuyên đề cần ôn tập",
+  "Làm lại đề và giữ kết quả của các lần làm trước",
+  "Theo dõi lịch sử luyện tập, tích lũy EXP và xem bảng xếp hạng",
+];
+
+// These older marketing claims are not supported by the current code:
+// AI essay scoring returns 503; exam creation is rate-limited; and the
+// advertised percentage discount has no verified pricing baseline.
+// Keep stored admin data intact, but don't repeat unverified promises publicly.
+function publicPlanFeatures(features: string[]) {
+  return features.filter((feature) =>
+    !/AI\s*Ava\s*chấm|Tiết kiệm\s*\d+%|Tự tạo đề thi nhanh.*không giới hạn/i.test(feature)
+  );
 }
 
 type BankTransferDetails = {
@@ -157,6 +177,7 @@ function PlanCard({ plan, featured, referralCode }: { plan: Plan; featured: bool
       {featured ? <Crown className="absolute right-6 top-5 h-7 w-7 fill-amber-300 text-amber-300" /> : null}
       <div className={clsx("border-b p-6 sm:p-7", featured ? "bg-orange-50/80" : "bg-slate-50")}>
         <p className={clsx("text-lg font-black", featured ? "text-orange-700" : "text-slate-700")}>{plan.name}</p>
+        {plan.description ? <p className="mt-2 max-w-sm text-sm font-medium leading-6 text-slate-600">{plan.description}</p> : null}
         <div className="mt-5 flex flex-wrap items-end gap-x-3 gap-y-1">
           <span className="text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">{formatVnd(plan.price)}</span>
           <span className="pb-2 text-lg font-semibold text-slate-600">/ {durationLabel(plan)}</span>
@@ -164,14 +185,24 @@ function PlanCard({ plan, featured, referralCode }: { plan: Plan; featured: bool
       </div>
       <div className="flex flex-1 flex-col p-6 sm:p-7">
         <div className="flex-1 space-y-3">
-          {plan.features.map((feature, index) => (
+          {publicPlanFeatures(plan.features).map((feature, index) => (
             <p key={`${feature}-${index}`} className="flex gap-3 text-sm font-semibold leading-6 text-slate-600">
               <Check className="mt-1 h-4 w-4 shrink-0 text-orange-600" />
               <span>{feature}</span>
             </p>
           ))}
         </div>
-        <p className="mt-5 text-xs leading-5 text-slate-600">Trước khi chuyển tiền, hãy xem <Link href="/chinh-sach/thanh-toan" className="font-bold text-orange-700 underline">Chính sách thanh toán và hoàn tiền</Link> và <Link href="/chinh-sach/dieu-khoan" className="font-bold text-orange-700 underline">Điều khoản sử dụng</Link>.</p>
+        <div className="mt-5 border-t border-orange-100 pt-4">
+          <p className="text-xs font-black uppercase tracking-wide text-orange-700">Tiện ích học tập đi kèm</p>
+          <div className="mt-3 space-y-2.5">
+            {learningTools.map((benefit) => (
+              <p key={benefit} className="flex gap-2.5 text-sm font-medium leading-5 text-slate-600">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
+                <span>{benefit}</span>
+              </p>
+            ))}
+          </div>
+        </div>
         <button type="button" onClick={() => void checkout()} disabled={loading}
           className={clsx("mt-6 w-full rounded-2xl px-6 py-3.5 text-base font-black transition disabled:opacity-60", featured ? "bg-orange-500 text-white hover:bg-orange-600" : "bg-slate-950 text-white hover:bg-orange-500")}>
           {loading ? "Đang tạo mã chuyển khoản..." : bankTransfer ? "Xem lại mã QR chuyển khoản" : "Đăng ký ngay"}
