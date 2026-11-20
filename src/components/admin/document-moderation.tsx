@@ -21,11 +21,21 @@ type ModerationDocument = {
   createdAt: string;
 };
 
+type ModerationFeedback = { kind: "success" | "error"; message: string };
+
+const statusLabels: Record<ModerationDocument["status"], string> = {
+  PENDING: "Chờ duyệt",
+  APPROVED: "Đã duyệt",
+  REJECTED: "Đã từ chối",
+};
+
 export function DocumentModeration({ documents }: { documents: ModerationDocument[] }) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<ModerationFeedback | null>(null);
 
   async function moderate(id: string, action: "APPROVE" | "REJECT") {
+    if (busyId !== null) return;
     const reason =
       action === "REJECT"
         ? window.prompt("Lý do từ chối tài liệu:", "Nội dung chưa đáp ứng tiêu chuẩn cộng đồng.") ?? undefined
@@ -33,17 +43,55 @@ export function DocumentModeration({ documents }: { documents: ModerationDocumen
     if (action === "REJECT" && reason === undefined) return;
 
     setBusyId(id);
-    await fetch(`/api/admin/documents/${id}/moderate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, reason }),
-    });
-    setBusyId(null);
-    router.refresh();
+    setFeedback(null);
+    try {
+      const response = await fetch(`/api/admin/documents/${id}/moderate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, reason }),
+      });
+      const result: { error?: string; message?: string } = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const errorMessage =
+          response.status === 503
+            ? "Dịch vụ quét an toàn tài liệu đang không hoạt động. Vui lòng kiểm tra ClamAV trên máy chủ."
+            : response.status === 401 || response.status === 403
+              ? "Phiên đăng nhập hoặc quyền quản trị không hợp lệ. Vui lòng đăng nhập lại."
+              : result.error || `Không thể xử lý tài liệu (HTTP ${response.status}).`;
+        throw new Error(errorMessage);
+      }
+
+      setFeedback({
+        kind: "success",
+        message: action === "APPROVE" ? "Đã phê duyệt tài liệu thành công." : "Đã từ chối tài liệu.",
+      });
+      router.refresh();
+    } catch (error) {
+      setFeedback({
+        kind: "error",
+        message: error instanceof Error ? error.message : "Không thể kết nối đến máy chủ. Vui lòng thử lại.",
+      });
+    } finally {
+      setBusyId(null);
+    }
   }
 
   return (
     <div className="grid gap-5">
+      {feedback ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className={clsx(
+            "rounded-2xl border px-4 py-3 text-sm font-semibold",
+            feedback.kind === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border-red-200 bg-red-50 text-red-700",
+          )}
+        >
+          {feedback.message}
+        </div>
+      ) : null}
       {documents.map((document) => (
         <article key={document.id} className="rounded-[1.75rem] border border-orange-100 bg-white p-5 shadow-sm">
           <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
@@ -59,7 +107,7 @@ export function DocumentModeration({ documents }: { documents: ModerationDocumen
                         : "bg-amber-50 text-amber-600",
                   )}
                 >
-                  {document.status}
+                  {statusLabels[document.status]}
                 </span>
                 <span className="rounded-full bg-blue-50 px-3 py-1 text-[11px] font-bold text-blue-600">
                   {document.grade} · {document.subject}
@@ -84,31 +132,35 @@ export function DocumentModeration({ documents }: { documents: ModerationDocumen
                 <Eye className="h-4 w-4" />
                 Xem
               </a>
-              <button
-                type="button"
-                onClick={() => moderate(document.id, "APPROVE")}
-                disabled={busyId === document.id}
-                className="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-2.5 text-sm font-extrabold text-white disabled:opacity-60"
-              >
-                {busyId === document.id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                Phê duyệt
-              </button>
-              <button
-                type="button"
-                onClick={() => moderate(document.id, "REJECT")}
-                disabled={busyId === document.id}
-                className="inline-flex items-center gap-2 rounded-full bg-red-500 px-4 py-2.5 text-sm font-extrabold text-white disabled:opacity-60"
-              >
-                <X className="h-4 w-4" />
-                Từ chối
-              </button>
+              {document.status !== "APPROVED" ? (
+                <button
+                  type="button"
+                  onClick={() => moderate(document.id, "APPROVE")}
+                  disabled={busyId !== null}
+                  className="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-2.5 text-sm font-extrabold text-white disabled:opacity-60"
+                >
+                  {busyId === document.id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  Phê duyệt
+                </button>
+              ) : null}
+              {document.status !== "REJECTED" ? (
+                <button
+                  type="button"
+                  onClick={() => moderate(document.id, "REJECT")}
+                  disabled={busyId !== null}
+                  className="inline-flex items-center gap-2 rounded-full bg-red-500 px-4 py-2.5 text-sm font-extrabold text-white disabled:opacity-60"
+                >
+                  <X className="h-4 w-4" />
+                  Từ chối
+                </button>
+              ) : null}
             </div>
           </div>
         </article>
       ))}
       {!documents.length ? (
         <div className="rounded-[1.75rem] border-2 border-dashed border-slate-200 p-12 text-center text-slate-500">
-          Chưa có tài liệu nào trong hàng đợi.
+          Chưa có tài liệu nào.
         </div>
       ) : null}
     </div>
