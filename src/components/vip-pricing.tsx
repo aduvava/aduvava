@@ -26,10 +26,15 @@ function formatVnd(value: number) {
   return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(value);
 }
 
+function monthsForPlan(plan: Plan) {
+  if (plan.interval === "QUARTER") return 3;
+  if (plan.interval === "HALF_YEAR") return 6;
+  if (plan.interval === "YEAR") return 12;
+  return 1;
+}
+
 function durationLabel(plan: Plan) {
-  if (plan.interval === "QUARTER") return "3 tháng";
-  if (plan.interval === "YEAR") return "12 tháng";
-  return "1 tháng";
+  return `${monthsForPlan(plan)} tháng`;
 }
 
 function priceDigits(price: number) {
@@ -73,7 +78,13 @@ function DetailRow({ label, value, onCopy }: { label: string; value: string; onC
   );
 }
 
-function PlanCard({ plan, featured, referralCode }: { plan: Plan; featured: boolean; referralCode: string }) {
+function PlanCard({ plan, featured, referralCode, baseMonthlyPrice }: { plan: Plan; featured: boolean; referralCode: string; baseMonthlyPrice: number }) {
+  const months = monthsForPlan(plan);
+  const normalPrice = baseMonthlyPrice * months;
+  const savings = baseMonthlyPrice > 0 ? Math.max(0, normalPrice - plan.price) : 0;
+  const savingPercent = normalPrice > 0 ? Math.round((savings / normalPrice) * 100) : 0;
+  const perMonth = Math.round(plan.price / months);
+  const discountLabel = featured ? "Cân bằng nhất" : months >= 6 && savings > 0 ? "Tiết kiệm nhất" : null;
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
@@ -171,14 +182,24 @@ function PlanCard({ plan, featured, referralCode }: { plan: Plan; featured: bool
       <div className="flex flex-1 flex-col p-5 sm:p-6">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-lg font-black text-slate-900">{plan.name}</h3>
-          {featured ? <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-3 py-1 text-[11px] font-black text-orange-700"><Crown className="h-3.5 w-3.5" /> Giá thấp nhất</span> : null}
+          {discountLabel ? <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-3 py-1 text-[11px] font-black text-orange-700"><Crown className="h-3.5 w-3.5" /> {discountLabel}</span> : null}
         </div>
         <p className="mt-3 flex flex-wrap items-baseline gap-2">
           <span className="text-4xl font-black tracking-tight text-slate-950">{priceDigits(plan.price)}</span>
           <span className="text-xl font-black text-slate-950">đ</span>
           <span className="text-sm font-semibold text-slate-500">/ {durationLabel(plan)}</span>
         </p>
-        <p className="mt-2 text-sm leading-6 text-slate-600">Mở khóa nội dung VIP trong {durationLabel(plan)}.</p>
+        <p className="mt-2 text-sm font-semibold text-slate-600">
+          Chỉ <span className="font-black text-orange-700">{priceDigits(perMonth)}đ/tháng</span>
+        </p>
+        {savings > 0 ? (
+          <div className="mt-3 rounded-xl bg-orange-50 px-3 py-3 text-sm">
+            <p className="text-slate-600">Mua lẻ {months} tháng: <span className="font-semibold line-through decoration-slate-500">{priceDigits(normalPrice)}đ</span></p>
+            <p className="mt-1 font-extrabold text-orange-700">Tiết kiệm {priceDigits(savings)}đ · Giảm khoảng {savingPercent}%</p>
+          </div>
+        ) : (
+          <p className="mt-3 text-xs font-semibold text-slate-500">Gói 1 tháng · Mốc giá để so sánh</p>
+        )}
         <div className="my-5 h-px bg-slate-100" />
         <div className="flex-1 space-y-3">
           {["Đề thi VIP đã xuất bản", "Lý thuyết và học liệu VIP nâng cao", "Thanh toán một lần, không tự gia hạn"].map((benefit) => (
@@ -187,7 +208,7 @@ function PlanCard({ plan, featured, referralCode }: { plan: Plan; featured: bool
         </div>
         <button type="button" onClick={() => void checkout()} disabled={loading}
           className={clsx("mt-6 w-full rounded-xl px-5 py-3.5 text-sm font-black transition disabled:opacity-60", featured ? "bg-orange-500 text-white hover:bg-orange-600" : "bg-slate-950 text-white hover:bg-orange-500")}>
-          {loading ? "Đang tạo mã chuyển khoản..." : bankTransfer ? "Xem lại mã QR" : "Chọn gói này"}
+          {loading ? "Đang tạo mã chuyển khoản..." : bankTransfer ? "Xem lại mã QR" : `Chọn gói ${durationLabel(plan)}`}
         </button>
         {bankTransfer ? (
           <p className="mt-3 text-xs font-semibold leading-5 text-slate-600">
@@ -280,8 +301,9 @@ function PlanCard({ plan, featured, referralCode }: { plan: Plan; featured: bool
 
 export function VipPricing({ plans, activeSubscription, referralOverview, initialReferralCode = "" }: VipPricingProps) {
   const [referralCode, setReferralCode] = useState(/^[A-Z0-9]{6}$/.test(initialReferralCode.toUpperCase()) ? initialReferralCode.toUpperCase() : "");
-  // PRO access is identical for all current plans. Highlight the lowest price.
-  const featured = [...plans].sort((a, b) => a.price - b.price)[0]?.id;
+  // All plans unlock the same VIP content. Highlight the balanced three-month option.
+  const featured = plans.find((plan) => plan.interval === "QUARTER")?.id;
+  const baseMonthlyPrice = plans.find((plan) => plan.interval === "MONTH")?.price ?? 0;
 
   return (
     <main className="min-h-screen bg-[#fffdf7] px-4 py-6 sm:px-6 lg:px-8">
@@ -311,10 +333,10 @@ export function VipPricing({ plans, activeSubscription, referralOverview, initia
         </section>
         <div className="mt-7 mb-4">
           <h2 className="text-xl font-black text-slate-950 sm:text-2xl">Chọn gói VIP phù hợp</h2>
-          <p className="mt-1 text-sm text-slate-600">Giá và thời hạn lấy từ các gói đang mở bán, không tự động trừ tiền gia hạn.</p>
+          <p className="mt-1 text-sm text-slate-600">So sánh với gói 1 tháng làm mốc: mua gói dài hơn để tiết kiệm hơn. Không tự động gia hạn.</p>
         </div>
         <section className="grid items-stretch gap-4 lg:grid-cols-3">
-          {plans.map((plan) => <PlanCard key={plan.id} plan={plan} featured={plan.id === featured} referralCode={referralCode} />)}
+          {plans.map((plan) => <PlanCard key={plan.id} plan={plan} featured={plan.id === featured} referralCode={referralCode} baseMonthlyPrice={baseMonthlyPrice} />)}
           {!plans.length ? (
             <div className="rounded-[2rem] border border-orange-100 bg-white p-10 text-center text-sm font-semibold text-slate-500 lg:col-span-3">
               Chưa có gói VIP. Admin có thể tạo gói mới trong mục Gói thành viên.
