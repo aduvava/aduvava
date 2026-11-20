@@ -1,7 +1,8 @@
+import { readLimitedJson } from "@/lib/limited-json";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { handleRouteError, HttpError, requireUser, readJson } from "@/lib/api";
+import { handleRouteError, HttpError, requireUser } from "@/lib/api";
 import { rateLimitOperation } from "@/lib/security-throttle";
 import { optionLabel, privacyRequestOptions } from "@/lib/compliance-requests";
 
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
   try {
     verifyOrigin(request);
     const user = await currentAccount();
-    const input = requestSchema.parse(await readJson<unknown>(request));
+    const input = requestSchema.parse(await readLimitedJson(request, 8192));
     const label = optionLabel(privacyRequestOptions, input.type);
     if (!label) throw new HttpError(400, "Loại yêu cầu không hợp lệ.");
     await rateLimitOperation(prisma, "privacy-request", user.id, request.headers);
