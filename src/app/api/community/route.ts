@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireUser, HttpError, handleRouteError } from "@/lib/api";
+import { requireUser, requireAdmin, HttpError, handleRouteError } from "@/lib/api";
+import { displayCommunityMember, initialsOfDisplayName } from "@/lib/compliance-requests";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,14 +19,14 @@ async function history() {
   })).reverse();
   const users = await prisma.user.findMany({
     where: { id: { in: [...new Set(rows.map((row) => row.userId))] } },
-    select: { id: true, name: true, role: true },
+    select: { id: true, role: true },
   });
-  const names = new Map(users.map((user) => [user.id, { name: user.name || "Thành viên Educhi", role: user.role }]));
+  const names = new Map(users.map((user) => [user.id, { name: displayCommunityMember(user), role: user.role }]));
   const byId = new Map(rows.map((row) => [row.id, row]));
   return rows.map((row) => ({
     id: row.id,
     name: names.get(row.userId)?.name || "Thành viên Educhi",
-    initials: (names.get(row.userId)?.name || "ED").trim().split(/\s+/).slice(-2).map((part) => part[0]).join("").toUpperCase(),
+    initials: initialsOfDisplayName(names.get(row.userId)?.name || "ED"),
     text: row.content,
     time: row.createdAt.toISOString(),
     color: "bg-orange-100 text-orange-600",
@@ -33,7 +34,7 @@ async function history() {
       name: names.get(byId.get(row.replyToId)!.userId)?.name || "Thành viên Educhi",
       text: byId.get(row.replyToId)!.content,
     } : undefined,
-    canDelete: names.get(row.userId)?.role === "ADMIN",
+
   }));
 }
 
@@ -65,8 +66,8 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   try {
     checkOrigin(request);
-    const user = await requireUser();
-    if (user.role !== "ADMIN") throw new HttpError(403, "Chỉ quản trị viên có thể xóa tin nhắn.");
+    await requireAdmin();
+
     const body = await request.json().catch(() => ({}));
     if (typeof body.id !== "string") throw new HttpError(400, "Thiếu mã tin nhắn.");
     await prisma.communityMessage.delete({ where: { id: body.id } });

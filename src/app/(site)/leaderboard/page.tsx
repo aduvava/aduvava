@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Leaderboard } from "@/components/leaderboard";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { displayCommunityMember } from "@/lib/compliance-requests";
 
 export const metadata: Metadata = {
   title: "Bảng xếp hạng | Educhi",
@@ -25,8 +26,6 @@ export default async function LeaderboardPage() {
         submittedAt: true,
         user: {
           select: {
-            name: true,
-            image: true,
             equippedAvatarFrameId: true,
             equippedNameColorId: true,
             equippedTitleId: true,
@@ -118,8 +117,11 @@ export default async function LeaderboardPage() {
       attempts={attempts.map((attempt) => ({
         id: attempt.id,
         userId: attempt.userId,
-        userName: attempt.user.name ?? "Học sinh Educhi",
-        userImage: attempt.user.image,
+        // Only the signed-in member sees their own real name and profile photo.
+        userName: attempt.userId === user.id
+          ? (user.name ?? "Học sinh Educhi")
+          : displayCommunityMember({ id: attempt.userId, role: "STUDENT" }),
+        userImage: attempt.userId === user.id ? (user.image ?? null) : null,
         cosmetics: cosmeticsFrom(attempt.user),
         educationLevel: mapEducationLevel(
           attempt.exam.educationLevel,

@@ -86,6 +86,8 @@ async function rateLimitOperation(db, operation, subject, headers) {
     "exam-password": { account: [12, 900], ip: [100, 900] },
     "exam-create": { account: [30, 3600], ip: [120, 3600], global: [3000, 3600] },
     contact: { account: [4, 3600], ip: [15, 3600], global: [1200, 3600] },
+    "privacy-request": { account: [3, 86400], ip: [15, 86400], global: [3000, 3600] },
+    "community-report": { account: [8, 3600], ip: [40, 3600], global: [1500, 3600] },
     upload: { account: [15, 3600], ip: [50, 3600] },
     // Reused pending invoices consume no quota; allow reasonable fresh purchases.
     checkout: { account: [20, 3600], ip: [40, 3600] },

@@ -2,6 +2,7 @@ import Link from "next/link";
 
 const support = [
   { href: "/contact", label: "Liên hệ và hỗ trợ" },
+  { href: "/quyen-du-lieu", label: "Yêu cầu xóa tài khoản / dữ liệu" },
   { href: "/chinh-sach/cong-dong", label: "Quy định cộng đồng" },
   { href: "/chinh-sach/ban-quyen", label: "Bản quyền và báo cáo vi phạm" },
 ];

@@ -177,6 +177,7 @@ model User {
   ownedExams         Exam[]              @relation("OwnedExams")
   examAccessGrants   ExamAccessGrant[]
   supportConversations SupportConversation[]
+  complianceRequests LeadMessage[]
   referredBy         User?            @relation("UserReferrals", fields: [referredByUserId], references: [id], onDelete: SetNull)
   referredUsers      User[]           @relation("UserReferrals")
   referralRewards    ReferralReward[] @relation("ReferralRewardsEarned")
@@ -572,13 +573,23 @@ model ReferralReward {
 }
 
 model LeadMessage {
-  id        String   @id @default(cuid())
-  name      String
-  email     String
-  phone     String?
-  message   String   @db.Text
-  source    String   @default("website")
-  createdAt DateTime @default(now())
+  id          String    @id @default(cuid())
+  name        String
+  email       String
+  phone       String?
+  message     String    @db.Text
+  source      String    @default("website")
+  status      String    @default("OPEN")
+  userId      String?
+  adminNote   String?   @db.Text
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([source, createdAt])
 }
 
 model AiFeedback {
