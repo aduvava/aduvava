@@ -193,6 +193,8 @@ async function convertOfficeFile(fileName, buffer) {
   if (!/\.(xlsx|docx)$/.test(name)) throw new Error("Chỉ nhận Word DOCX hoặc Excel XLSX. PDF chưa hỗ trợ trích ảnh.");
   const zip = await JSZip.loadAsync(buffer);
   if (Object.keys(zip.files).length > 1500) throw new Error("Tệp Office có quá nhiều thành phần.");
+  const uncompressed = Object.values(zip.files).reduce((sum, entry) => sum + Number(entry._data?.uncompressedSize || 0), 0);
+  if (uncompressed > 36 * 1024 * 1024) throw new Error("File Office có dữ liệu giải nén quá lớn.");
   return name.endsWith(".docx") ? documentImport(zip) : sheetImport(zip, buffer);
 }
 module.exports = { convertOfficeFile };
