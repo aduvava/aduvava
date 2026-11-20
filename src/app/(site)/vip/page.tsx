@@ -7,7 +7,7 @@ import { getReferralOverview } from "@/lib/referrals";
 
 export const metadata: Metadata = {
   title: "Nạp VIP | Educhi",
-  description: "Đăng ký VIP Educhi để mở khóa đề thi, lý thuyết và AI chấm bài.",
+  description: "Chọn gói VIP Educhi 1, 3 hoặc 6 tháng để mở khóa đề thi và lý thuyết nâng cao.",
 };
 
 function featureList(value: unknown) {
