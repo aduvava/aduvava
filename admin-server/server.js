@@ -2854,8 +2854,8 @@ async function createExam(req, res) {
         accessLevel,
         year,
         durationMinutes,
-        educationLevel,
-        grade: normalizedGrade,
+        educationLevel: specialExamTrack ? null : educationLevel,
+        grade: specialExamTrack ? null : normalizedGrade,
         examStructure: {
           ...(parsed.rule || {}),
           source: "admin-server",
