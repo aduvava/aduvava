@@ -14,6 +14,7 @@ export type AssessmentPart = {
   key: string;
   label: string;
   durationMinutes: number | null;
+  requiredShortAnswers?: number;
   blocks: AssessmentBlock[];
 };
 export type AssessmentVariant = { id: string; label: string; parts: AssessmentPart[] };
