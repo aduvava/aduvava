@@ -721,8 +721,9 @@ async function main() {
         subjectId, track: "HSA", variantId: "EN", year: 2026, accessLevel: "FREE",
       }, questions: hsaQuestions },
     });
-    assert.equal(imported.status(), 201, "Admin imports a complete HSA paper: " + (await imported.text()).slice(0, 300));
-    const importedId = (await imported.json()).exam.id;
+    const importedPayload = await imported.json();
+    assert.equal(imported.status(), 201, "Admin imports a complete HSA paper: " + JSON.stringify(importedPayload).slice(0, 300));
+    const importedId = importedPayload.exam.id;
     const publishHsa = await adminPage.request.put(base + "/api/admin/exams/" + importedId, {
       data: { isPublished: true },
     });
