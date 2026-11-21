@@ -48,7 +48,7 @@ function templateQuestions(track: Track, variantId: string): ImportQuestion[] {
           ({ content, isCorrect: i % 2 === 0 })),
       };
       return { blockKey: block.key, type: "SINGLE_CHOICE", prompt,
-        options: ["Phương án A", "Phương án B", "Phương án C", "Phương án D"], correct: "A" };
+        options: ["Phương án A", "Phương án B", "Phương án C", "Phương án D"], correct: "A" as const };
     }),
   );
 }
