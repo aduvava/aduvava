@@ -9,7 +9,7 @@ import { parseAssessmentRows, type ImportedAssessmentQuestion } from "@/lib/spec
 
 type Track = "HSA" | "TSA" | "V_ACT" | "QDA" | "DGNL_BCA";
 type ImportQuestion = ImportedAssessmentQuestion;
-type Subject = { id: string; name: string };
+type Subject = { id: string; name: string; family: "THPTQG" | "DGNL" };
 
 const classes = "min-h-11 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900";
 const fieldName = (name: string) => name.toLocaleLowerCase("vi").normalize("NFD")
@@ -66,9 +66,12 @@ export function SpecialExamImport() {
       return response.json();
     }).then((result) => {
       if (!active) return;
-      const data: Subject[] = (result.items ?? []).map((item: Subject) => ({ id: item.id, name: item.name }));
+      const data: Subject[] = (result.items ?? [])
+        .filter((item: Subject) => item.family === "DGNL")
+        .map((item: Subject) => ({ id: item.id, name: item.name, family: item.family }));
       setSubjects(data);
-      setSubjectId((old) => old || data[0]?.id || "");
+      setSubjectId((old) => data.some((item) => item.id === old) ? old : data[0]?.id || "");
+      if (!data.length) setMessage("Chưa có môn thuộc nhóm ĐGNL. Hãy tạo môn DGNL trong quản trị trước khi nhập đề.");
     }).catch(() => { if (active) setMessage("Không tải được danh sách môn học. Vui lòng đăng nhập Admin."); });
     return () => { active = false; };
   }, []);
@@ -120,6 +123,7 @@ export function SpecialExamImport() {
         let rows: readonly (readonly unknown[])[] = [];
         let passages: readonly (readonly unknown[])[] | undefined;
         let embedded = new Map<number, string[]>();
+        let passageEmbedded = new Map<number, string[]>();
         if (file.name.toLowerCase().endsWith(".xlsx")) {
           const { default: readWorkbook } = await import("read-excel-file/browser");
           const sheets = await readWorkbook(file);
@@ -128,10 +132,16 @@ export function SpecialExamImport() {
             ?? sheets[0];
           if (!selectedSheet) throw new Error("File không có sheet chứa câu hỏi.");
           rows = selectedSheet.data;
-          passages = sheets.find((sheet) => fieldName(sheet.sheet) === "baidoc")?.data;
+          const passageSheet = sheets.find((sheet) => fieldName(sheet.sheet) === "baidoc");
+          passages = passageSheet?.data;
           const imageResult = await extractXlsxEmbeddedImages(file, selectedSheet.sheet);
           embedded = imageResult.byRow;
           notes = [...imageResult.warnings];
+          if (passageSheet && passageSheet.sheet !== selectedSheet.sheet) {
+            const passageImageResult = await extractXlsxEmbeddedImages(file, passageSheet.sheet);
+            passageEmbedded = passageImageResult.byRow;
+            notes.push(...passageImageResult.warnings.map((warning) => "BAI_DOC: " + warning));
+          }
 
           // Older HSA workbooks store all 150 text questions in CAU_HOI but
           // anchor the 50 original formula-rich scans in TOAN_01_50.
@@ -169,7 +179,7 @@ export function SpecialExamImport() {
         } else {
           rows = parseDelimited(await file.text(), file.name.toLowerCase().endsWith(".tsv") ? "\t" : ",");
         }
-        const parsed = parseAssessmentRows(rows, blocks, passages, embedded);
+        const parsed = parseAssessmentRows(rows, blocks, passages, embedded, passageEmbedded);
         imported = parsed.questions;
         notes.push(...parsed.warnings);
       } else {

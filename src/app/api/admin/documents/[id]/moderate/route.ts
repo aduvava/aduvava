@@ -27,10 +27,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
 
     if (payload.action === "REJECT") {
-      const rejected = await prisma.document.update({
-        where: { id },
+      const changed = await prisma.document.updateMany({
+        where: { id, status: document.status },
         data: { status: "REJECTED", rejectionReason: payload.reason || "Tài liệu chưa đáp ứng tiêu chuẩn cộng đồng." },
       });
+      if (changed.count !== 1) throw new HttpError(409, "Trạng thái tài liệu vừa thay đổi. Vui lòng tải lại danh sách.");
+      const rejected = await prisma.document.findUniqueOrThrow({ where: { id } });
       await prisma.notification.create({
         data: {
           userId: rejected.uploaderId,
@@ -48,8 +50,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const approved = await prisma.$transaction(async (tx) => {
       const current = await tx.document.findUniqueOrThrow({ where: { id } });
       const reward = current.approvalRewarded ? 0 : 50;
-      const updated = await tx.document.update({
-        where: { id },
+      const changed = await tx.document.updateMany({
+        where: { id, status: document.status, approvalRewarded: current.approvalRewarded },
         data: {
           status: "APPROVED",
           approvedAt: new Date(),
@@ -57,6 +59,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           approvalRewarded: true,
         },
       });
+      if (changed.count !== 1) throw new HttpError(409, "Trạng thái tài liệu vừa thay đổi. Vui lòng tải lại danh sách.");
+      const updated = await tx.document.findUniqueOrThrow({ where: { id } });
 
       if (reward) {
         await tx.user.update({ where: { id: current.uploaderId }, data: { exp: { increment: reward } } });

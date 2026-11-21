@@ -55,6 +55,31 @@ describe("Excel importer for HSA and separate aptitude exams", () => {
     }));
   });
 
+  it("preserves embedded diagrams on BAI_DOC and warns about unlinked passage images", () => {
+    const illustration = "data:image/png;base64,aGVsbG8=";
+    const passages = [
+      ["group_id", "type", "title", "instruction", "passage"],
+      ["RD1", "reading", "Ngữ liệu", "Xem hình", "Đoạn văn dùng chung"],
+    ];
+    const passageImages = new Map<number, string[]>([[2, [illustration]], [4, [illustration]]]);
+    const parsed = parseAssessmentRows(sourceSheet(shortPositions, true), blocks, passages,
+      new Map<number, string[]>(), passageImages);
+    assert.equal(parsed.questions[69].passage,
+      "Ngữ liệu\n\nXem hình\n\nĐoạn văn dùng chung\n\n![Hình minh họa](" + illustration + ")");
+    assert.match(parsed.warnings.join(" "), /BAI_DOC ở dòng 4/);
+  });
+
+  it("rejects oversized BAI_DOC illustrations instead of silently stripping them", () => {
+    const passages = [
+      ["group_id", "passage"],
+      ["RD1", "Ngữ liệu"],
+    ];
+    const oversized = "data:image/png;base64," + "A".repeat(350000);
+    assert.throws(() => parseAssessmentRows(sourceSheet(shortPositions, true), blocks, passages,
+      new Map<number, string[]>(), new Map([[2, [oversized]]])),
+    /BAI_DOC dòng 2.*giảm dung lượng ảnh/);
+  });
+
   it("reports corrupt choices without inventing answers and keeps incomplete draft data", () => {
     const sheet = sourceSheet();
     sheet[5] = [5, "Bài toán PDF lỗi", "A. Một B. Hai C. Ba D. Bốn", "", "", "", "D", "Trắc nghiệm", ""];
