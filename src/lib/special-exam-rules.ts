@@ -25,7 +25,7 @@ export type AssessmentRule = {
   source: string;
   variants: AssessmentVariant[];
 };
-const templates = data as Record<string, AssessmentRule>;
+const templates = data as unknown as Record<string, AssessmentRule>;
 
 export function getAssessmentRule(track: string | null | undefined): AssessmentRule | null {
   return track ? templates[track] ?? null : null;
