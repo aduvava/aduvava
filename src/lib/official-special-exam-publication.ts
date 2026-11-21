@@ -1,5 +1,6 @@
 import { assessmentQuestionCount, flattenAssessmentBlocks, getAssessmentRule, getAssessmentVariant } from "@/lib/special-exam-rules";
 import type { OfficialExamQuestion } from "@/lib/official-exam-publication";
+import { latexErrors, hasCorruptedPdfMath } from "@/lib/math-latex";
 
 /**
  * Validate a complete DGNL paper before it can be published. This deliberately
@@ -56,6 +57,17 @@ export function validateOfficialSpecialExam(input: {
         throw new Error("Câu " + position + " phải có " + block.pointsPerQuestion + " điểm.");
       }
       if (!question.prompt.trim()) throw new Error("Câu " + position + " chưa có nội dung.");
+      if (latexErrors(question.prompt).length) {
+        throw new Error("Câu " + position + " chứa LaTeX sai cú pháp, cần sửa trước khi xuất bản.");
+      }
+      // A PDF parser cannot reliably reconstruct lost fractions or exponents.
+      // For HSA maths, an original embedded question image is an acceptable
+      // source of truth; otherwise a broken glyph blocks publication.
+      const hasSourceImage = /!\[[^\]]*\]\((?:data:image\/|\/)/.test(question.prompt);
+      if (hasCorruptedPdfMath(question.prompt) &&
+          !(input.track === "HSA" && position <= 50 && hasSourceImage)) {
+        throw new Error("Câu " + position + " chứa ký tự toán học lỗi từ PDF, cần sửa bằng LaTeX hoặc ảnh đề gốc.");
+      }
       if (question.type === "SINGLE_CHOICE" &&
           (question.answerOptions.length !== 4 || question.answerOptions.filter((option) => option.isCorrect).length !== 1)) {
         throw new Error("Câu " + position + " cần 4 phương án và đúng một đáp án.");
