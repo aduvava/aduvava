@@ -7,6 +7,7 @@ import { canAccessExam } from "@/lib/access";
 import { getQuestionPartLabel } from "@/lib/national-exam-rules";
 import { RichContent as FormattedContent } from "@/components/rich-content";
 import { AttemptStartButton } from "@/components/attempt-start-button";
+import { getAssessmentBlock, getAssessmentRule, getAssessmentVariant } from "@/lib/special-exam-rules";
 
 function hasAnswer(type: string, value: unknown, optionCount: number) {
   if (type === "TRUE_FALSE_SET") {
@@ -73,9 +74,17 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
     const answer = answers.get(question.id);
     return !hasAnswer(question.type, answer?.value, question.answerOptions.length);
   }).length;
+  const assessmentRule = getAssessmentRule(attempt.exam.specialExamTrack);
+  const structure = asRecord(attempt.exam.examStructure);
+  const storedVariant = typeof structure?.variantId === "string" ? structure.variantId : null;
+  const assessmentVariant = storedVariant ? getAssessmentVariant(attempt.exam.specialExamTrack, storedVariant) : null;
+  const objectiveMax = attempt.exam.questions
+    .filter((question) => question.type !== "ESSAY")
+    .reduce((sum, question) => sum + question.points, 0);
   const groups = Array.from(
     attempt.exam.questions.reduce((map, question) => {
-      const label = getQuestionPartLabel(question.type);
+      const section = assessmentVariant ? getAssessmentBlock(assessmentVariant, question.position) : null;
+      const label = section ? section.sectionLabel + " – " + section.label : getQuestionPartLabel(question.type);
       const items = map.get(label) ?? [];
       items.push(question);
       map.set(label, items);
@@ -98,12 +107,20 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
         </Link>
 
         <section className="mt-8 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-10">
-          <h1 className="text-center text-3xl font-black text-slate-900">Kết quả bài làm</h1>
+          <h1 className="text-center text-3xl font-black text-slate-900">{assessmentRule?.scoreMode === "IRT" ? "Kết quả luyện tập ĐGNL" : "Kết quả bài làm"}</h1>
           <p className="mt-2 text-center font-semibold text-slate-500">{attempt.exam.title}</p>
           <div className="mt-8 flex flex-col items-center justify-center gap-8 sm:flex-row">
             <div className="text-center sm:border-r sm:border-slate-200 sm:pr-12">
-              <p className="text-6xl font-black text-orange-500">{normalizedScore.toFixed(2)}</p>
-              <p className="mt-2 text-sm font-black uppercase tracking-wide text-slate-500">Tổng điểm (hệ số 10)</p>
+              <p className="text-6xl font-black text-orange-500">
+                {assessmentRule ? attempt.score.toFixed(2).replace(/\.00$/, "") : normalizedScore.toFixed(2)}
+              </p>
+              <p className="mt-2 text-sm font-black uppercase tracking-wide text-slate-500">
+                {assessmentRule?.scoreMode === "IRT"
+                  ? "Điểm thô luyện tập / " + attempt.maxScore + " câu"
+                  : assessmentRule?.scoreMode === "ESSAY_PENDING"
+                    ? "Điểm trắc nghiệm / " + objectiveMax.toFixed(0) + " · chưa chấm tự luận"
+                    : assessmentRule ? "Điểm / " + attempt.maxScore : "Tổng điểm (hệ số 10)"}
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-10 text-center">
               <div>
@@ -117,6 +134,24 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
             </div>
           </div>
 
+          {assessmentRule?.scoreMode === "IRT" ? (
+            <div className="mt-7 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm font-semibold leading-7 text-amber-900">
+              Đây là số điểm thô/số câu đạt khi luyện trên Educhi, không phải điểm thi chính thức theo IRT.
+              {attempt.exam.specialExamTrack === "V_ACT" ? " V-ACT sử dụng thang chuẩn hóa tối đa 1.200 điểm." : " TSA sử dụng thang điểm chuẩn hóa tối đa 100 điểm."}
+              Không thể quy đổi chính xác từ số câu đúng khi chưa có tham số câu hỏi và dữ liệu hiệu chuẩn.
+            </div>
+          ) : null}
+          {assessmentRule?.scoreMode === "ESSAY_PENDING" ? (
+            <div className="mt-7 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm font-semibold leading-7 text-blue-900">
+              Bài ĐGNL BCA gồm 75 điểm trắc nghiệm được chấm tự động và 25 điểm tự luận.
+              Điểm tự luận chưa được chấm nên chưa có tổng điểm cuối cùng trên thang 100.
+            </div>
+          ) : null}
+          {attempt.exam.specialExamTrack && !assessmentVariant ? (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900">
+              Đây là đề ĐGNL nhập theo cấu trúc cũ, chưa được hệ thống đối chiếu đủ các phần thi.
+            </div>
+          ) : null}
           {expTransaction && expSystem ? (
             <div className="mt-10 rounded-3xl border border-blue-100 bg-blue-50 p-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
@@ -164,23 +199,24 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
           ) : null}
 
           <div className="mt-10 rounded-3xl bg-slate-50 p-6">
-            <h2 className="text-xl font-black text-slate-900">Phân tích độ chính xác theo dạng bài</h2>
+            <h2 className="text-xl font-black text-slate-900">{assessmentVariant ? "Phân tích theo phần thi ĐGNL" : "Phân tích độ chính xác theo dạng bài"}</h2>
             <div className="mt-6 grid gap-6 md:grid-cols-3">
               {groups.map(([label, questions], groupIndex) => {
                 const groupAnswers = questions.map((question) => answers.get(question.id));
                 const earned = groupAnswers.reduce((sum, answer) => sum + (answer?.score ?? 0), 0);
                 const maximum = questions.reduce((sum, question) => sum + question.points, 0);
                 const percent = maximum ? Math.round((earned / maximum) * 100) : 0;
+                const awaitingEssay = questions.every((question) => question.type === "ESSAY");
                 return (
                   <div key={label}>
                     <div className="flex items-center justify-between gap-3">
                       <p className="font-bold text-slate-600">{label}</p>
-                      <span className={groupIndex === 0 ? "font-black text-orange-500" : groupIndex === 1 ? "font-black text-blue-600" : "font-black text-emerald-600"}>{percent}%</span>
+                      <span className={groupIndex === 0 ? "font-black text-orange-500" : groupIndex === 1 ? "font-black text-blue-600" : "font-black text-emerald-600"}>{awaitingEssay ? "Chưa chấm" : percent + "%"}</span>
                     </div>
                     <div className="mt-2 h-3 overflow-hidden rounded-full bg-slate-200">
-                      <div className={groupIndex === 0 ? "h-full bg-orange-500" : groupIndex === 1 ? "h-full bg-blue-500" : "h-full bg-emerald-500"} style={{ width: `${percent}%` }} />
+                      <div className={groupIndex === 0 ? "h-full bg-orange-500" : groupIndex === 1 ? "h-full bg-blue-500" : "h-full bg-emerald-500"} style={{ width: `${awaitingEssay ? 0 : percent}%` }} />
                     </div>
-                    <p className="mt-2 text-sm text-slate-500">{earned.toFixed(2)}/{maximum.toFixed(2)} điểm</p>
+                    <p className="mt-2 text-sm text-slate-500">{awaitingEssay ? "Tự luận cần chấm thủ công (" + maximum.toFixed(0) + " điểm)" : earned.toFixed(2) + "/" + maximum.toFixed(2) + " điểm"}</p>
                   </div>
                 );
               })}
