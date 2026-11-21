@@ -700,19 +700,41 @@ async function main() {
         "redesigned leaderboard must not overflow horizontally at " + width + "px, actual " + scrollWidth);
     }
 
-    // THPTQG special exams: existing ordinary subject navigation remains
-    // untouched, while the second tab finds only explicitly tagged exams.
+    // DGNL papers must be validated before publication. A previously published
+    // 12-question ordinary paper cannot be relabeled as an official 150-question HSA.
     const classify = await adminPage.request.put(base + "/api/admin/exams/" + leaderboardExamId, {
       data: { specialExamTrack: "HSA", educationLevel: null },
     });
-    assert.equal(classify.status(), 200, "Admin can classify a published non-official exam as HSA");
+    assert.equal(classify.status(), 400, "Block relabeling incomplete published papers as HSA");
+
+    // Instead, use the full-paper importer (35 Math MC + 15 Math numeric,
+    // 50 Language MC + 50 elective English MC), then publish after validation.
+    const hsaQuestions = Array.from({ length: 150 }, (_, index) =>
+      index >= 35 && index < 50
+        ? { type: "SHORT_ANSWER", prompt: "Nhập số nguyên của câu " + (index + 1), correctText: "42" }
+        : { type: "SINGLE_CHOICE", prompt: "Chọn phương án đúng câu " + (index + 1),
+            options: ["Phương án A", "Phương án B", "Phương án C", "Phương án D"], correct: "A" },
+    );
+    const imported = await adminPage.request.post(base + "/api/admin/exams/special-import", {
+      data: { metadata: {
+        title: "Trắc nghiệm CI mobile", description: "Đề HSA đủ 150 câu, chỉ dùng cho kiểm thử",
+        subjectId, track: "HSA", variantId: "EN", year: 2026, accessLevel: "FREE",
+      }, questions: hsaQuestions },
+    });
+    const importedPayload = await imported.json();
+    assert.equal(imported.status(), 201, "Admin imports a complete HSA paper: " + JSON.stringify(importedPayload).slice(0, 300));
+    const importedId = importedPayload.exam.id;
+    const publishHsa = await adminPage.request.put(base + "/api/admin/exams/" + importedId, {
+      data: { isPublished: true },
+    });
+    assert.equal(publishHsa.status(), 200, "Admin publishes HSA only after validating its structure: " + (await publishHsa.text()).slice(0, 300));
     const hsaResponse = await adminPage.request.get(base + "/api/exams?track=HSA");
     assert.equal(hsaResponse.status(), 200);
-    assert.ok((await hsaResponse.json()).exams.some((exam) => exam.id === leaderboardExamId),
-      "HSA API includes only published system exams with explicit track");
+    assert.ok((await hsaResponse.json()).exams.some((exam) => exam.id === importedId),
+      "HSA catalogue contains the validated full paper");
     const tsaResponse = await adminPage.request.get(base + "/api/exams?track=TSA");
     assert.equal(tsaResponse.status(), 200);
-    assert.equal((await tsaResponse.json()).exams.some((exam) => exam.id === leaderboardExamId), false,
+    assert.equal((await tsaResponse.json()).exams.some((exam) => exam.id === importedId), false,
       "HSA exam must not leak into TSA");
     assert.equal((await adminPage.request.get(base + "/api/exams?track=UNKNOWN")).status(), 400);
 
