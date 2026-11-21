@@ -5,7 +5,7 @@ import { Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 
 type Kind = "SINGLE_CHOICE" | "TRUE_FALSE_SET" | "SHORT_ANSWER" | "ESSAY";
 type Option = { label: string; content: string; isCorrect: boolean };
-type Exam = { id: string; title: string; isPublished: boolean; educationLevel: string | null; ownerId: string | null; _count: { questions: number } };
+type Exam = { id: string; title: string; isPublished: boolean; educationLevel: string | null; specialExamTrack: string | null; ownerId: string | null; _count: { questions: number } };
 type Question = { id: string; examId: string; position: number; type: Kind; prompt: string; passage: string | null; points: number; correctText: string | null; explanation: string | null; answerOptions: Option[] };
 type Draft = { position: number; type: Kind; prompt: string; passage: string; points: number; correctText: string; explanation: string; answerOptions: Option[] };
 const kinds: Record<Kind, string> = { SINGLE_CHOICE: "Trắc nghiệm 1 đáp án", TRUE_FALSE_SET: "Đúng / Sai", SHORT_ANSWER: "Trả lời ngắn", ESSAY: "Tự luận" };
@@ -67,13 +67,22 @@ export function QuestionManager({ initialExamId = "" }: { initialExamId?: string
   useEffect(() => { void load(); }, [load]);
 
   const selected = exams.find((exam) => exam.id === examId);
-  const locked = Boolean(selected && !selected.ownerId && selected.educationLevel === "THPTQG" && selected.isPublished);
+  const locked = Boolean(selected && !selected.ownerId &&
+    (selected.educationLevel === "THPTQG" || selected.specialExamTrack) && selected.isPublished);
   function reset() { setEditing(null); setDraft(empty(total + 1)); }
   function edit(question: Question) {
     setEditing(question);
+    const choices = question.answerOptions.map((option) => ({ ...option }));
+    // Draft imports preserve incomplete source choices; display missing A–D
+    // as empty editable fields without losing existing labels/answers.
+    const normalizedChoices = selected?.specialExamTrack &&
+      (question.type === "SINGLE_CHOICE" || question.type === "TRUE_FALSE_SET")
+      ? ["A", "B", "C", "D"].map((letter) =>
+          choices.find((option) => option.label === letter) ?? { label: letter, content: "", isCorrect: false })
+      : choices;
     setDraft({ position: question.position, type: question.type, prompt: question.prompt, passage: question.passage ?? "",
       points: question.points, correctText: question.correctText ?? "", explanation: question.explanation ?? "",
-      answerOptions: question.answerOptions.map((option) => ({ ...option })) });
+      answerOptions: normalizedChoices });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
   function updateOption(index: number, changes: Partial<Option>) {
@@ -91,8 +100,12 @@ export function QuestionManager({ initialExamId = "" }: { initialExamId?: string
     if (!examId || locked) return setMessage("Hãy chọn đề hợp lệ. Đề THPTQG chính thức phải chuyển về bản nháp trước khi chỉnh.");
     if (!draft.prompt.trim() || !Number.isInteger(draft.position) || draft.position < 0 || !Number.isFinite(draft.points) || draft.points < 0) return setMessage("Kiểm tra nội dung, thứ tự và số điểm.");
     const choice = draft.type === "SINGLE_CHOICE" || draft.type === "TRUE_FALSE_SET";
-    if (choice && (draft.answerOptions.length < 2 || draft.answerOptions.some((o) => !o.content.trim()) ||
-       (draft.type === "SINGLE_CHOICE" && draft.answerOptions.filter((o) => o.isCorrect).length !== 1))) return setMessage("Điền đủ phương án và chọn đúng một đáp án cho câu trắc nghiệm.");
+    if (choice && ((selected?.specialExamTrack ? draft.answerOptions.length !== 4 : draft.answerOptions.length < 2) ||
+       draft.answerOptions.some((o) => !o.content.trim()) ||
+       (draft.type === "SINGLE_CHOICE" && draft.answerOptions.filter((o) => o.isCorrect).length !== 1))) {
+      return setMessage("Điền đủ " + (selected?.specialExamTrack ? "4 phương án A–D" : "các phương án") +
+        " và chọn đáp án đúng trước khi lưu.");
+    }
     if (draft.type === "SHORT_ANSWER" && !draft.correctText.trim()) return setMessage("Câu trả lời ngắn cần nhập đáp án.");
     const data = { examId, position: draft.position, type: draft.type, prompt: draft.prompt.trim(),
       passage: draft.passage.trim() || null, points: draft.points, correctText: choice ? null : draft.correctText.trim() || null,
