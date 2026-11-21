@@ -4,6 +4,7 @@ import { handleRouteError, HttpError, jsonOk, requireUser } from "@/lib/api";
 import { readLimitedJson } from "@/lib/limited-json";
 import { rateLimitOperation } from "@/lib/security-throttle";
 import { assertStudyGroupOrigin } from "@/lib/study-groups";
+import { canRemoveGroupExam, isShareablePersonalExam } from "@/lib/study-group-policy";
 
 const examSchema = z.object({ examId: z.string().min(1).max(128) }).strict();
 
@@ -26,7 +27,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         where: { id: examId },
         select: { id: true, ownerId: true, isPublished: true, code: true },
       });
-      if (!exam || exam.ownerId !== user.id || !exam.isPublished || !exam.code.startsWith("USER-")) {
+      if (!isShareablePersonalExam(exam, user.id)) {
         throw new HttpError(403, "Bạn chỉ được chia sẻ đề cá nhân do mình tạo.");
       }
       const alreadyShared = await tx.studyGroupExam.findUnique({
@@ -63,7 +64,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       select: { sharedById: true },
     });
     if (!share) throw new HttpError(404, "Không tìm thấy đề trong nhóm.");
-    if (group.ownerId !== user.id && share.sharedById !== user.id) {
+    if (!canRemoveGroupExam(user.id, group.ownerId, share.sharedById)) {
       throw new HttpError(403, "Chỉ chủ nhóm hoặc người chia sẻ được gỡ đề.");
     }
     await prisma.studyGroupExam.deleteMany({ where: { groupId: id, examId } });
