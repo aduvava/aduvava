@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { buildLearningMap, type LearningGroup } from "@/lib/learning-insights";
+import { buildLearningMap, scopeOfAttempt, type LearningGroup } from "@/lib/learning-insights";
 
 export const dynamic = "force-dynamic";
 
@@ -79,16 +79,7 @@ export default async function LearningStrengthPage({
   }));
   const requestedScope = typeof query.scope === "string" && query.scope.length <= 64 ? query.scope : undefined;
   const emptyMap = buildLearningMap(attempts, [], requestedScope, profile?.grade);
-  const selectedAttemptIds = attempts.filter((attempt) =>
-    emptyMap.selectedScope && (
-      (attempt.specialExamTrack ? "track:" + attempt.specialExamTrack
-        : attempt.educationLevel === "EXAM_10" ? "exam10"
-        : attempt.educationLevel === "THPTQG" ? "thptqg"
-        : attempt.grade?.match(/^(?:lớp\s*)?(6|7|8|9|10|11|12)$/i)
-          ? "grade:" + attempt.grade.match(/^(?:lớp\s*)?(6|7|8|9|10|11|12)$/i)?.[1]
-          : attempt.educationLevel === "THCS" ? "thcs"
-          : attempt.educationLevel === "THPT" ? "thpt" : "other") === emptyMap.selectedScope
-    )).map((attempt) => attempt.id);
+  const selectedAttemptIds = attempts.filter((attempt) => scopeOfAttempt(attempt).key === emptyMap.selectedScope).map((attempt) => attempt.id);
 
   const answerRows = selectedAttemptIds.length ? await prisma.attemptAnswer.findMany({
     where: {
