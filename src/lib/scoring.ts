@@ -38,7 +38,8 @@ export function normalizeText(value: unknown) {
     .replace(/\s+/g, " ");
 }
 
-export function scoreQuestion(question: ScoringQuestion, value: unknown): QuestionScore {
+export type ScoringPolicy = { specialExamTrack?: string | null };
+export function scoreQuestion(question: ScoringQuestion, value: unknown, policy: ScoringPolicy = {}): QuestionScore {
   if (question.type === "SINGLE_CHOICE") {
     const correct = question.answerOptions.find((option) => option.isCorrect);
     const isCorrect = Boolean(correct && value === correct.id);
@@ -50,7 +51,11 @@ export function scoreQuestion(question: ScoringQuestion, value: unknown): Questi
     const total = question.answerOptions.length || 1;
     const correctCount = question.answerOptions.filter((option) => selections[option.id] === option.isCorrect).length;
     const nationalScale = [0, 0.1, 0.25, 0.5, 1];
-    const ratio = total === 4 ? nationalScale[correctCount] : correctCount / total;
+    // The four-statement partial-credit table applies to THPTQG, NOT TSA.
+    // In assessment mock papers, a grouped answer is correct only if every
+    // statement is correct; never inflate the practice result with THPTQG rules.
+    const ratio = policy.specialExamTrack ? (correctCount === total ? 1 : 0)
+      : total === 4 ? nationalScale[correctCount] : correctCount / total;
     const score = Number((ratio * question.points).toFixed(2));
     return { questionId: question.id, isCorrect: correctCount === total, score, maxScore: question.points };
   }
@@ -63,9 +68,9 @@ export function scoreQuestion(question: ScoringQuestion, value: unknown): Questi
   return { questionId: question.id, isCorrect: null, score: 0, maxScore: question.points };
 }
 
-export function scoreExam(questions: ScoringQuestion[], answers: ScoringAnswer[]) {
+export function scoreExam(questions: ScoringQuestion[], answers: ScoringAnswer[], policy: ScoringPolicy = {}) {
   const answerMap = new Map(answers.map((answer) => [answer.questionId, answer.value]));
-  const questionScores = questions.map((question) => scoreQuestion(question, answerMap.get(question.id)));
+  const questionScores = questions.map((question) => scoreQuestion(question, answerMap.get(question.id), policy));
   const score = Number(questionScores.reduce((sum, item) => sum + item.score, 0).toFixed(2));
   const maxScore = Number(questionScores.reduce((sum, item) => sum + item.maxScore, 0).toFixed(2));
 
