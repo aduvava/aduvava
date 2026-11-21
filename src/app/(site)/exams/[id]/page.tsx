@@ -135,11 +135,11 @@ export default async function ExamDetailPage({
                   ))}
                 </ul>
               </div>
-            ) : (
+            ) : !specialTrack ? (
               <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 text-sm leading-7 text-slate-600">
                 Thời gian và số lượng câu hỏi của đề này do người tạo đề quy định.
               </div>
-            )}
+            ) : null}
           </div>
 
           <div className="mt-5 grid gap-4 text-left sm:mt-7 sm:gap-6 lg:grid-cols-2">
