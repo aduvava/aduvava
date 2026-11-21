@@ -1642,9 +1642,10 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
               for (let i = 0; i < block.count; i++) {
                 const number = questions.length + 1;
                 const prompt = "Câu " + number + ": " + part.label + " – " + block.label;
-                if (block.questionType === "ESSAY") {
+                const questionType = block.requiredShortAnswers && i >= block.count - block.requiredShortAnswers ? "SHORT_ANSWER" : block.questionType;
+                if (questionType === "ESSAY") {
                   questions.push({ blockKey: block.key, type: "ESSAY", prompt: "Viết bài nghị luận xã hội: [nhập yêu cầu cụ thể]." });
-                } else if (block.questionType === "SHORT_ANSWER") {
+                } else if (questionType === "SHORT_ANSWER") {
                   questions.push({ blockKey: block.key, type: "SHORT_ANSWER", prompt, correctText: "[đáp án]" });
                 } else {
                   questions.push({ blockKey: block.key, type: "SINGLE_CHOICE", prompt,
