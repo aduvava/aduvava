@@ -109,8 +109,9 @@ export async function POST(request: Request) {
     } catch (error) {
       importWarnings.push(error instanceof Error ? error.message : "Cấu trúc kỳ thi cần được kiểm tra.");
     }
-    const subject = await prisma.subject.findUnique({ where: { id: metadata.subjectId }, select: { id: true } });
+    const subject = await prisma.subject.findUnique({ where: { id: metadata.subjectId }, select: { id: true, family: true } });
     if (!subject) throw new HttpError(404, "Không tìm thấy môn học được chọn.");
+    if (subject.family !== "DGNL") throw new HttpError(400, "Đề ĐGNL phải được lưu vào môn thuộc nhóm ĐGNL.");
 
     const suffix = randomUUID().slice(0, 12).toLowerCase();
     const slugBase = metadata.title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[đĐ]/g, "d")
