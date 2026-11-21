@@ -517,7 +517,7 @@ export function StudentDashboard({
   }
 
   return (
-    <div className="student-dashboard min-h-screen bg-orange-50/40 pb-20">
+    <div className="student-dashboard min-h-screen min-w-0 max-w-full overflow-x-clip bg-orange-50/40 pb-20">
       <div className="mx-auto max-w-[1480px] px-4 py-7 sm:px-6 lg:px-8">
         <div className="grid w-full min-w-0 grid-cols-1 items-stretch gap-4 md:grid-cols-3">
           <DashboardImageCard imageKey={dashboardImageKey} imageName={dashboardImageName} uploadedImage={dashboardUploadedImage ?? null} />
@@ -537,8 +537,8 @@ export function StudentDashboard({
         </div>
 
         <section id="mon-hoc" className="-mx-4 mt-6 scroll-mt-20 bg-[#fffdf0] px-4 py-6 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-          <div className={clsx("mx-auto grid max-w-[1180px] items-start gap-5", !showingSpecialExams && "lg:grid-cols-[minmax(0,760px)_minmax(320px,360px)]")}>
-            <div>
+          <div className={clsx("mx-auto grid min-w-0 max-w-[1180px] items-start gap-5", !showingSpecialExams && "lg:grid-cols-[minmax(0,760px)_minmax(320px,360px)]")}>
+            <div className="min-w-0">
           <div className="grid grid-cols-2 gap-2 pb-2 sm:flex sm:justify-center sm:gap-3 sm:overflow-x-auto">
             {studyGroups.map((group) => {
               const active = group.id === activeGroup;
