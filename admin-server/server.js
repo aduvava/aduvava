@@ -33,6 +33,7 @@ const resources = [
   { href: "/", label: "Tổng quan" },
   { href: "/users", label: "Người dùng" },
   { href: "/exams", label: "Đề thi" },
+  { href: "/exams/essays", label: "Chấm tự luận BCA" },
   { href: "/documents", label: "Tài liệu" },
   { href: "/payments", label: "Thanh toán & VIP" },
 ];
@@ -1815,6 +1816,92 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
   </section>`;
 }
 
+
+async function essayGradePage(user, notice) {
+  const attempts = await prisma.attempt.findMany({
+    where: { status: "SUBMITTED", exam: { specialExamTrack: "DGNL_BCA" } },
+    orderBy: { submittedAt: "desc" },
+    take: 60,
+    include: {
+      user: { select: { name: true, email: true } },
+      exam: { select: { id: true, title: true, questions: { where: { type: "ESSAY" }, select: { id: true, position: true, prompt: true, points: true } } } },
+      answers: { where: { question: { type: "ESSAY" } }, select: { questionId: true, value: true, score: true } },
+    },
+  });
+  const ids = attempts.map((attempt) => attempt.userId);
+  const marks = ids.length ? await prisma.aiFeedback.findMany({
+    where: { userId: { in: ids }, type: "manual-essay-grade" },
+    orderBy: { createdAt: "desc" },
+    take: 1000,
+  }) : [];
+  const marked = new Set(marks.map((mark) => String(mark.input?.attemptId || "") + ":" + String(mark.input?.questionId || "")));
+  const cards = attempts.flatMap((attempt) => attempt.exam.questions.map((question) => {
+    const answer = attempt.answers.find((item) => item.questionId === question.id);
+    const text = typeof answer?.value === "string" ? answer.value : "";
+    const completed = marked.has(attempt.id + ":" + question.id);
+    const grade = completed ? Number(answer?.score || 0) : "";
+    return `<article class="card" style="margin-bottom:16px">
+      <h2 style="margin:0 0 12px"> ${escapeHtml(attempt.exam.title)} · ${escapeHtml(attempt.user.name || attempt.user.email || "Học viên")}</h2>
+      <p><strong>Đề câu ${question.position}:</strong> ${escapeHtml(question.prompt)}</p>
+      <details open><summary>Bài làm</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:360px;overflow:auto;background:#f8fafc;padding:15px;border-radius:12px">${escapeHtml(text.slice(0, 12000) || "(Không trả lời)")}</pre></details>
+      <p style="font-weight:800">${completed ? "Đã chấm " + grade + "/" + question.points + " điểm (có thể sửa)" : "Đang chờ chấm"}</p>
+      <form class="form" method="post" action="/exams/essays/grade" style="margin-top:10px">
+        <input type="hidden" name="attemptId" value="${escapeHtml(attempt.id)}" />
+        <input type="hidden" name="questionId" value="${escapeHtml(question.id)}" />
+        <label>Điểm tự luận (0–${question.points})<input name="score" type="number" min="0" max="${question.points}" step="0.25" value="${grade}" required /></label>
+        <label>Nhận xét (không bắt buộc)<textarea name="comment" maxlength="2000" rows="2"></textarea></label>
+        <button type="submit">Lưu điểm tự luận</button>
+      </form>
+    </article>`;
+  }));
+  const body = `${pageHeader("Chấm tự luận ĐGNL BCA", "Trắc nghiệm được chấm tự động. Tự luận 25 điểm chỉ cộng vào tổng sau khi Admin chấm; có lưu lịch sử chấm điểm.")}${cards.join("") || '<div class="card">Chưa có bài ĐGNL BCA đã nộp để chấm.</div>'}`;
+  return layout({ title: "Chấm tự luận BCA", active: "/exams/essays", user, notice, body });
+}
+async function gradeEssay(req, res, grader) {
+  const form = await readForm(req);
+  const attemptId = String(form.get("attemptId") || "");
+  const questionId = String(form.get("questionId") || "");
+  const comment = String(form.get("comment") || "").slice(0, 2000);
+  const grade = Number(form.get("score"));
+  if (!attemptId || !questionId || !Number.isFinite(grade) || grade < 0) {
+    return redirect(res, "/exams/essays?notice=" + encodeURIComponent("Điểm tự luận không hợp lệ."));
+  }
+  try {
+    await prisma.$transaction(async (tx) => {
+      const locked = await tx.$queryRaw`SELECT "id" FROM "Attempt" WHERE "id" = ${attemptId} FOR UPDATE`;
+      if (!locked.length) throw new Error("Không tìm thấy bài làm.");
+      const attempt = await tx.attempt.findFirst({
+        where: { id: attemptId, status: "SUBMITTED", exam: { specialExamTrack: "DGNL_BCA" } },
+        select: { id: true, userId: true, examId: true },
+      });
+      const question = attempt ? await tx.question.findFirst({
+        where: { id: questionId, examId: attempt.examId, type: "ESSAY" },
+        select: { id: true, points: true },
+      }) : null;
+      if (!attempt || !question || grade > question.points || Math.round(grade * 4) !== grade * 4) {
+        throw new Error("Bài, câu tự luận hoặc điểm không hợp lệ.");
+      }
+      await tx.attemptAnswer.upsert({
+        where: { attemptId_questionId: { attemptId, questionId } },
+        update: { score: grade, isCorrect: null },
+        create: { attemptId, questionId, value: "", score: grade, isCorrect: null },
+      });
+      const all = await tx.attemptAnswer.findMany({ where: { attemptId }, select: { score: true } });
+      await tx.attempt.update({ where: { id: attemptId },
+        data: { score: Math.round(all.reduce((sum, answer) => sum + answer.score, 0) * 100) / 100 },
+      });
+      await tx.aiFeedback.create({ data: {
+        userId: attempt.userId, type: "manual-essay-grade",
+        input: { attemptId, questionId, graderId: grader.id },
+        output: { score: grade, maxScore: question.points, comment, gradedAt: new Date().toISOString() },
+      } });
+    }, { maxWait: 10000, timeout: 15000 });
+    return redirect(res, "/exams/essays?notice=" + encodeURIComponent("Đã lưu điểm tự luận và cập nhật tổng điểm bài làm."));
+  } catch (error) {
+    return redirect(res, "/exams/essays?notice=" + encodeURIComponent(error?.message || "Không chấm được bài."));
+  }
+}
+
 async function examsPage(user, notice) {
   const [exams, subjects] = await Promise.all([
     prisma.exam.findMany({
@@ -2937,6 +3024,8 @@ async function router(req, res) {
     const id = pathname.split("/")[2];
     return deleteUser(req, res, id, user);
   }
+  if (pathname === "/exams/essays" && req.method === "GET") return sendHtml(res, await essayGradePage(user, notice));
+  if (pathname === "/exams/essays/grade" && req.method === "POST") return gradeEssay(req, res, user);
   if (pathname === "/exams/create" && req.method === "POST") return createExam(req, res);
   if (pathname === "/exams/preview" && req.method === "POST") return previewExamImport(req, res);
   if (pathname === "/exams/import-office" && req.method === "POST") return importOfficeExam(req, res);
