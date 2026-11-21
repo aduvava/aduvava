@@ -6,6 +6,7 @@ import Link from "next/link";
 import { importAdminExamFile, type ImportedExamQuestion } from "@/lib/admin-exam-file-import";
 import { buildReadingExcelTemplate } from "@/lib/reading-template";
 import { specialExamTracks, type SpecialExamTrack, getSpecialExamTrack } from "@/lib/special-exam-tracks";
+import { getAssessmentRule } from "@/lib/special-exam-rules";
 import { defaultGradeForExamLevel, gradesForExamLevel } from "@/lib/exam-grade";
 import { EXAM_CONTENT_MODES, type ExamContentMode, typeForContentMode } from "@/lib/exam-content-mode";
 
@@ -18,20 +19,20 @@ type Exam = {
   id: string; code: string; slug: string; title: string; description: string;
   family: Family; type: ExamType; contentMode: ExamContentMode; accessLevel: Access; year: number;
   durationMinutes: number; educationLevel: Level; grade: string | null; specialExamTrack: SpecialExamTrack | null; targetScore: number | null;
-  subjectId: string; isPublished: boolean; ownerId: string | null;
+  subjectId: string; isPublished: boolean; ownerId: string | null; examStructure?: { variantId?: string } | null;
   subject: Subject;
   _count: { questions: number; attempts: number };
 };
 type Draft = {
   title: string; description: string; code: string; slug: string;
   type: ExamType; contentMode: ExamContentMode; accessLevel: Access; year: number; durationMinutes: number;
-  educationLevel: Level; grade: string | null; specialExamTrack: SpecialExamTrack | null; targetScore: string; subjectId: string; isPublished: boolean;
+  educationLevel: Level; grade: string | null; specialExamTrack: SpecialExamTrack | null; specialExamVariant: string; targetScore: string; subjectId: string; isPublished: boolean;
 };
 
 const newDraft = (): Draft => ({
   title: "", description: "", code: "", slug: "", type: "PRACTICE", contentMode: "TOPIC",
   accessLevel: "FREE", year: new Date().getFullYear(), durationMinutes: 45,
-  educationLevel: "THCS", grade: null, specialExamTrack: null, targetScore: "", subjectId: "", isPublished: false,
+  educationLevel: "THCS", grade: null, specialExamTrack: null, specialExamVariant: "", targetScore: "", subjectId: "", isPublished: false,
 });
 const field = "w-full min-h-11 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100";
 const label = "grid gap-1.5 text-sm font-bold text-slate-700";
@@ -150,6 +151,7 @@ export function ExamManager() {
       type: exam.type, contentMode: exam.contentMode, accessLevel: exam.accessLevel, year: exam.year,
       durationMinutes: exam.durationMinutes, educationLevel: exam.educationLevel,
       grade: exam.grade ?? null, specialExamTrack: exam.specialExamTrack,
+      specialExamVariant: exam.examStructure?.variantId ?? "",
       targetScore: exam.targetScore === null ? "" : String(exam.targetScore),
       subjectId: exam.subjectId, isPublished: exam.isPublished,
     });
@@ -163,6 +165,8 @@ export function ExamManager() {
     if (!subject) return setMessage("Vui lòng chọn môn học hợp lệ.");
     if (!draft.title.trim()) return setMessage("Vui lòng nhập tên đề thi.");
     if (draft.specialExamTrack && draft.educationLevel !== null) return setMessage("Hãy chọn cấp học: Không phân loại cho kỳ thi riêng.");
+    if (draft.specialExamTrack && !draft.specialExamVariant) return setMessage("Hãy chọn tổ hợp/mã bài thi ĐGNL.");
+    if (draft.specialExamTrack && !editing && draft.isPublished) return setMessage("Đề ĐGNL mới phải tạo nháp và kiểm tra cấu trúc trước khi xuất bản.");
     if (draft.educationLevel && !draft.grade) return setMessage("Hãy chọn lớp cho đề thi.");
     if (!Number.isInteger(draft.year) || draft.year < 2000 || draft.year > 2200 ||
         !Number.isInteger(draft.durationMinutes) || draft.durationMinutes < 1 || draft.durationMinutes > 600) {
@@ -177,7 +181,8 @@ export function ExamManager() {
       title: draft.title.trim(), description: draft.description.trim(),
       family: subject.family, type: typeForContentMode(draft.contentMode, draft.type), contentMode: draft.contentMode, accessLevel: draft.accessLevel,
       year: draft.year, durationMinutes: draft.durationMinutes,
-      educationLevel: draft.educationLevel, grade: draft.grade, specialExamTrack: draft.specialExamTrack, targetScore: score,
+      educationLevel: draft.educationLevel, grade: draft.grade, specialExamTrack: draft.specialExamTrack,
+      examStructure: draft.specialExamTrack ? { variantId: draft.specialExamVariant } : null, targetScore: score,
       subjectId: draft.subjectId, isPublished: draft.isPublished,
       code: editing ? draft.code.trim() : "ADMIN-" + suffix.toUpperCase(),
       slug: editing ? draft.slug.trim() : (slugify(draft.title) || "de-thi") + "-" + suffix,
@@ -319,6 +324,8 @@ export function ExamManager() {
                 const next = (e.target.value || null) as SpecialExamTrack | null;
                 setDraft((current) => ({
                   ...current, specialExamTrack: next,
+                  specialExamVariant: next ? getAssessmentRule(next)?.variants[0]?.id ?? "" : "",
+                  durationMinutes: next ? getAssessmentRule(next)?.durationMinutes ?? current.durationMinutes : current.durationMinutes,
                   educationLevel: next ? null : current.educationLevel,
                   grade: next ? null : current.grade,
                 }));
@@ -326,8 +333,20 @@ export function ExamManager() {
                 <option value="">Không thuộc kỳ thi riêng</option>
                 {specialExamTracks.map((track) => <option key={track.id} value={track.id}>{track.label}</option>)}
               </select>
-              <span className="text-xs font-medium text-slate-500">Đề HSA, TSA, V-ACT, QDA, BQA, ĐGNL BCA hiển thị trong mục Ôn thi THPTQG → Kỳ thi riêng. Chọn kỳ thi sẽ tự đặt cấp học thành Không phân loại.</span>
+              <span className="text-xs font-medium text-slate-500">Đề HSA, TSA, V-ACT, QDA, ĐGNL BCA hiển thị trong mục Ôn thi THPTQG → Kỳ thi riêng. Chọn kỳ thi sẽ tự đặt cấp học thành Không phân loại.</span>
             </label>
+            {draft.specialExamTrack ? (
+              <label className={label}>Tổ hợp/mã bài thi ĐGNL
+                <select className={field} value={draft.specialExamVariant} onChange={(event) => setValue("specialExamVariant", event.target.value)}>
+                  {(getAssessmentRule(draft.specialExamTrack)?.variants ?? []).map((variant) =>
+                    <option key={variant.id} value={variant.id}>{variant.label}</option>)}
+                </select>
+                <span className="text-xs font-medium text-blue-700">
+                  {getAssessmentRule(draft.specialExamTrack)?.durationMinutes} phút ·
+                  {getAssessmentRule(draft.specialExamTrack)?.scoreMode === "IRT" ? " điểm thô không phải điểm IRT chính thức" : " số câu và trọng số phải đúng cấu trúc"}
+                </span>
+              </label>
+            ) : null}
             <label className={label}>Loại đề
               <select className={field} value={draft.contentMode} onChange={(e) => {
                 const next = e.target.value as ExamContentMode;
@@ -385,7 +404,7 @@ export function ExamManager() {
           ) : null}
           <label className="flex items-start gap-3 rounded-xl bg-slate-50 p-3 text-sm font-semibold text-slate-700">
             <input type="checkbox" className="mt-1" checked={draft.isPublished} onChange={(e) => setValue("isPublished", e.target.checked)} />
-            <span>Xuất bản cho học viên <span className="block text-xs font-normal text-slate-500">Tắt để ẩn đề. Đề THPTQG chính thức phải có đủ cấu trúc hợp lệ mới xuất bản được.</span></span>
+            <span>Xuất bản cho học viên <span className="block text-xs font-normal text-slate-500">Tắt để ẩn đề. Đề THPTQG và ĐGNL phải đủ số câu, đúng tổ hợp và trọng số trước khi xuất bản.</span></span>
           </label>
           <button type="submit" disabled={busy || parsingFile} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-black text-white hover:bg-orange-600 disabled:opacity-50">
             <Plus className="h-4 w-4" /> {busy ? "Đang xử lý..." : editing ? "Lưu thay đổi" : "Tạo đề thi"}
