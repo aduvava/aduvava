@@ -734,6 +734,12 @@ async function main() {
     const importedPayload = await imported.json();
     assert.equal(imported.status(), 201, "Admin imports a complete HSA paper: " + JSON.stringify(importedPayload).slice(0, 300));
     const importedId = importedPayload.exam.id;
+    const managedSpecial = await adminPage.request.get(base + "/api/admin/exams?managed=1&q=" +
+      encodeURIComponent("Trắc nghiệm CI mobile"));
+    assert.equal(managedSpecial.status(), 200);
+    const listedSpecial = (await managedSpecial.json()).items.find((item) => item.id === importedId);
+    assert.equal(listedSpecial?.examStructure?.variantId, "EN",
+      "Admin managed exam listing must include the saved DGNL variant for safe editing");
     const publishHsa = await adminPage.request.put(base + "/api/admin/exams/" + importedId, {
       data: { isPublished: true },
     });
