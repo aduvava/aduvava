@@ -171,7 +171,7 @@ export function QuestionManager({ initialExamId = "" }: { initialExamId?: string
               </label>
               <label className={label}>Nội dung câu hỏi
                 <textarea className={input} rows={5} maxLength={50000} required value={draft.prompt} onChange={(e) => setDraft((d) => ({ ...d, prompt: e.target.value }))} />
-                  <span className="text-xs font-medium text-slate-500">Công thức nội dòng: <code>$x^2+1$</code>. Công thức riêng dòng: <code>{String.raw`$\\frac{T(x)}{x}$`}</code>.</span>
+                  <span className="text-xs font-medium text-slate-500">Công thức nội dòng: <code>$x^2+1$</code>. Công thức riêng dòng: <code>{String.raw`$\frac{T(x)}{x}$`}</code>.</span>
                   {draft.prompt.trim() ? (
                     <div className="mt-2 max-h-64 overflow-y-auto rounded-xl border border-blue-100 bg-blue-50/40 p-3">
                       <p className="mb-2 text-xs font-bold text-blue-800">Xem trước công thức và nội dung</p>
