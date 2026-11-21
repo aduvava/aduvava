@@ -63,7 +63,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     })) satisfies ScoringQuestion[];
 
     const answerMap = new Map(attempt.answers.map((answer) => [answer.questionId, answer]));
-    const baseResult = scoreExam(questions, attempt.answers.map((answer) => ({ questionId: answer.questionId, value: answer.value })));
+    const baseResult = scoreExam(questions, attempt.answers.map((answer) => ({ questionId: answer.questionId, value: answer.value })), { specialExamTrack: attempt.exam.specialExamTrack });
     const questionScores = [...baseResult.questionScores];
 
     const result = {
