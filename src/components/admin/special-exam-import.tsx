@@ -3,35 +3,17 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { getAssessmentRule, getAssessmentVariant, flattenAssessmentBlocks, assessmentQuestionCount } from "@/lib/special-exam-rules";
-import { parseDelimited, rowsToObjects } from "@/lib/spreadsheet-import";
+import { parseDelimited } from "@/lib/spreadsheet-import";
 import { extractXlsxEmbeddedImages } from "@/lib/office-image-import";
-import { isSafeRichImageUrl } from "@/lib/rich-image-security";
+import { parseAssessmentRows, type ImportedAssessmentQuestion } from "@/lib/special-exam-file-import";
 
 type Track = "HSA" | "TSA" | "V_ACT" | "QDA" | "DGNL_BCA";
-type ImportQuestion = {
-  type: "SINGLE_CHOICE" | "TRUE_FALSE_SET" | "SHORT_ANSWER" | "ESSAY";
-  blockKey: string;
-  prompt: string;
-  options?: string[];
-  correct?: "A" | "B" | "C" | "D";
-  correctText?: string;
-  statements?: { content: string; isCorrect: boolean }[];
-  passage?: string;
-  explanation?: string;
-};
+type ImportQuestion = ImportedAssessmentQuestion;
 type Subject = { id: string; name: string };
 
 const classes = "min-h-11 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900";
 const fieldName = (name: string) => name.toLocaleLowerCase("vi").normalize("NFD")
   .replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/[^a-z0-9]/g, "");
-function readField(row: Record<string, unknown>, aliases: string[]) {
-  const entries = Object.entries(row);
-  for (const alias of aliases) {
-    const pair = entries.find(([key]) => fieldName(key) === fieldName(alias));
-    if (pair && pair[1] !== null && pair[1] !== undefined && String(pair[1]).trim()) return String(pair[1]).trim();
-  }
-  return "";
-}
 function templateQuestions(track: Track, variantId: string): ImportQuestion[] {
   const variant = getAssessmentVariant(track, variantId);
   if (!variant) return [];
@@ -74,7 +56,7 @@ export function SpecialExamImport() {
   const selected = getAssessmentVariant(track, variantId);
   const blocks = useMemo(() => selected ? flattenAssessmentBlocks(selected) : [], [selected]);
   const expectedCount = selected ? assessmentQuestionCount(selected) : 0;
-  const ready = questions.length === expectedCount && Boolean(subjectId) && Boolean(title.trim()) && !busy
+  const ready = questions.length > 0 && Boolean(subjectId) && Boolean(title.trim()) && !busy
     && (!warnings.length || warningsConfirmed);
 
   useEffect(() => {
@@ -136,67 +118,53 @@ export function SpecialExamImport() {
         imported = items as ImportQuestion[];
       } else if (/\.(xlsx|csv|tsv)$/i.test(file.name)) {
         let rows: readonly (readonly unknown[])[] = [];
+        let passages: readonly (readonly unknown[])[] | undefined;
         let embedded = new Map<number, string[]>();
         if (file.name.toLowerCase().endsWith(".xlsx")) {
           const { default: readWorkbook } = await import("read-excel-file/browser");
           const sheets = await readWorkbook(file);
-          const selectedSheet = sheets.find((sheet) => fieldName(sheet.sheet) === "cauhoi") ?? sheets[0];
-          if (!selectedSheet) throw new Error("File không có sheet Excel.");
+          const selectedSheet = sheets.find((sheet) => fieldName(sheet.sheet) === "cauhoi")
+            ?? sheets.find((sheet) => sheet.data[0]?.some((cell) => ["question", "cauhoi", "prompt"].includes(fieldName(String(cell ?? "")))))
+            ?? sheets[0];
+          if (!selectedSheet) throw new Error("File không có sheet chứa câu hỏi.");
           rows = selectedSheet.data;
+          passages = sheets.find((sheet) => fieldName(sheet.sheet) === "baidoc")?.data;
           const imageResult = await extractXlsxEmbeddedImages(file, selectedSheet.sheet);
           embedded = imageResult.byRow;
-          notes = imageResult.warnings;
+          notes = [...imageResult.warnings];
         } else {
           rows = parseDelimited(await file.text(), file.name.toLowerCase().endsWith(".tsv") ? "\t" : ",");
         }
-        imported = rowsToObjects(rows).map((row, index) => {
-          const block = blocks.find((item) => index + 1 >= item.start && index + 1 <= item.end);
-          if (!block) throw new Error("File có nhiều câu hơn cấu trúc " + track + ".");
-          const type = (readField(row, ["type", "dạng câu"]) ||
-            (block.requiredShortAnswers && index + 1 > block.end - block.requiredShortAnswers
-              ? "SHORT_ANSWER" : block.questionType)).toUpperCase() as ImportQuestion["type"];
-          const rawPrompt = readField(row, ["question", "prompt", "câu hỏi"]);
-          const extra = embedded.get(index + 2) ?? [];
-          const imageLink = readField(row, ["image", "ảnh", "hình ảnh", "image url"]);
-          if (imageLink) {
-            if (isSafeRichImageUrl(imageLink)) extra.push(imageLink);
-            else notes.push("Dòng " + (index + 2) + ": URL ảnh ngoài không được chèn để tránh mất ảnh hoặc theo dõi người học.");
-          }
-          const prompt = rawPrompt + extra.map((image) => "\n![Hình minh họa](" + image + ")").join("");
-          const passage = readField(row, ["passage", "ngữ liệu", "bài đọc"]);
-          const explanation = readField(row, ["explanation", "giải thích", "lời giải"]);
-          const question: ImportQuestion = { type, blockKey: block.key, prompt, ...(passage ? { passage } : {}),
-            ...(explanation ? { explanation } : {}) };
-          if (type === "SINGLE_CHOICE") {
-            question.options = ["A", "B", "C", "D"].map((letter) => readField(row, [letter, "option " + letter]));
-            question.correct = readField(row, ["correct", "answer", "đáp án đúng"]).toUpperCase() as ImportQuestion["correct"];
-          } else if (type === "SHORT_ANSWER") {
-            question.correctText = readField(row, ["correctText", "đáp án điền số", "đáp án", "answer", "correct"]);
-          } else if (type === "TRUE_FALSE_SET") {
-            question.statements = ["A", "B", "C", "D"].map((letter) => ({
-              content: readField(row, [letter, "option " + letter]),
-              isCorrect: ["D", "ĐÚNG", "TRUE", "1"].includes(readField(row, ["correct" + letter, "đúng sai " + letter]).toUpperCase()),
-            }));
-          }
-          return question;
-        });
-        if (embedded.size > 0 && rows.length - 1 !== imported.length) {
-          notes.push("Excel có dòng trống hoặc không đúng mẫu; hãy đối chiếu hình và câu hỏi trước khi xuất bản.");
-        }
-        for (const rowNum of embedded.keys()) {
-          if (rowNum - 2 >= imported.length) notes.push("Ảnh ở dòng " + rowNum + " không có câu hỏi tương ứng.");
-        }
+        const parsed = parseAssessmentRows(rows, blocks, passages, embedded);
+        imported = parsed.questions;
+        notes.push(...parsed.warnings);
       } else {
         throw new Error("Chỉ nhận JSON, XLSX, CSV hoặc TSV. Đề Word có ảnh nên chuyển sang Excel/JSON trước khi nhập.");
       }
       if (imported.length !== expectedCount) {
-        throw new Error("Đề " + track + " (" + selected?.label + ") cần " + expectedCount + " câu, đã nhận " + imported.length + " câu.");
+        notes.push("Đề " + track + " cần " + expectedCount + " câu, file có " + imported.length +
+          ". Đề chỉ được lưu nháp, chưa thể xuất bản cho đến khi đủ câu.");
+      }
+      let partStart = 0;
+      for (const part of selected?.parts ?? []) {
+        const count = part.blocks.reduce((sum, block) => sum + block.count, 0);
+        if (part.requiredShortAnswers !== undefined) {
+          const actual = imported.slice(partStart, partStart + count)
+            .filter((item) => item.type === "SHORT_ANSWER").length;
+          if (actual !== part.requiredShortAnswers) {
+            notes.push(part.label + ": file có " + actual + "/" + part.requiredShortAnswers +
+              " câu điền đáp án; cần chỉnh lại trên Educhi trước khi xuất bản.");
+          }
+        }
+        partStart += count;
       }
       const missing = imported.findIndex((item) => !item || !String(item.prompt ?? "").trim());
       if (missing >= 0) throw new Error("Câu " + (missing + 1) + " không có nội dung.");
       setQuestions(imported);
       setWarnings(notes);
-      setMessage("Đã đọc " + imported.length + " câu · " + (notes.length ? notes.length + " cảnh báo ảnh cần xem lại." : "Sẵn sàng kiểm tra và nhập."));
+      setMessage("Đã đọc " + imported.length + " câu · " + (notes.length
+          ? notes.length + " điểm cần kiểm tra. Bạn có thể tạo đề nháp và sửa trực tiếp trên Educhi."
+          : "Sẵn sàng tạo đề nháp."));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Không đọc được file.");
     } finally {
@@ -219,7 +187,8 @@ export function SpecialExamImport() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Không lưu được đề.");
       setCreated(result.exam);
-      setMessage("Đã tạo " + result.questionCount + " câu đúng cấu trúc. Đề đang ở trạng thái nháp để Admin duyệt.");
+      setMessage("Đã lưu " + result.questionCount + " câu vào đề nháp. " +
+        ((result.warnings?.length ?? 0) ? "Có " + result.warnings.length + " vấn đề phải sửa trên Educhi trước khi xuất bản." : "Đã đạt kiểm tra cấu trúc."));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Tạo đề không thành công.");
     } finally {
@@ -263,9 +232,9 @@ export function SpecialExamImport() {
       <section className="rounded-2xl border border-orange-100 bg-white p-5 shadow-sm sm:p-7">
         <h2 className="text-xl font-black">2. Nhập đề hoàn chỉnh</h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          Tải mẫu JSON đúng vị trí từng phần, sau đó thay nội dung, đáp án và lời giải. Có thể tải Excel
-          với các cột question, type, A, B, C, D, correct, correctText, explanation, passage.
-          Ảnh Excel được gắn theo dòng và cần kiểm tra trước khi xuất bản.
+          Tải Excel hiện có của bạn, không cần sắp xếp lại câu hỏi hay sửa tên cột theo mẫu.
+          Educhi đọc cả câu trắc nghiệm, điền đáp án, ngữ liệu trong sheet BAI_DOC và hình gắn theo dòng.
+          Nếu có câu lỗi hoặc thiếu đáp án, đề sẽ được lưu nháp để sửa trên web trước khi xuất bản.
         </p>
         <button type="button" onClick={downloadTemplate}
           className="mt-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-black text-blue-700">
@@ -289,11 +258,12 @@ export function SpecialExamImport() {
         ) : null}
         {warnings.length ? (
           <div role="alert" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-            <p className="font-black">Cần kiểm tra ảnh chưa nhập được</p>
-            <ul className="mt-2 list-disc pl-5">{warnings.map((warning, i) => <li key={i}>{warning}</li>)}</ul>
+            <p className="font-black">Vấn đề cần kiểm tra trước khi xuất bản ({warnings.length})</p>
+            <ul className="mt-2 list-disc pl-5">{warnings.slice(0, 35).map((warning, i) => <li key={i}>{warning}</li>)}
+              {warnings.length > 35 ? <li>Còn {warnings.length - 35} cảnh báo khác. Hãy kiểm tra toàn bộ đề nháp.</li> : null}</ul>
             <label className="mt-3 flex gap-2 font-semibold">
               <input type="checkbox" checked={warningsConfirmed} onChange={(event) => setWarningsConfirmed(event.target.checked)} />
-              Tôi đã kiểm tra và xử lý ảnh cần thiết.
+              Tôi hiểu đề sẽ được lưu nháp; các câu chưa hoàn chỉnh cần sửa trực tiếp trên Educhi trước khi xuất bản.
             </label>
           </div>
         ) : null}
