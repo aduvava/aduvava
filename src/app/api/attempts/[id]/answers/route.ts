@@ -2,6 +2,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { canAccessExam } from "@/lib/access";
 import { isAttemptExpired } from "@/lib/attempt-timing";
+import { activeTimedExamSection } from "@/lib/special-exam-timing";
 import { readLimitedJson } from "@/lib/limited-json";
 import { handleRouteError, HttpError, jsonOk, requireUser } from "@/lib/api";
 
@@ -38,9 +39,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
       const question = await tx.question.findFirst({
         where: { id: payload.questionId, examId: attempt.examId },
-        select: { id: true },
+        select: { id: true, position: true },
       });
       if (!question) throw new HttpError(404, "Question not found");
+      const activePart = activeTimedExamSection(attempt);
+      if (activePart && (question.position < activePart.start || question.position > activePart.end)) {
+        throw new HttpError(409, "Đã khóa phần thi khác. Hiện chỉ được trả lời câu " + activePart.start + "–" + activePart.end + " (" + activePart.label + ").");
+      }
 
       return tx.attemptAnswer.upsert({
         where: { attemptId_questionId: { attemptId: attempt.id, questionId: question.id } },
