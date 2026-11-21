@@ -39,8 +39,8 @@ export async function POST(request: Request) {
     }
     // Official THPTQG exams may contain more than single-choice questions.
     // Do not bypass the official publication validator with a spreadsheet.
-    if (metadata.educationLevel === "THPTQG" && metadata.isPublished === true) {
-      throw new HttpError(400, "Đề THPTQG phải được kiểm tra đủ cấu trúc chính thức trước khi xuất bản. Hãy bỏ chọn Xuất bản.");
+    if ((metadata.educationLevel === "THPTQG" || metadata.specialExamTrack) && metadata.isPublished === true) {
+      throw new HttpError(400, "Đề THPTQG/ĐGNL phải được kiểm tra đủ cấu trúc, số câu, trọng số trước khi xuất bản. Hãy bỏ chọn Xuất bản.");
     }
 
     const exam = await prisma.$transaction(async (tx) => {
