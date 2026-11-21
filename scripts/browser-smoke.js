@@ -715,15 +715,31 @@ async function main() {
         : { type: "SINGLE_CHOICE", prompt: "Chọn phương án đúng câu " + (index + 1),
             options: ["Phương án A", "Phương án B", "Phương án C", "Phương án D"], correct: "A" },
     );
+    const dgnlSubject = await prisma.subject.create({ data: {
+      slug: "ci-dgnl-" + unique, name: "Kỳ thi HSA CI " + unique,
+      description: "Chỉ dùng trong Chromium CI", family: "DGNL",
+      icon: "book-open", color: "#f97316",
+    } });
+    const specialMetadata = {
+      title: "Trắc nghiệm CI mobile", description: "Đề HSA đủ 150 câu, chỉ dùng cho kiểm thử",
+      track: "HSA", variantId: "EN", year: 2026, accessLevel: "FREE",
+    };
+    const wrongSubjectImport = await adminPage.request.post(base + "/api/admin/exams/special-import", {
+      data: { metadata: { ...specialMetadata, subjectId }, questions: hsaQuestions },
+    });
+    assert.equal(wrongSubjectImport.status(), 400, "DGNL importer must reject a THPTQG subject");
     const imported = await adminPage.request.post(base + "/api/admin/exams/special-import", {
-      data: { metadata: {
-        title: "Trắc nghiệm CI mobile", description: "Đề HSA đủ 150 câu, chỉ dùng cho kiểm thử",
-        subjectId, track: "HSA", variantId: "EN", year: 2026, accessLevel: "FREE",
-      }, questions: hsaQuestions },
+      data: { metadata: { ...specialMetadata, subjectId: dgnlSubject.id }, questions: hsaQuestions },
     });
     const importedPayload = await imported.json();
     assert.equal(imported.status(), 201, "Admin imports a complete HSA paper: " + JSON.stringify(importedPayload).slice(0, 300));
     const importedId = importedPayload.exam.id;
+    const managedSpecial = await adminPage.request.get(base + "/api/admin/exams?managed=1&q=" +
+      encodeURIComponent("Trắc nghiệm CI mobile"));
+    assert.equal(managedSpecial.status(), 200);
+    const listedSpecial = (await managedSpecial.json()).items.find((item) => item.id === importedId);
+    assert.equal(listedSpecial?.examStructure?.variantId, "EN",
+      "Admin managed exam listing must include the saved DGNL variant for safe editing");
     const publishHsa = await adminPage.request.put(base + "/api/admin/exams/" + importedId, {
       data: { isPublished: true },
     });
