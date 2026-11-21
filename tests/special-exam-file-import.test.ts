@@ -9,7 +9,7 @@ const variant = getAssessmentVariant("HSA", "EN")!;
 const blocks = flattenAssessmentBlocks(variant);
 const shortPositions = new Set([1, 3, 7, 9, 12, 16, 18, 20, 22, 27, 29, 34, 37, 42, 49]);
 
-function sourceSheet(shorts = shortPositions) {
+function sourceSheet(shorts = shortPositions, withPassage = false) {
   const rows: unknown[][] = [["no", "question", "A", "B", "C", "D", "correct", "type", "group_id"]];
   for (let i = 1; i <= 150; i++) {
     const isShort = shorts.has(i);
@@ -19,7 +19,7 @@ function sourceSheet(shorts = shortPositions) {
       ...(isShort ? ["", "", "", ""] : ["Một", "Hai", "Ba", "Bốn"]),
       isShort ? "5341" : "B",
       isShort ? "Điền đáp án" : "Trắc nghiệm",
-      i === 70 ? "RD1" : "",
+      i === 70 && withPassage ? "RD1" : "",
     ]);
   }
   return rows;
@@ -41,7 +41,7 @@ describe("Excel importer for HSA and separate aptitude exams", () => {
       ["group_id", "type", "title", "instruction", "passage"],
       ["RD1", "reading", "Ngữ liệu", "Hãy đọc", "Đoạn văn dùng chung"],
     ];
-    const parsed = parseAssessmentRows(sourceSheet(), blocks, passages);
+    const parsed = parseAssessmentRows(sourceSheet(shortPositions, true), blocks, passages);
     assert.equal(parsed.questions.length, 150);
     assert.equal(parsed.questions[0].type, "SHORT_ANSWER");
     assert.equal(parsed.questions[0].correctText, "5341");
