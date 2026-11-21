@@ -58,7 +58,7 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
   const essayFeedbacks = await prisma.aiFeedback.findMany({
     where: { userId: user.id, type: { in: ["essay-feedback", "manual-essay-grade"] } },
     orderBy: { createdAt: "desc" },
-    take: 100,
+    take: 1000,
   });
   const aiFeedbackByQuestion = new Map<string, Record<string, unknown>>();
   const manualGradeByQuestion = new Map<string, Record<string, unknown>>();
