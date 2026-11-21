@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       where: { id: String(metadata.subjectId) },
       select: { family: true },
     });
-    if (!subject || metadata.family !== subject.family) {
+    if (!subject || (!metadata.specialExamTrack && metadata.family !== subject.family)) {
       throw new HttpError(400, "Môn học không tồn tại hoặc không khớp nhóm môn.");
     }
     // Official THPTQG exams may contain more than single-choice questions.
