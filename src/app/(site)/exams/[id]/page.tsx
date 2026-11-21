@@ -19,6 +19,7 @@ import { AttemptStartButton } from "@/components/attempt-start-button";
 import { ExamAccessGate } from "@/components/exam-access-gate";
 import { getNationalExamRule, getNationalQuestionCount } from "@/lib/national-exam-rules";
 import { getSpecialExamTrack } from "@/lib/special-exam-tracks";
+import { assessmentQuestionCount, getAssessmentRule, getAssessmentVariant } from "@/lib/special-exam-rules";
 
 export default async function ExamDetailPage({
   params,
@@ -44,7 +45,12 @@ export default async function ExamDetailPage({
   const allowed = await canAccessExam(user.id, exam);
   const lockedBySharing = Boolean(exam.ownerId && exam.ownerId !== user.id && exam.shareMode !== "PUBLIC");
   const specialTrack = exam.specialExamTrack ? getSpecialExamTrack(exam.specialExamTrack) : null;
-  const nationalRule = exam.educationLevel === "THPTQG" ? getNationalExamRule(exam.subject.slug) : undefined;
+  const nationalRule = !specialTrack && exam.educationLevel === "THPTQG" ? getNationalExamRule(exam.subject.slug) : undefined;
+  const assessmentRule = getAssessmentRule(exam.specialExamTrack);
+  const storedStructure = exam.examStructure && typeof exam.examStructure === "object" && !Array.isArray(exam.examStructure)
+    ? exam.examStructure as Record<string, unknown> : null;
+  const variantId = typeof storedStructure?.variantId === "string" ? storedStructure.variantId : null;
+  const assessmentVariant = assessmentRule && variantId ? getAssessmentVariant(exam.specialExamTrack, variantId) : null;
   const questionCount = nationalRule ? getNationalQuestionCount(nationalRule) : exam._count.questions;
   const displayedParts = nationalRule?.parts.filter((part) => part.count > 0) ?? [];
   const displayTitle = titleFromClass && titleFromClass.length <= 120 ? titleFromClass : exam.title;
@@ -77,7 +83,41 @@ export default async function ExamDetailPage({
               <AlertCircle className="h-7 w-7 text-orange-500" /> Nội quy & Cấu trúc đề thi
             </h2>
 
-            {displayedParts.length ? (
+            {assessmentVariant && assessmentRule ? (
+              <div className="mt-6 rounded-2xl border border-blue-200 bg-white p-5">
+                <h3 className="font-black text-blue-800">Cấu trúc {assessmentRule.label} · {assessmentVariant.label}</h3>
+                <p className="mt-2 text-sm text-slate-600">
+                  {assessmentQuestionCount(assessmentVariant)} câu · {assessmentRule.durationMinutes} phút ·
+                  {assessmentRule.scoreMode === "RAW" ? " chấm theo số câu đúng / thang " + assessmentRule.maxPoints :
+                    assessmentRule.scoreMode === "IRT" ? " điểm luyện tập theo số câu đúng, không phải điểm IRT chính thức" :
+                    " 75 điểm trắc nghiệm tự chấm + 25 điểm tự luận chờ chấm"}
+                </p>
+                <ul className="mt-3 space-y-3 text-sm leading-6 text-slate-700">
+                  {assessmentVariant.parts.map((part) => (
+                    <li key={part.key} className="rounded-xl bg-slate-50 px-4 py-3">
+                      <strong>{part.label}</strong>{part.durationMinutes ? " · " + part.durationMinutes + " phút" : ""}
+                      <ul className="mt-1 pl-4">
+                        {part.blocks.map((block) => (
+                          <li key={block.key}>• {block.label}: {block.count} câu
+                            {assessmentRule.scoreMode !== "IRT" ? " · " + block.pointsPerQuestion + " điểm/câu" : ""}
+                            {block.allowedTypes && block.allowedTypes.length > 1 ? " · Hỗn hợp dạng câu" : ""}
+                          </li>
+                        ))}
+                      </ul>
+                    </li>
+                  ))}
+                </ul>
+                {exam._count.questions !== assessmentQuestionCount(assessmentVariant) ? (
+                  <p className="mt-3 font-bold text-red-600">Đề này chưa đủ số câu theo cấu trúc đã chọn. Vui lòng báo quản trị viên kiểm tra.</p>
+                ) : null}
+              </div>
+            ) : null}
+            {specialTrack && !assessmentVariant ? (
+              <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900">
+                Đề ĐGNL cũ chưa có xác nhận cấu trúc mới; số câu và cách chấm có thể khác bài thi chính thức.
+              </p>
+            ) : null}
+            {!specialTrack && displayedParts.length ? (
               <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
                 <h3 className="font-black text-slate-800">Cấu trúc đề ({displayedParts.length} phần):</h3>
                 <ul className="mt-3 space-y-3 text-sm leading-6 text-slate-600 sm:text-base">
