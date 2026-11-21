@@ -6,6 +6,7 @@ import { AlertCircle, Clock3, Flag, Grid2X2, Pencil, Send, X } from "lucide-reac
 import { clsx } from "clsx";
 import { getQuestionPartLabel } from "@/lib/national-exam-rules";
 import { RichContent as FormattedContent } from "@/components/rich-content";
+import { ExamMathPrompt } from "@/components/exam-math-prompt";
 
 type RunnerQuestion = {
   id: string;
@@ -643,7 +644,7 @@ export function ExamRunner({ attemptId, mode, examTitle, examDescription, subjec
                   ) : null}
                   <div className="mt-3 flex flex-wrap items-start gap-x-3 gap-y-1">
                     <h2 className="shrink-0 text-xl font-black leading-8 text-slate-900">Câu {questionIndex + 1}:</h2>
-                    <FormattedContent value={question.prompt} className="min-w-0 flex-1 text-lg font-semibold leading-8 text-slate-800" />
+                    <ExamMathPrompt prompt={question.prompt} track={specialExamTrack} position={questionIndex + 1} kind={question.type} />
                   </div>
 
                   {question.type === "SINGLE_CHOICE" ? (
