@@ -645,6 +645,21 @@ async function main() {
       ],
     });
 
+    // Legacy questions in CI have no topicId. The capability page must still
+    // display meaningful subject/exam statistics rather than a blank warning.
+    await adminPage.setViewportSize({ width: 390, height: 844 });
+    await adminPage.goto(base + "/nang-luc");
+    await adminPage.getByRole("heading", { name: "Bản đồ năng lực" }).waitFor();
+    await adminPage.getByRole("heading", { name: "Kết quả theo môn" }).waitFor();
+    await adminPage.getByRole("heading", { name: "Kết quả theo đề đã làm" }).waitFor();
+    assert.equal(await adminPage.getByText("Chưa có đủ dữ liệu chuyên đề").count(), 0,
+      "untagged legacy exams cannot blank out the whole capability map");
+    assert.ok(await adminPage.getByText("lượt làm đề", { exact: false }).count() > 0,
+      "legacy submissions appear as scored attempts");
+    const capabilityScrollWidth = await adminPage.evaluate(() => document.documentElement.scrollWidth);
+    assert.ok(capabilityScrollWidth <= 391,
+      "capability map must not overflow 390px phone viewport");
+
     for (const width of [320, 390, 1366]) {
       await adminPage.setViewportSize({ width, height: 844 });
       await adminPage.goto(base + "/leaderboard");
