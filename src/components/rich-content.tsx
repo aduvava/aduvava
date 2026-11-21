@@ -22,7 +22,10 @@ function renderMath(value: string, displayMode: boolean) {
 
 function parseRichContent(value: string) {
   const parts: RichPart[] = [];
-  const pattern = /!\[([^\]]*)\]\(([^)]+)\)|\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$/g;
+  // KaTeX supports both Markdown math ($...$, $...$) and textbook
+  // LaTeX delimiters (\\(...\\), \\[...\\]). Keep image parsing ahead
+  // of formulas so encoded image bytes are never interpreted as maths.
+  const pattern = /!\[([^\]]*)\]\(([^)]+)\)|\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$|\\\[([\s\S]+?)\\\]|\\\(([^\n]+?)\\\)/g;
   let cursor = 0;
   let match: RegExpExecArray | null;
 
@@ -38,6 +41,10 @@ function parseRichContent(value: string) {
       parts.push({ type: "math", value: match[3].trim(), display: true });
     } else if (match[4]) {
       parts.push({ type: "math", value: match[4].trim(), display: false });
+    } else if (match[5]) {
+      parts.push({ type: "math", value: match[5].trim(), display: true });
+    } else if (match[6]) {
+      parts.push({ type: "math", value: match[6].trim(), display: false });
     }
 
     cursor = match.index + match[0].length;
