@@ -430,7 +430,7 @@ export function ExamManager() {
             <button type="submit" disabled={busy || parsingFile} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-black text-white hover:bg-orange-600 disabled:opacity-50">
               <Plus className="h-4 w-4" /> {busy ? "Đang xử lý..." : editing ? "Lưu thay đổi" : "Tạo đề thi"}
             </button>
-          )
+          )}
         </form>
         {message ? <p role="status" className="mt-4 rounded-xl bg-orange-50 p-3 text-sm font-bold leading-6 text-orange-900">{message}</p> : null}
       </section>
