@@ -6,6 +6,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { canAccessExam } from "@/lib/access";
 import { getQuestionPartLabel } from "@/lib/national-exam-rules";
 import { RichContent as FormattedContent } from "@/components/rich-content";
+import { ExamMathPrompt } from "@/components/exam-math-prompt";
+import { hasCorruptedPdfMath } from "@/lib/math-latex";
 import { AttemptStartButton } from "@/components/attempt-start-button";
 import { getAssessmentBlock, getAssessmentRule, getAssessmentVariant } from "@/lib/special-exam-rules";
 
@@ -246,6 +248,9 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
             const isCorrect = answer?.isCorrect === true;
             const selectedValue = answer?.value;
             const aiFeedback = aiFeedbackByQuestion.get(question.id);
+            const photoChoices = attempt.exam.specialExamTrack === "HSA" && question.position <= 50 &&
+              /!\[[^\]]*\]\(data:image\//.test(question.prompt) &&
+              (hasCorruptedPdfMath(question.prompt) || (question.prompt.match(/\n/g)?.length ?? 0) >= 3);
             return (
               <article key={question.id} className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
                 <div className="flex flex-wrap items-start justify-between gap-4">
@@ -255,7 +260,10 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
                     </span>
                     <div>
                       <p className="text-lg font-black text-slate-900">{getQuestionPartLabel(question.type)} - Câu {question.position}</p>
-                      <FormattedContent value={question.prompt} className="mt-3 text-base font-semibold leading-7 text-slate-700" />
+                      <div className="mt-3">
+                        <ExamMathPrompt prompt={question.prompt} track={attempt.exam.specialExamTrack}
+                          position={question.position} kind={question.type} />
+                      </div>
                     </div>
                   </div>
                   <span className="rounded-full bg-slate-100 px-4 py-2 text-sm font-black text-slate-500">{answer?.score ?? 0}/{question.points} điểm</span>
@@ -274,7 +282,8 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
                               : "flex items-center gap-4 rounded-2xl border border-slate-200 px-5 py-3.5 text-slate-600"
                         }>
                           <span className={option.isCorrect ? "grid h-8 w-8 place-items-center rounded-full bg-emerald-500 font-black text-white" : selected ? "grid h-8 w-8 place-items-center rounded-full bg-red-500 font-black text-white" : "grid h-8 w-8 place-items-center rounded-full bg-slate-100 font-black"}>{option.label}</span>
-                          <FormattedContent value={option.content} className="font-semibold" />
+                          {photoChoices ? <span className="text-xs font-medium">Phương án trong ảnh đề gốc</span>
+                            : <FormattedContent value={option.content} className="font-semibold" />}
                           {selected ? <span className="ml-auto text-xs font-black uppercase">Bạn chọn</span> : null}
                         </div>
                       );
@@ -306,7 +315,11 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
                 {question.explanation ? (
                   <div className="mx-auto mt-6 max-w-4xl rounded-2xl border border-blue-100 bg-blue-50 p-5 text-blue-800">
                     <p className="flex items-center gap-2 font-black"><BookOpen className="h-5 w-5" /> Lời giải chi tiết</p>
-                    <FormattedContent value={question.explanation} className="mt-2 text-sm leading-7" />
+                    {hasCorruptedPdfMath(question.explanation) ? (
+                      <p className="mt-2 text-sm font-semibold leading-7 text-amber-800">
+                        Lời giải gốc chứa công thức lỗi khi chuyển từ PDF. Nội dung này cần được quản trị viên đối chiếu và hiệu đính bằng LaTeX.
+                      </p>
+                    ) : <FormattedContent value={question.explanation} className="mt-2 text-sm leading-7" />}
                   </div>
                 ) : null}
               </article>
