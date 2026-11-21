@@ -7,6 +7,7 @@ import { clsx } from "clsx";
 import { getQuestionPartLabel } from "@/lib/national-exam-rules";
 import { RichContent as FormattedContent } from "@/components/rich-content";
 import { ExamMathPrompt } from "@/components/exam-math-prompt";
+import { hasCorruptedPdfMath } from "@/lib/math-latex";
 
 type RunnerQuestion = {
   id: string;
@@ -48,6 +49,12 @@ function isAnswered(question: RunnerQuestion, value: unknown) {
 
 function countWords(value: unknown) {
   return String(value ?? "").trim().split(/\s+/).filter(Boolean).length;
+}
+
+function usesScannedMathAnswers(question: RunnerQuestion, track: string | null, index: number): boolean {
+  if (track !== "HSA" || index >= 50 || !/!\[[^\]]*\]\(data:image\//.test(question.prompt)) return false;
+  const sourceText = question.prompt.replace(/!\[[^\]]*\]\(data:image\/[\s\S]+?\)/, "");
+  return hasCorruptedPdfMath(sourceText) || (sourceText.match(/\n/g)?.length ?? 0) >= 3;
 }
 
 function SubmitEffectOverlay({ effect }: { effect?: string | null }) {
@@ -427,7 +434,7 @@ export function ExamRunner({ attemptId, mode, examTitle, examDescription, subjec
 
                     <div className="mt-3 flex flex-wrap items-start gap-x-3 gap-y-1">
                       <h2 className="shrink-0 text-xl font-black leading-7 text-slate-900">Câu {questionIndex + 1}:</h2>
-                      <FormattedContent value={question.prompt} className="min-w-0 flex-1 text-base font-semibold leading-7 text-slate-800" />
+                      <ExamMathPrompt prompt={question.prompt} track={specialExamTrack} position={questionIndex + 1} kind={question.type} />
                     </div>
 
                     {question.type === "SINGLE_CHOICE" ? (
@@ -448,7 +455,9 @@ export function ExamRunner({ attemptId, mode, examTitle, examDescription, subjec
                               )}
                             >
                               <span className={clsx("grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 text-sm font-black", selected ? "border-orange-500 bg-orange-500 text-white" : "border-slate-300 bg-white text-slate-500")}>{option.label}</span>
-                              <FormattedContent value={option.content} className="text-base font-semibold text-slate-700" imageClassName="max-h-44" />
+                              {!usesScannedMathAnswers(question, specialExamTrack, questionIndex) ? (
+                                <FormattedContent value={option.content} className="text-base font-semibold text-slate-700" imageClassName="max-h-44" />
+                              ) : null}
                             </button>
                           );
                         })}
@@ -665,7 +674,9 @@ export function ExamRunner({ attemptId, mode, examTitle, examDescription, subjec
                             )}
                           >
                             <span className={clsx("grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 text-sm font-black", selected ? "border-orange-500 bg-orange-500 text-white" : "border-slate-300 bg-white text-slate-500")}>{option.label}</span>
-                            <FormattedContent value={option.content} className="text-base font-semibold text-slate-700" imageClassName="max-h-44" />
+                            {!usesScannedMathAnswers(question, specialExamTrack, questionIndex) ? (
+                                <FormattedContent value={option.content} className="text-base font-semibold text-slate-700" imageClassName="max-h-44" />
+                              ) : null}
                           </button>
                         );
                       })}
