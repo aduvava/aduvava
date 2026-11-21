@@ -21,6 +21,20 @@ export function isAnswerHighlightPixel(r: number, g: number, b: number): boolean
   return g >= 90 && b >= 90 && g - r >= 24 && b - r >= 24 && Math.abs(g - b) < 100;
 }
 
+function hasScannedQuestionHeader(context: CanvasRenderingContext2D, width: number, height: number): boolean {
+  // The supplied HSA question screenshots contain a red "Câu N" heading
+  // in the upper-left corner. A plain diagram does not usually contain one.
+  const regionWidth = Math.min(220, Math.floor(width / 3));
+  const regionHeight = Math.min(55, Math.floor(height / 3));
+  const pixels = context.getImageData(0, 0, regionWidth, regionHeight).data;
+  let red = 0;
+  for (let index = 0; index < pixels.length; index += 4) {
+    const r = pixels[index], g = pixels[index + 1], b = pixels[index + 2];
+    if (r > 100 && r > 1.45 * g && r > 1.35 * b) red++;
+  }
+  return red >= 35;
+}
+
 function neutralizeAnswerHighlight(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
   const width = canvas.width;
   const height = canvas.height;
@@ -76,12 +90,13 @@ export function ExamMathPrompt({
         if (!context) throw new Error("Canvas unavailable");
         context.drawImage(picture, 0, 0);
 
+        const looksLikeScannedQuestion = hasScannedQuestionHeader(context, canvas.width, canvas.height);
         const highlighted = kind === "SINGLE_CHOICE" ? neutralizeAnswerHighlight(canvas, context) : 0;
         const explicitlyScanned = /ảnh đề gốc|full question|câu hỏi gốc/i.test(source.alt);
         const damagedText = /[\uF000-\uF8FF]/.test(source.withoutImage) ||
           (source.withoutImage.match(/\n/g)?.length ?? 0) >= 3;
-        const trustedScan = explicitlyScanned || highlighted >= 100 ||
-          (kind === "SHORT_ANSWER" && damagedText);
+        const trustedScan = looksLikeScannedQuestion || explicitlyScanned ||
+          highlighted >= 100 || (kind === "SHORT_ANSWER" && damagedText);
         if (!trustedScan) {
           setResult({ source: source.src, value: "", mode: "text" });
           return;
