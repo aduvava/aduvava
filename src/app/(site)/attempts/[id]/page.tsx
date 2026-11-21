@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { ExamRunner } from "@/components/exam-runner";
 import { canAccessExam } from "@/lib/access";
 import { isAttemptExpired, remainingAttemptSeconds } from "@/lib/attempt-timing";
+import { getTimedExamSections } from "@/lib/special-exam-timing";
 import { ExpiredAttemptSubmit } from "@/components/expired-attempt-submit";
 
 export default async function AttemptPage({ params }: { params: Promise<{ id: string }> }) {
@@ -86,6 +87,9 @@ export default async function AttemptPage({ params }: { params: Promise<{ id: st
       subjectSlug={attempt.exam.subject.slug}
       subjectName={attempt.exam.subject.name}
       initialSeconds={remainingAttemptSeconds(attempt)}
+      initialElapsedSeconds={Math.max(0, Math.floor((Date.now() - attempt.startedAt.getTime()) / 1000))}
+      timedSections={attempt.mode === "MOCK" ? getTimedExamSections(attempt.exam) : []}
+      specialExamTrack={attempt.exam.specialExamTrack ?? null}
       questions={questions}
       initialAnswers={attempt.answers.map((answer) => ({ questionId: answer.questionId, value: answer.value }))}
       submitEffect={typeof submitEffectMetadata?.effect === "string" ? submitEffectMetadata.effect : null}
