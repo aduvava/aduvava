@@ -23,8 +23,8 @@ export async function POST(request: Request) {
         !metadata.durationMinutes || !metadata.year) {
       throw new HttpError(400, "Thiếu thông tin đề thi: tên, mã, đường dẫn, môn, thời gian hoặc năm.");
     }
-    if (metadata.specialExamTrack && metadata.educationLevel !== null) {
-      throw new HttpError(400, "Đề kỳ thi riêng phải chọn cấp học: Không phân loại.");
+    if (metadata.specialExamTrack) {
+      throw new HttpError(400, "Đề ĐGNL có thể chứa dạng câu khác A–D. Hãy dùng trang Nhập đề HSA · TSA · V-ACT · QDA · BCA để giữ nguyên dạng câu và đáp án.");
     }
     if (payload.questions.some((question) => question.options.length !== 4 ||
         question.correctIndex >= question.options.length)) {
