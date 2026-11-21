@@ -2,9 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { BookOpenCheck, ChartNoAxesColumn, ChevronDown } from "lucide-react";
+import { BookOpenCheck, ChartNoAxesColumn, ChevronDown, UsersRound } from "lucide-react";
 
 const studyTools = [
+  {
+    href: "/nhom-hoc",
+    label: "Nhóm học tập",
+    description: "Cùng bạn bè chia sẻ và luyện đề",
+    Icon: UsersRound,
+  },
   {
     href: "/so-loi-sai",
     label: "Sổ lỗi sai",

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, FilePlus2 } from "lucide-react";
+import { ArrowLeft, FilePlus2, UsersRound } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { MyExamLibrary } from "@/components/my-exam-library";
@@ -37,6 +37,8 @@ export default async function MyExamsPage() {
             <FilePlus2 className="h-4 w-4" /> Tạo đề mới
           </Link>
         </div>
+
+        <Link href="/nhom-hoc" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-orange-100 px-4 py-3 text-sm font-black text-orange-800 hover:bg-orange-200"><UsersRound className="h-4 w-4" /> Chia sẻ đề vào nhóm học tập</Link>
 
         <div className="mt-8">
           <MyExamLibrary

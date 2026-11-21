@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
 
-type AccessDb = Pick<Prisma.TransactionClient, "subscription" | "user" | "examAccessGrant">;
+type AccessDb = Pick<Prisma.TransactionClient, "subscription" | "user" | "examAccessGrant" | "studyGroupExam">;
 
 export async function hasActiveSubscription(userId: string, db: AccessDb = prisma) {
   const count = await db.subscription.count({
@@ -53,7 +53,18 @@ export async function canAccessExam(userId: string, exam: { accessLevel: "FREE" 
     },
   });
 
-  return Boolean(grant);
+  if (grant) return true;
+
+  // Group access is derived from CURRENT membership, never a lasting grant.
+  // Leaving a group or removing an exam immediately revokes future access.
+  const groupShare = await db.studyGroupExam.findFirst({
+    where: {
+      examId: sharedExam.id,
+      group: { members: { some: { userId } } },
+    },
+    select: { examId: true },
+  });
+  return Boolean(groupShare);
 }
 
 export async function canAccessTheory(userId: string, accessLevel: "FREE" | "PRO") {
