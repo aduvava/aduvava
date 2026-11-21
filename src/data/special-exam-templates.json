@@ -1,0 +1,1398 @@
+{
+  "HSA": {
+    "label": "HSA",
+    "durationMinutes": 195,
+    "maxPoints": 150,
+    "scoreMode": "RAW",
+    "source": "https://idt.vnu.edu.vn/tin-tuc/tin-noi-bat/thong-bo-ban-hanh-dang-thuc-va-de-cuong-chi-tiet-bai-thi-hsa-tu-nam-2026",
+    "variants": [
+      {
+        "id": "EN",
+        "label": "Tiếng Anh",
+        "parts": [
+          {
+            "key": "MATH",
+            "label": "Toán học và xử lý số liệu",
+            "durationMinutes": 75,
+            "blocks": [
+              {
+                "key": "MATH_MC",
+                "label": "Trắc nghiệm Toán",
+                "count": 35,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "MATH_SHORT",
+                "label": "Điền đáp án",
+                "count": 15,
+                "questionType": "SHORT_ANSWER",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "LANG",
+            "label": "Văn học – Ngôn ngữ",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "LANG",
+                "label": "Văn học – Ngôn ngữ",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "SELECT",
+            "label": "Tiếng Anh tự chọn",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "EN",
+                "label": "Tiếng Anh",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "LY_HOA_SINH",
+        "label": "Vật lí + Hóa học + Sinh học",
+        "parts": [
+          {
+            "key": "MATH",
+            "label": "Toán học và xử lý số liệu",
+            "durationMinutes": 75,
+            "blocks": [
+              {
+                "key": "MATH_MC",
+                "label": "Trắc nghiệm Toán",
+                "count": 35,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "MATH_SHORT",
+                "label": "Điền đáp án",
+                "count": 15,
+                "questionType": "SHORT_ANSWER",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "LANG",
+            "label": "Văn học – Ngôn ngữ",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "LANG",
+                "label": "Văn học – Ngôn ngữ",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "SELECT",
+            "label": "Khoa học tự chọn",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "SCIENCE",
+                "label": "Khoa học (3 lĩnh vực)",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "LY_HOA_SU",
+        "label": "Vật lí + Hóa học + Lịch sử",
+        "parts": [
+          {
+            "key": "MATH",
+            "label": "Toán học và xử lý số liệu",
+            "durationMinutes": 75,
+            "blocks": [
+              {
+                "key": "MATH_MC",
+                "label": "Trắc nghiệm Toán",
+                "count": 35,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "MATH_SHORT",
+                "label": "Điền đáp án",
+                "count": 15,
+                "questionType": "SHORT_ANSWER",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "LANG",
+            "label": "Văn học – Ngôn ngữ",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "LANG",
+                "label": "Văn học – Ngôn ngữ",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "SELECT",
+            "label": "Khoa học tự chọn",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "SCIENCE",
+                "label": "Khoa học (3 lĩnh vực)",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "LY_HOA_DIA",
+        "label": "Vật lí + Hóa học + Địa lí",
+        "parts": [
+          {
+            "key": "MATH",
+            "label": "Toán học và xử lý số liệu",
+            "durationMinutes": 75,
+            "blocks": [
+              {
+                "key": "MATH_MC",
+                "label": "Trắc nghiệm Toán",
+                "count": 35,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "MATH_SHORT",
+                "label": "Điền đáp án",
+                "count": 15,
+                "questionType": "SHORT_ANSWER",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "LANG",
+            "label": "Văn học – Ngôn ngữ",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "LANG",
+                "label": "Văn học – Ngôn ngữ",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "SELECT",
+            "label": "Khoa học tự chọn",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "SCIENCE",
+                "label": "Khoa học (3 lĩnh vực)",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "LY_SINH_SU",
+        "label": "Vật lí + Sinh học + Lịch sử",
+        "parts": [
+          {
+            "key": "MATH",
+            "label": "Toán học và xử lý số liệu",
+            "durationMinutes": 75,
+            "blocks": [
+              {
+                "key": "MATH_MC",
+                "label": "Trắc nghiệm Toán",
+                "count": 35,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "MATH_SHORT",
+                "label": "Điền đáp án",
+                "count": 15,
+                "questionType": "SHORT_ANSWER",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "LANG",
+            "label": "Văn học – Ngôn ngữ",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "LANG",
+                "label": "Văn học – Ngôn ngữ",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "SELECT",
+            "label": "Khoa học tự chọn",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "SCIENCE",
+                "label": "Khoa học (3 lĩnh vực)",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "LY_SINH_DIA",
+        "label": "Vật lí + Sinh học + Địa lí",
+        "parts": [
+          {
+            "key": "MATH",
+            "label": "Toán học và xử lý số liệu",
+            "durationMinutes": 75,
+            "blocks": [
+              {
+                "key": "MATH_MC",
+                "label": "Trắc nghiệm Toán",
+                "count": 35,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "MATH_SHORT",
+                "label": "Điền đáp án",
+                "count": 15,
+                "questionType": "SHORT_ANSWER",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "LANG",
+            "label": "Văn học – Ngôn ngữ",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "LANG",
+                "label": "Văn học – Ngôn ngữ",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "SELECT",
+            "label": "Khoa học tự chọn",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "SCIENCE",
+                "label": "Khoa học (3 lĩnh vực)",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "LY_SU_DIA",
+        "label": "Vật lí + Lịch sử + Địa lí",
+        "parts": [
+          {
+            "key": "MATH",
+            "label": "Toán học và xử lý số liệu",
+            "durationMinutes": 75,
+            "blocks": [
+              {
+                "key": "MATH_MC",
+                "label": "Trắc nghiệm Toán",
+                "count": 35,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "MATH_SHORT",
+                "label": "Điền đáp án",
+                "count": 15,
+                "questionType": "SHORT_ANSWER",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "LANG",
+            "label": "Văn học – Ngôn ngữ",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "LANG",
+                "label": "Văn học – Ngôn ngữ",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "SELECT",
+            "label": "Khoa học tự chọn",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "SCIENCE",
+                "label": "Khoa học (3 lĩnh vực)",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "HOA_SINH_SU",
+        "label": "Hóa học + Sinh học + Lịch sử",
+        "parts": [
+          {
+            "key": "MATH",
+            "label": "Toán học và xử lý số liệu",
+            "durationMinutes": 75,
+            "blocks": [
+              {
+                "key": "MATH_MC",
+                "label": "Trắc nghiệm Toán",
+                "count": 35,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "MATH_SHORT",
+                "label": "Điền đáp án",
+                "count": 15,
+                "questionType": "SHORT_ANSWER",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "LANG",
+            "label": "Văn học – Ngôn ngữ",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "LANG",
+                "label": "Văn học – Ngôn ngữ",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "SELECT",
+            "label": "Khoa học tự chọn",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "SCIENCE",
+                "label": "Khoa học (3 lĩnh vực)",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "HOA_SINH_DIA",
+        "label": "Hóa học + Sinh học + Địa lí",
+        "parts": [
+          {
+            "key": "MATH",
+            "label": "Toán học và xử lý số liệu",
+            "durationMinutes": 75,
+            "blocks": [
+              {
+                "key": "MATH_MC",
+                "label": "Trắc nghiệm Toán",
+                "count": 35,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "MATH_SHORT",
+                "label": "Điền đáp án",
+                "count": 15,
+                "questionType": "SHORT_ANSWER",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "LANG",
+            "label": "Văn học – Ngôn ngữ",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "LANG",
+                "label": "Văn học – Ngôn ngữ",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "SELECT",
+            "label": "Khoa học tự chọn",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "SCIENCE",
+                "label": "Khoa học (3 lĩnh vực)",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "HOA_SU_DIA",
+        "label": "Hóa học + Lịch sử + Địa lí",
+        "parts": [
+          {
+            "key": "MATH",
+            "label": "Toán học và xử lý số liệu",
+            "durationMinutes": 75,
+            "blocks": [
+              {
+                "key": "MATH_MC",
+                "label": "Trắc nghiệm Toán",
+                "count": 35,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "MATH_SHORT",
+                "label": "Điền đáp án",
+                "count": 15,
+                "questionType": "SHORT_ANSWER",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "LANG",
+            "label": "Văn học – Ngôn ngữ",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "LANG",
+                "label": "Văn học – Ngôn ngữ",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "SELECT",
+            "label": "Khoa học tự chọn",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "SCIENCE",
+                "label": "Khoa học (3 lĩnh vực)",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "SINH_SU_DIA",
+        "label": "Sinh học + Lịch sử + Địa lí",
+        "parts": [
+          {
+            "key": "MATH",
+            "label": "Toán học và xử lý số liệu",
+            "durationMinutes": 75,
+            "blocks": [
+              {
+                "key": "MATH_MC",
+                "label": "Trắc nghiệm Toán",
+                "count": 35,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "MATH_SHORT",
+                "label": "Điền đáp án",
+                "count": 15,
+                "questionType": "SHORT_ANSWER",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "LANG",
+            "label": "Văn học – Ngôn ngữ",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "LANG",
+                "label": "Văn học – Ngôn ngữ",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "SELECT",
+            "label": "Khoa học tự chọn",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "SCIENCE",
+                "label": "Khoa học (3 lĩnh vực)",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "TSA": {
+    "label": "TSA",
+    "durationMinutes": 150,
+    "maxPoints": 100,
+    "scoreMode": "IRT",
+    "source": "https://ts.hust.edu.vn/tin-tuc/gioi-thieu-ve-ky-thi-danh-gia-tu-duy-tsa",
+    "variants": [
+      {
+        "id": "CHUNG",
+        "label": "Bài thi đánh giá tư duy",
+        "parts": [
+          {
+            "key": "MATH",
+            "label": "Tư duy Toán học",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "MATH",
+                "label": "Tư duy Toán học",
+                "count": 40,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER",
+                  "TRUE_FALSE_SET"
+                ]
+              }
+            ]
+          },
+          {
+            "key": "READ",
+            "label": "Tư duy Đọc hiểu",
+            "durationMinutes": 30,
+            "blocks": [
+              {
+                "key": "READ",
+                "label": "Tư duy Đọc hiểu",
+                "count": 20,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER",
+                  "TRUE_FALSE_SET"
+                ]
+              }
+            ]
+          },
+          {
+            "key": "SCIENCE",
+            "label": "Tư duy Khoa học / Giải quyết vấn đề",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "SCIENCE",
+                "label": "Tư duy Khoa học",
+                "count": 40,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER",
+                  "TRUE_FALSE_SET"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "V_ACT": {
+    "label": "V-ACT",
+    "durationMinutes": 150,
+    "maxPoints": 1200,
+    "scoreMode": "IRT",
+    "source": "https://xaydungchinhsach.chinhphu.vn/tuyen-sinh-2026-lich-thi-danh-gia-nang-luc-v-act-cua-dhqg-tp-hcm-119260122173243835.htm",
+    "variants": [
+      {
+        "id": "CHUNG",
+        "label": "Bài thi V-ACT",
+        "parts": [
+          {
+            "key": "LANG",
+            "label": "Sử dụng ngôn ngữ",
+            "durationMinutes": null,
+            "blocks": [
+              {
+                "key": "VI",
+                "label": "Tiếng Việt",
+                "count": 30,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "EN",
+                "label": "Tiếng Anh",
+                "count": 30,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "MATH",
+            "label": "Toán học",
+            "durationMinutes": null,
+            "blocks": [
+              {
+                "key": "MATH",
+                "label": "Toán học",
+                "count": 30,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "SCIENCE",
+            "label": "Tư duy khoa học",
+            "durationMinutes": null,
+            "blocks": [
+              {
+                "key": "LOGIC",
+                "label": "Logic và phân tích số liệu",
+                "count": 12,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "REASON",
+                "label": "Suy luận khoa học",
+                "count": 18,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "QDA": {
+    "label": "QDA",
+    "durationMinutes": 195,
+    "maxPoints": 150,
+    "scoreMode": "RAW",
+    "source": "https://qda.edu.vn/bai-dang/1",
+    "variants": [
+      {
+        "id": "EN",
+        "label": "Tiếng Anh",
+        "parts": [
+          {
+            "key": "MATH",
+            "label": "Toán học và xử lý số liệu",
+            "durationMinutes": 80,
+            "blocks": [
+              {
+                "key": "MATH_MC",
+                "label": "Trắc nghiệm Toán",
+                "count": 35,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "MATH_SHORT",
+                "label": "Điền đáp án",
+                "count": 15,
+                "questionType": "SHORT_ANSWER",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "LANG",
+            "label": "Văn học – Ngôn ngữ",
+            "durationMinutes": 55,
+            "blocks": [
+              {
+                "key": "LANG",
+                "label": "Văn học – Ngôn ngữ",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "SELECT",
+            "label": "Tiếng Anh tự chọn",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "EN",
+                "label": "Tiếng Anh",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "LY_HOA",
+        "label": "Vật lí + Hóa học",
+        "parts": [
+          {
+            "key": "MATH",
+            "label": "Toán học và xử lý số liệu",
+            "durationMinutes": 80,
+            "blocks": [
+              {
+                "key": "MATH_MC",
+                "label": "Trắc nghiệm Toán",
+                "count": 35,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "MATH_SHORT",
+                "label": "Điền đáp án",
+                "count": 15,
+                "questionType": "SHORT_ANSWER",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "LANG",
+            "label": "Văn học – Ngôn ngữ",
+            "durationMinutes": 55,
+            "blocks": [
+              {
+                "key": "LANG",
+                "label": "Văn học – Ngôn ngữ",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "SELECT",
+            "label": "Khoa học",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "SELECT_0",
+                "label": "Vật lí",
+                "count": 25,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
+              },
+              {
+                "key": "SELECT_1",
+                "label": "Hóa học",
+                "count": 25,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "HOA_SINH",
+        "label": "Hóa học + Sinh học",
+        "parts": [
+          {
+            "key": "MATH",
+            "label": "Toán học và xử lý số liệu",
+            "durationMinutes": 80,
+            "blocks": [
+              {
+                "key": "MATH_MC",
+                "label": "Trắc nghiệm Toán",
+                "count": 35,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "MATH_SHORT",
+                "label": "Điền đáp án",
+                "count": 15,
+                "questionType": "SHORT_ANSWER",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "LANG",
+            "label": "Văn học – Ngôn ngữ",
+            "durationMinutes": 55,
+            "blocks": [
+              {
+                "key": "LANG",
+                "label": "Văn học – Ngôn ngữ",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "SELECT",
+            "label": "Khoa học",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "SELECT_0",
+                "label": "Hóa học",
+                "count": 25,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
+              },
+              {
+                "key": "SELECT_1",
+                "label": "Sinh học",
+                "count": 25,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "LY_SINH",
+        "label": "Vật lí + Sinh học",
+        "parts": [
+          {
+            "key": "MATH",
+            "label": "Toán học và xử lý số liệu",
+            "durationMinutes": 80,
+            "blocks": [
+              {
+                "key": "MATH_MC",
+                "label": "Trắc nghiệm Toán",
+                "count": 35,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "MATH_SHORT",
+                "label": "Điền đáp án",
+                "count": 15,
+                "questionType": "SHORT_ANSWER",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "LANG",
+            "label": "Văn học – Ngôn ngữ",
+            "durationMinutes": 55,
+            "blocks": [
+              {
+                "key": "LANG",
+                "label": "Văn học – Ngôn ngữ",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "SELECT",
+            "label": "Khoa học",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "SELECT_0",
+                "label": "Vật lí",
+                "count": 25,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
+              },
+              {
+                "key": "SELECT_1",
+                "label": "Sinh học",
+                "count": 25,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "SU_DIA",
+        "label": "Lịch sử + Địa lí",
+        "parts": [
+          {
+            "key": "MATH",
+            "label": "Toán học và xử lý số liệu",
+            "durationMinutes": 80,
+            "blocks": [
+              {
+                "key": "MATH_MC",
+                "label": "Trắc nghiệm Toán",
+                "count": 35,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "MATH_SHORT",
+                "label": "Điền đáp án",
+                "count": 15,
+                "questionType": "SHORT_ANSWER",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "LANG",
+            "label": "Văn học – Ngôn ngữ",
+            "durationMinutes": 55,
+            "blocks": [
+              {
+                "key": "LANG",
+                "label": "Văn học – Ngôn ngữ",
+                "count": 50,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          },
+          {
+            "key": "SELECT",
+            "label": "Khoa học",
+            "durationMinutes": 60,
+            "blocks": [
+              {
+                "key": "SELECT_0",
+                "label": "Lịch sử",
+                "count": 25,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE"
+                ]
+              },
+              {
+                "key": "SELECT_1",
+                "label": "Địa lí",
+                "count": 25,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "DGNL_BCA": {
+    "label": "ĐGNL BCA",
+    "durationMinutes": 180,
+    "maxPoints": 100,
+    "scoreMode": "ESSAY_PENDING",
+    "source": "https://hvcsnd.bocongan.gov.vn/bo-cong-an-cong-bo-de-minh-hoa-ky-thi-danh-gia-tuyen-sinh-cong-an-nhan-dan-nam-2026-13996",
+    "variants": [
+      {
+        "id": "CA1",
+        "label": "Vật lí (CA1)",
+        "parts": [
+          {
+            "key": "ESSAY",
+            "label": "Tự luận bắt buộc",
+            "durationMinutes": null,
+            "blocks": [
+              {
+                "key": "ESSAY",
+                "label": "Nghị luận xã hội",
+                "count": 1,
+                "questionType": "ESSAY",
+                "pointsPerQuestion": 25
+              }
+            ]
+          },
+          {
+            "key": "CORE",
+            "label": "Trắc nghiệm bắt buộc",
+            "durationMinutes": null,
+            "blocks": [
+              {
+                "key": "MATH",
+                "label": "Toán học",
+                "count": 35,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "HISTORY",
+                "label": "Lịch sử",
+                "count": 10,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "EN",
+                "label": "Tiếng Anh",
+                "count": 20,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 0.75
+              }
+            ]
+          },
+          {
+            "key": "SELECT",
+            "label": "Trắc nghiệm tự chọn",
+            "durationMinutes": null,
+            "blocks": [
+              {
+                "key": "SELECT",
+                "label": "Vật lí",
+                "count": 15,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "CA2",
+        "label": "Hóa học (CA2)",
+        "parts": [
+          {
+            "key": "ESSAY",
+            "label": "Tự luận bắt buộc",
+            "durationMinutes": null,
+            "blocks": [
+              {
+                "key": "ESSAY",
+                "label": "Nghị luận xã hội",
+                "count": 1,
+                "questionType": "ESSAY",
+                "pointsPerQuestion": 25
+              }
+            ]
+          },
+          {
+            "key": "CORE",
+            "label": "Trắc nghiệm bắt buộc",
+            "durationMinutes": null,
+            "blocks": [
+              {
+                "key": "MATH",
+                "label": "Toán học",
+                "count": 35,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "HISTORY",
+                "label": "Lịch sử",
+                "count": 10,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "EN",
+                "label": "Tiếng Anh",
+                "count": 20,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 0.75
+              }
+            ]
+          },
+          {
+            "key": "SELECT",
+            "label": "Trắc nghiệm tự chọn",
+            "durationMinutes": null,
+            "blocks": [
+              {
+                "key": "SELECT",
+                "label": "Hóa học",
+                "count": 15,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "CA3",
+        "label": "Sinh học (CA3)",
+        "parts": [
+          {
+            "key": "ESSAY",
+            "label": "Tự luận bắt buộc",
+            "durationMinutes": null,
+            "blocks": [
+              {
+                "key": "ESSAY",
+                "label": "Nghị luận xã hội",
+                "count": 1,
+                "questionType": "ESSAY",
+                "pointsPerQuestion": 25
+              }
+            ]
+          },
+          {
+            "key": "CORE",
+            "label": "Trắc nghiệm bắt buộc",
+            "durationMinutes": null,
+            "blocks": [
+              {
+                "key": "MATH",
+                "label": "Toán học",
+                "count": 35,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "HISTORY",
+                "label": "Lịch sử",
+                "count": 10,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "EN",
+                "label": "Tiếng Anh",
+                "count": 20,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 0.75
+              }
+            ]
+          },
+          {
+            "key": "SELECT",
+            "label": "Trắc nghiệm tự chọn",
+            "durationMinutes": null,
+            "blocks": [
+              {
+                "key": "SELECT",
+                "label": "Sinh học",
+                "count": 15,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "CA4",
+        "label": "Địa lí (CA4)",
+        "parts": [
+          {
+            "key": "ESSAY",
+            "label": "Tự luận bắt buộc",
+            "durationMinutes": null,
+            "blocks": [
+              {
+                "key": "ESSAY",
+                "label": "Nghị luận xã hội",
+                "count": 1,
+                "questionType": "ESSAY",
+                "pointsPerQuestion": 25
+              }
+            ]
+          },
+          {
+            "key": "CORE",
+            "label": "Trắc nghiệm bắt buộc",
+            "durationMinutes": null,
+            "blocks": [
+              {
+                "key": "MATH",
+                "label": "Toán học",
+                "count": 35,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "HISTORY",
+                "label": "Lịch sử",
+                "count": 10,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              },
+              {
+                "key": "EN",
+                "label": "Tiếng Anh",
+                "count": 20,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 0.75
+              }
+            ]
+          },
+          {
+            "key": "SELECT",
+            "label": "Trắc nghiệm tự chọn",
+            "durationMinutes": null,
+            "blocks": [
+              {
+                "key": "SELECT",
+                "label": "Địa lí",
+                "count": 15,
+                "questionType": "SINGLE_CHOICE",
+                "pointsPerQuestion": 1
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
