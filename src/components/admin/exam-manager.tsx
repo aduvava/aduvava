@@ -183,7 +183,7 @@ export function ExamManager() {
       family: draft.specialExamTrack ? "DGNL" : subject.family, type: typeForContentMode(draft.contentMode, draft.type), contentMode: draft.contentMode, accessLevel: draft.accessLevel,
       year: draft.year, durationMinutes: draft.durationMinutes,
       educationLevel: draft.educationLevel, grade: draft.grade, specialExamTrack: draft.specialExamTrack,
-      examStructure: draft.specialExamTrack ? { variantId: draft.specialExamVariant } : null, targetScore: score,
+      ...(draft.specialExamTrack ? { examStructure: { variantId: draft.specialExamVariant } } : {}), targetScore: score,
       subjectId: draft.subjectId, isPublished: draft.isPublished,
       code: editing ? draft.code.trim() : "ADMIN-" + suffix.toUpperCase(),
       slug: editing ? draft.slug.trim() : (slugify(draft.title) || "de-thi") + "-" + suffix,
