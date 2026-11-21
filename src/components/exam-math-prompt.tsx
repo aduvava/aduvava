@@ -101,11 +101,14 @@ export function ExamMathPrompt({
           setResult({ source: source.src, value: "", mode: "text" });
           return;
         }
-        // All sample HSA multiple-choice scans have a marked answer; a scan
-        // without a detectable mark must not replace a valid typed question.
-        const safeImage = kind === "SINGLE_CHOICE"
-          ? canvas.toDataURL("image/webp", 0.92)
-          : source.src;
+        // Hide the old printed "Câu N" heading from the PDF photograph.
+        // The web has its own correct question number, which may differ when
+        // the source worksheet had been regrouped for an official HSA paper.
+        if (looksLikeScannedQuestion) {
+          context.fillStyle = "#ffffff";
+          context.fillRect(0, 0, Math.min(230, canvas.width), Math.min(28, canvas.height));
+        }
+        const safeImage = canvas.toDataURL("image/webp", 0.92);
         setResult({ source: source.src, value: safeImage, mode: "scan" });
       } catch {
         // Do not display the original screenshot as it might expose the key.
