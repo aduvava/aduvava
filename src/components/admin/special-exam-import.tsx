@@ -123,6 +123,7 @@ export function SpecialExamImport() {
         let rows: readonly (readonly unknown[])[] = [];
         let passages: readonly (readonly unknown[])[] | undefined;
         let embedded = new Map<number, string[]>();
+        let passageEmbedded = new Map<number, string[]>();
         if (file.name.toLowerCase().endsWith(".xlsx")) {
           const { default: readWorkbook } = await import("read-excel-file/browser");
           const sheets = await readWorkbook(file);
@@ -131,14 +132,20 @@ export function SpecialExamImport() {
             ?? sheets[0];
           if (!selectedSheet) throw new Error("File không có sheet chứa câu hỏi.");
           rows = selectedSheet.data;
-          passages = sheets.find((sheet) => fieldName(sheet.sheet) === "baidoc")?.data;
+          const passageSheet = sheets.find((sheet) => fieldName(sheet.sheet) === "baidoc");
+          passages = passageSheet?.data;
           const imageResult = await extractXlsxEmbeddedImages(file, selectedSheet.sheet);
           embedded = imageResult.byRow;
           notes = [...imageResult.warnings];
+          if (passageSheet && passageSheet.sheet !== selectedSheet.sheet) {
+            const passageImageResult = await extractXlsxEmbeddedImages(file, passageSheet.sheet);
+            passageEmbedded = passageImageResult.byRow;
+            notes.push(...passageImageResult.warnings.map((warning) => "BAI_DOC: " + warning));
+          }
         } else {
           rows = parseDelimited(await file.text(), file.name.toLowerCase().endsWith(".tsv") ? "\t" : ",");
         }
-        const parsed = parseAssessmentRows(rows, blocks, passages, embedded);
+        const parsed = parseAssessmentRows(rows, blocks, passages, embedded, passageEmbedded);
         imported = parsed.questions;
         notes.push(...parsed.warnings);
       } else {
