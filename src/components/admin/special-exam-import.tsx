@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getAssessmentRule, getAssessmentVariant, flattenAssessmentBlocks, assessmentQuestionCount } from "@/lib/special-exam-rules";
 import { parseDelimited, rowsToObjects } from "@/lib/spreadsheet-import";
 import { extractXlsxEmbeddedImages } from "@/lib/office-image-import";
+import { isSafeRichImageUrl } from "@/lib/rich-image-security";
 
 type Track = "HSA" | "TSA" | "V_ACT" | "QDA" | "DGNL_BCA";
 type ImportQuestion = {
@@ -156,6 +157,11 @@ export function SpecialExamImport() {
               ? "SHORT_ANSWER" : block.questionType)).toUpperCase() as ImportQuestion["type"];
           const rawPrompt = readField(row, ["question", "prompt", "câu hỏi"]);
           const extra = embedded.get(index + 2) ?? [];
+          const imageLink = readField(row, ["image", "ảnh", "hình ảnh", "image url"]);
+          if (imageLink) {
+            if (isSafeRichImageUrl(imageLink)) extra.push(imageLink);
+            else notes.push("Dòng " + (index + 2) + ": URL ảnh ngoài không được chèn để tránh mất ảnh hoặc theo dõi người học.");
+          }
           const prompt = rawPrompt + extra.map((image) => "\n![Hình minh họa](" + image + ")").join("");
           const passage = readField(row, ["passage", "ngữ liệu", "bài đọc"]);
           const explanation = readField(row, ["explanation", "giải thích", "lời giải"]);
@@ -174,6 +180,9 @@ export function SpecialExamImport() {
           }
           return question;
         });
+        if (embedded.size > 0 && rows.length - 1 !== imported.length) {
+          notes.push("Excel có dòng trống hoặc không đúng mẫu; hãy đối chiếu hình và câu hỏi trước khi xuất bản.");
+        }
         for (const rowNum of embedded.keys()) {
           if (rowNum - 2 >= imported.length) notes.push("Ảnh ở dòng " + rowNum + " không có câu hỏi tương ứng.");
         }
