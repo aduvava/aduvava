@@ -1,5 +1,5 @@
 import { rowsToObjects } from "@/lib/spreadsheet-import";
-import { isSafeRichImageUrl } from "@/lib/rich-image-security";
+import { isSafeRichImageUrl, fitsExamRichField } from "@/lib/rich-image-security";
 import type { AssessmentQuestionType } from "@/lib/special-exam-rules";
 
 export type ImportedAssessmentQuestion = {
@@ -66,21 +66,38 @@ export function parseAssessmentRows(
   blocks: readonly AssessmentSheetBlock[],
   passageRows?: readonly (readonly unknown[])[],
   embedded = new Map<number, string[]>(),
+  passageEmbedded = new Map<number, string[]>(),
 ): { questions: ImportedAssessmentQuestion[]; warnings: string[] } {
   if (!rows.length) throw new Error("File không chứa dữ liệu câu hỏi.");
   const passages = new Map<string, string>();
   const warnings: string[] = [];
 
   if (passageRows) {
+    const usedImageRows = new Set<number>();
     for (const [index, row] of rowsToObjects(passageRows).entries()) {
-      if (!Object.values(row).some((value) => String(value ?? "").trim())) continue;
+      const rowNumber = index + 2;
+      const images = passageEmbedded.get(rowNumber) ?? [];
+      if (!Object.values(row).some((value) => String(value ?? "").trim()) && !images.length) continue;
       const key = readField(row, ["group_id", "group id", "mã bài đọc"]).toUpperCase();
       const passage = readField(row, ["passage", "nội dung bài đọc", "ngữ liệu", "đoạn văn"]);
-      if (!key || !passage) throw new Error("BAI_DOC dòng " + (index + 2) + " thiếu group_id hoặc passage.");
+      if (!key || (!passage && !images.length)) {
+        throw new Error("BAI_DOC dòng " + rowNumber + " thiếu group_id hoặc nội dung bài đọc.");
+      }
       if (passages.has(key)) throw new Error("BAI_DOC bị trùng group_id: " + key);
       const title = readField(row, ["title", "tiêu đề"]);
       const instruction = readField(row, ["instruction", "hướng dẫn", "yêu cầu"]);
-      passages.set(key, [title, instruction, passage].filter(Boolean).join("\n\n"));
+      const richPassage = [title, instruction, passage, ...images.map((url) =>
+        "![Hình minh họa](" + url + ")")].filter(Boolean).join("\n\n");
+      if (!fitsExamRichField(richPassage, 50000)) {
+        throw new Error("BAI_DOC dòng " + rowNumber + " có quá nhiều dữ liệu ảnh hoặc văn bản. Hãy giảm dung lượng ảnh trong file.");
+      }
+      passages.set(key, richPassage);
+      if (images.length) usedImageRows.add(rowNumber);
+    }
+    for (const rowNumber of passageEmbedded.keys()) {
+      if (!usedImageRows.has(rowNumber)) {
+        warnings.push("Ảnh BAI_DOC ở dòng " + rowNumber + " không gắn với bài đọc hợp lệ.");
+      }
     }
   }
 
