@@ -128,6 +128,12 @@ export function ExamManager() {
   }
   async function uploadQuestions(file?: File) {
     if (!file) return;
+    if (draft.specialExamTrack) {
+      setFileQuestions(null);
+      setSelectedFileName(file.name);
+      setMessage("Đề " + draft.specialExamTrack + " có câu hỏi ngoài dạng A–D. Hãy sử dụng trang Nhập đề HSA · TSA · V-ACT · QDA · BCA.");
+      return;
+    }
     setFileQuestions(null);
     setSelectedFileName(file.name);
     setParsingFile(true);
@@ -137,7 +143,10 @@ export function ExamManager() {
       setFileQuestions(parsed);
       setMessage(`Đã đọc ${parsed.length} câu hỏi. Kiểm tra lại thông tin rồi tạo đề.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Không đọc được file. Hãy kiểm tra định dạng.");
+      const detail = error instanceof Error ? error.message : "Không đọc được file. Hãy kiểm tra định dạng.";
+      setMessage(/(?:hsa|tsa|v.?act|qda|dgnl|bca)/i.test(file.name) && /cần đủ nội dung, 4 phương án/i.test(detail)
+        ? detail + " Đề kỳ thi riêng có câu điền số: vui lòng nhập tại trang Nhập đề HSA · TSA · V-ACT · QDA · BCA."
+        : detail);
     } finally {
       setParsingFile(false);
     }
@@ -164,6 +173,7 @@ export function ExamManager() {
     const subject = subjects.find((item) => item.id === draft.subjectId);
     if (!subject) return setMessage("Vui lòng chọn môn học hợp lệ.");
     if (!draft.title.trim()) return setMessage("Vui lòng nhập tên đề thi.");
+    if (draft.specialExamTrack && !editing) return setMessage("Hãy sử dụng trang Nhập đề HSA · TSA · V-ACT · QDA · BCA để nhập trọn bộ câu hỏi.");
     if (draft.specialExamTrack && draft.educationLevel !== null) return setMessage("Hãy chọn cấp học: Không phân loại cho kỳ thi riêng.");
     if (draft.specialExamTrack && !draft.specialExamVariant) return setMessage("Hãy chọn tổ hợp/mã bài thi ĐGNL.");
     if (draft.specialExamTrack && draft.contentMode !== "EXAM") return setMessage("Đề ĐGNL đầy đủ phải thuộc mục Theo kỳ thi.");
@@ -347,6 +357,13 @@ export function ExamManager() {
                 </span>
               </label>
             ) : null}
+            {draft.specialExamTrack && !editing ? (
+              <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 sm:col-span-2">
+                <p className="text-sm font-bold text-blue-950">Đề {draft.specialExamTrack}: hãy dùng chức năng nhập đề chuyên dụng</p>
+                <p className="mt-1 text-xs leading-5 text-blue-900">Trang tạo đề thường chỉ hỗ trợ trắc nghiệm A–D. Đề HSA có câu điền số phải nhập bằng công cụ kỳ thi riêng để giữ đúng đáp án, hình ảnh và cấu trúc.</p>
+                <Link href="/admin/dgnl-import" className="mt-3 inline-flex rounded-lg bg-blue-700 px-4 py-2 text-xs font-bold text-white hover:bg-blue-800">Mở trang nhập đề HSA / TSA / ĐGNL</Link>
+              </div>
+            ) : null}
             <label className={label}>Loại đề
               <select className={field} value={draft.contentMode} onChange={(e) => {
                 const next = e.target.value as ExamContentMode;
@@ -380,7 +397,7 @@ export function ExamManager() {
               </div>
             </details>
           ) : null}
-          {!editing ? (
+          {!editing && !draft.specialExamTrack ? (
             <div className="rounded-xl border border-dashed border-orange-300 bg-orange-50/40 p-4">
               <label htmlFor="admin-exam-upload" className="flex cursor-pointer items-center gap-2 text-sm font-black text-orange-700">
                 <UploadCloud className="h-5 w-5" /> Tải file câu hỏi (không bắt buộc)
@@ -405,9 +422,15 @@ export function ExamManager() {
             <input type="checkbox" className="mt-1" checked={draft.isPublished} onChange={(e) => setValue("isPublished", e.target.checked)} />
             <span>Xuất bản cho học viên <span className="block text-xs font-normal text-slate-500">Bỏ chọn để ẩn đề.</span></span>
           </label>
-          <button type="submit" disabled={busy || parsingFile} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-black text-white hover:bg-orange-600 disabled:opacity-50">
-            <Plus className="h-4 w-4" /> {busy ? "Đang xử lý..." : editing ? "Lưu thay đổi" : "Tạo đề thi"}
-          </button>
+          {!editing && draft.specialExamTrack ? (
+            <Link href="/admin/dgnl-import" className="flex min-h-12 items-center justify-center rounded-xl bg-blue-700 px-5 py-3 text-sm font-black text-white hover:bg-blue-800">
+              Nhập đề {draft.specialExamTrack} đúng cấu trúc
+            </Link>
+          ) : (
+            <button type="submit" disabled={busy || parsingFile} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-black text-white hover:bg-orange-600 disabled:opacity-50">
+              <Plus className="h-4 w-4" /> {busy ? "Đang xử lý..." : editing ? "Lưu thay đổi" : "Tạo đề thi"}
+            </button>
+          )
         </form>
         {message ? <p role="status" className="mt-4 rounded-xl bg-orange-50 p-3 text-sm font-bold leading-6 text-orange-900">{message}</p> : null}
       </section>
