@@ -157,6 +157,13 @@ function parseAdminExamQuestions(raw, { educationLevel, subjectSlug, durationMin
   });
 
   if (assessment) {
+    for (const block of assessment.blocks) {
+      if (block.requiredShortAnswers === undefined) continue;
+      const actual = questions.slice(block.start - 1, block.end).filter((question) => question.type === "SHORT_ANSWER").length;
+      if (actual !== block.requiredShortAnswers) {
+        throw new Error(block.label + " phải có đúng " + block.requiredShortAnswers + " câu điền đáp án (hiện có " + actual + ").");
+      }
+    }
     const total = questions.reduce((sum, question) => sum + question.points, 0);
     const expected = assessment.scoreMode === "IRT" ? assessment.questionCount : assessment.maxPoints;
     if (Math.abs(total - expected) > 0.001) {
