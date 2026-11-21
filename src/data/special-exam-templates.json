@@ -20,16 +20,25 @@
                 "label": "Trắc nghiệm Toán",
                 "count": 35,
                 "questionType": "SINGLE_CHOICE",
-                "pointsPerQuestion": 1
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
               },
               {
                 "key": "MATH_SHORT",
                 "label": "Điền đáp án",
                 "count": 15,
                 "questionType": "SHORT_ANSWER",
-                "pointsPerQuestion": 1
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
               }
-            ]
+            ],
+            "requiredShortAnswers": 15
           },
           {
             "key": "LANG",
@@ -75,16 +84,25 @@
                 "label": "Trắc nghiệm Toán",
                 "count": 35,
                 "questionType": "SINGLE_CHOICE",
-                "pointsPerQuestion": 1
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
               },
               {
                 "key": "MATH_SHORT",
                 "label": "Điền đáp án",
                 "count": 15,
                 "questionType": "SHORT_ANSWER",
-                "pointsPerQuestion": 1
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
               }
-            ]
+            ],
+            "requiredShortAnswers": 15
           },
           {
             "key": "LANG",
@@ -134,16 +152,25 @@
                 "label": "Trắc nghiệm Toán",
                 "count": 35,
                 "questionType": "SINGLE_CHOICE",
-                "pointsPerQuestion": 1
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
               },
               {
                 "key": "MATH_SHORT",
                 "label": "Điền đáp án",
                 "count": 15,
                 "questionType": "SHORT_ANSWER",
-                "pointsPerQuestion": 1
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
               }
-            ]
+            ],
+            "requiredShortAnswers": 15
           },
           {
             "key": "LANG",
@@ -193,16 +220,25 @@
                 "label": "Trắc nghiệm Toán",
                 "count": 35,
                 "questionType": "SINGLE_CHOICE",
-                "pointsPerQuestion": 1
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
               },
               {
                 "key": "MATH_SHORT",
                 "label": "Điền đáp án",
                 "count": 15,
                 "questionType": "SHORT_ANSWER",
-                "pointsPerQuestion": 1
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
               }
-            ]
+            ],
+            "requiredShortAnswers": 15
           },
           {
             "key": "LANG",
@@ -252,16 +288,25 @@
                 "label": "Trắc nghiệm Toán",
                 "count": 35,
                 "questionType": "SINGLE_CHOICE",
-                "pointsPerQuestion": 1
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
               },
               {
                 "key": "MATH_SHORT",
                 "label": "Điền đáp án",
                 "count": 15,
                 "questionType": "SHORT_ANSWER",
-                "pointsPerQuestion": 1
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
               }
-            ]
+            ],
+            "requiredShortAnswers": 15
           },
           {
             "key": "LANG",
@@ -311,16 +356,25 @@
                 "label": "Trắc nghiệm Toán",
                 "count": 35,
                 "questionType": "SINGLE_CHOICE",
-                "pointsPerQuestion": 1
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
               },
               {
                 "key": "MATH_SHORT",
                 "label": "Điền đáp án",
                 "count": 15,
                 "questionType": "SHORT_ANSWER",
-                "pointsPerQuestion": 1
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
               }
-            ]
+            ],
+            "requiredShortAnswers": 15
           },
           {
             "key": "LANG",
@@ -370,16 +424,25 @@
                 "label": "Trắc nghiệm Toán",
                 "count": 35,
                 "questionType": "SINGLE_CHOICE",
-                "pointsPerQuestion": 1
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
               },
               {
                 "key": "MATH_SHORT",
                 "label": "Điền đáp án",
                 "count": 15,
                 "questionType": "SHORT_ANSWER",
-                "pointsPerQuestion": 1
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
               }
-            ]
+            ],
+            "requiredShortAnswers": 15
           },
           {
             "key": "LANG",
@@ -429,16 +492,25 @@
                 "label": "Trắc nghiệm Toán",
                 "count": 35,
                 "questionType": "SINGLE_CHOICE",
-                "pointsPerQuestion": 1
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
               },
               {
                 "key": "MATH_SHORT",
                 "label": "Điền đáp án",
                 "count": 15,
                 "questionType": "SHORT_ANSWER",
-                "pointsPerQuestion": 1
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
               }
-            ]
+            ],
+            "requiredShortAnswers": 15
           },
           {
             "key": "LANG",
@@ -488,16 +560,25 @@
                 "label": "Trắc nghiệm Toán",
                 "count": 35,
                 "questionType": "SINGLE_CHOICE",
-                "pointsPerQuestion": 1
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
               },
               {
                 "key": "MATH_SHORT",
                 "label": "Điền đáp án",
                 "count": 15,
                 "questionType": "SHORT_ANSWER",
-                "pointsPerQuestion": 1
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
               }
-            ]
+            ],
+            "requiredShortAnswers": 15
           },
           {
             "key": "LANG",
@@ -547,16 +628,25 @@
                 "label": "Trắc nghiệm Toán",
                 "count": 35,
                 "questionType": "SINGLE_CHOICE",
-                "pointsPerQuestion": 1
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
               },
               {
                 "key": "MATH_SHORT",
                 "label": "Điền đáp án",
                 "count": 15,
                 "questionType": "SHORT_ANSWER",
-                "pointsPerQuestion": 1
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
               }
-            ]
+            ],
+            "requiredShortAnswers": 15
           },
           {
             "key": "LANG",
@@ -606,16 +696,25 @@
                 "label": "Trắc nghiệm Toán",
                 "count": 35,
                 "questionType": "SINGLE_CHOICE",
-                "pointsPerQuestion": 1
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
               },
               {
                 "key": "MATH_SHORT",
                 "label": "Điền đáp án",
                 "count": 15,
                 "questionType": "SHORT_ANSWER",
-                "pointsPerQuestion": 1
+                "pointsPerQuestion": 1,
+                "allowedTypes": [
+                  "SINGLE_CHOICE",
+                  "SHORT_ANSWER"
+                ]
               }
-            ]
+            ],
+            "requiredShortAnswers": 15
           },
           {
             "key": "LANG",
