@@ -28,6 +28,9 @@ type ExamRunnerProps = {
   subjectSlug?: string;
   subjectName?: string;
   initialSeconds: number;
+  initialElapsedSeconds?: number;
+  timedSections?: Array<{ key: string; label: string; start: number; end: number; durationMinutes: number }>;
+  specialExamTrack?: string | null;
   questions: RunnerQuestion[];
   initialAnswers: RunnerAnswer[];
   submitEffect?: string | null;
@@ -87,11 +90,12 @@ function SubmitEffectOverlay({ effect }: { effect?: string | null }) {
   );
 }
 
-export function ExamRunner({ attemptId, mode, examTitle, examDescription, subjectSlug, subjectName, initialSeconds, questions, initialAnswers, submitEffect, helpers = [] }: ExamRunnerProps) {
+export function ExamRunner({ attemptId, mode, examTitle, examDescription, subjectSlug, subjectName, initialSeconds, initialElapsedSeconds = 0, timedSections = [], specialExamTrack = null, questions, initialAnswers, submitEffect, helpers = [] }: ExamRunnerProps) {
   const router = useRouter();
   const [index, setIndex] = useState(0);
   const [feedback, setFeedback] = useState<Record<string, { correctOptions: { id: string; label: string }[]; correctText: string | null; explanation: string | null }>>({});
   const [secondsLeft, setSecondsLeft] = useState(initialSeconds);
+  const [elapsedSeconds, setElapsedSeconds] = useState(initialElapsedSeconds);
   const [answers, setAnswers] = useState<Record<string, unknown>>(() => Object.fromEntries(initialAnswers.map((answer) => [answer.questionId, answer.value])));
   const answersRef = useRef<Record<string, unknown>>(answers);
   const dirtyRef = useRef<Set<string>>(new Set());
@@ -105,8 +109,18 @@ export function ExamRunner({ attemptId, mode, examTitle, examDescription, subjec
   const [helperStatus, setHelperStatus] = useState("");
   const [openedPassage, setOpenedPassage] = useState<string | null>(null);
   const current = questions[index];
-  const isLiteratureExam = subjectSlug === "ngu-van" || subjectName?.toLocaleLowerCase("vi").includes("ngữ văn");
-  const isEnglishExam = subjectSlug === "tieng-anh" || Boolean(subjectName?.toLocaleLowerCase("vi").includes("tiếng anh"));
+  let cumulativeSectionSeconds = 0;
+  let sectionSecondsRemaining = 0;
+  const activeTimedSection = timedSections.find((section, sectionIndex) => {
+    cumulativeSectionSeconds += section.durationMinutes * 60;
+    const active = elapsedSeconds < cumulativeSectionSeconds || sectionIndex === timedSections.length - 1;
+    if (active) sectionSecondsRemaining = Math.max(0, cumulativeSectionSeconds - elapsedSeconds);
+    return active;
+  });
+  const isQuestionUnlocked = (questionIndex: number) =>
+    !activeTimedSection || (questionIndex + 1 >= activeTimedSection.start && questionIndex + 1 <= activeTimedSection.end);
+  const isLiteratureExam = !specialExamTrack && (subjectSlug === "ngu-van" || Boolean(subjectName?.toLocaleLowerCase("vi").includes("ngữ văn")));
+  const isEnglishExam = !specialExamTrack && (subjectSlug === "tieng-anh" || Boolean(subjectName?.toLocaleLowerCase("vi").includes("tiếng anh")));
   const hasReadingPassages = isEnglishExam && questions.some((question) => Boolean(question.passage?.trim()));
   const selectedPassage = questions[index]?.passage?.trim() || null;
 
@@ -118,13 +132,14 @@ export function ExamRunner({ attemptId, mode, examTitle, examDescription, subjec
   const groups = useMemo(() => {
     const result = new Map<string, Array<{ question: RunnerQuestion; globalIndex: number }>>();
     questions.forEach((question, globalIndex) => {
-      const label = getQuestionPartLabel(question.type);
+      const section = timedSections.find((part) => globalIndex + 1 >= part.start && globalIndex + 1 <= part.end);
+      const label = section?.label ?? getQuestionPartLabel(question.type);
       const items = result.get(label) ?? [];
       items.push({ question, globalIndex });
       result.set(label, items);
     });
     return Array.from(result.entries());
-  }, [questions]);
+  }, [questions, timedSections]);
   const readingText = useMemo(() => {
     const passages = Array.from(new Set(questions.map((question) => question.passage?.trim()).filter(Boolean))) as string[];
     if (passages.length) {
@@ -141,6 +156,7 @@ export function ExamRunner({ attemptId, mode, examTitle, examDescription, subjec
 
   useEffect(() => {
     const timer = window.setInterval(() => {
+      setElapsedSeconds((value) => value + 1);
       setSecondsLeft((value) => {
         if (value <= 1) {
           window.clearInterval(timer);
@@ -152,6 +168,13 @@ export function ExamRunner({ attemptId, mode, examTitle, examDescription, subjec
     }, 1000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!activeTimedSection) return;
+    if (index + 1 < activeTimedSection.start || index + 1 > activeTimedSection.end) {
+      setIndex(activeTimedSection.start - 1);
+    }
+  }, [activeTimedSection?.start, activeTimedSection?.end, index]);
 
   useEffect(() => {
     const autosave = window.setInterval(() => {
@@ -382,7 +405,7 @@ export function ExamRunner({ attemptId, mode, examTitle, examDescription, subjec
             <div className="mx-auto max-w-4xl space-y-5">
               {questions.map((question, questionIndex) => {
                 const value = answers[question.id];
-                const partLabel = getQuestionPartLabel(question.type);
+                const partLabel = activeTimedSection?.label ?? getQuestionPartLabel(question.type);
                 return (
                   <article key={question.id} className="rounded-[1.75rem] border border-orange-100 bg-white p-4 shadow-sm sm:p-5">
                     <div className="flex flex-wrap items-start justify-between gap-4">
@@ -528,6 +551,13 @@ export function ExamRunner({ attemptId, mode, examTitle, examDescription, subjec
         </div>
       </div>
       {helperBar}
+      {activeTimedSection ? (
+        <div className="border-b border-blue-100 bg-blue-50 px-4 py-3 text-center text-sm font-bold text-blue-900">
+          {activeTimedSection.label} · Câu {activeTimedSection.start}–{activeTimedSection.end} ·
+          Còn {Math.floor(sectionSecondsRemaining / 60)}:{String(sectionSecondsRemaining % 60).padStart(2, "0")} cho phần này.
+          <span className="ml-2 font-medium">Hết giờ không thể quay lại phần trước.</span>
+        </div>
+      ) : null}
       <details className="mx-4 mt-3 rounded-2xl border border-orange-100 bg-orange-50/80 lg:hidden">
         <summary className="flex min-h-12 cursor-pointer items-center justify-between gap-3 px-4 py-3 text-sm font-black text-slate-800">
           <span>Chuyển nhanh câu hỏi</span>
@@ -540,6 +570,7 @@ export function ExamRunner({ attemptId, mode, examTitle, examDescription, subjec
               <button
                 key={question.id}
                 type="button"
+                disabled={!isQuestionUnlocked(questionIndex)}
                 aria-label={"Đến câu " + (questionIndex + 1) + (answered ? ", đã làm" : ", chưa làm")}
                 onClick={(event) => {
                   setIndex(questionIndex);
@@ -549,7 +580,7 @@ export function ExamRunner({ attemptId, mode, examTitle, examDescription, subjec
                   });
                 }}
                 className={clsx(
-                  "relative min-h-11 rounded-xl border text-sm font-black transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500",
+                  "relative min-h-11 rounded-xl border text-sm font-black transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500 disabled:cursor-not-allowed disabled:opacity-30",
                   questionIndex === index && "border-2 border-slate-900 bg-white text-slate-900",
                   questionIndex !== index && answered && "border-orange-500 bg-orange-500 text-white",
                   questionIndex !== index && !answered && "border-slate-300 bg-white text-slate-700",
@@ -567,6 +598,7 @@ export function ExamRunner({ attemptId, mode, examTitle, examDescription, subjec
         <main className={clsx("px-4 py-6 pb-28 lg:px-8 lg:pb-6 xl:px-12", hasReadingPassages && "lg:order-last lg:px-6 xl:px-8")}>
           <div className="mx-auto max-w-4xl space-y-5">
             {questions.map((question, questionIndex) => {
+              if (!isQuestionUnlocked(questionIndex)) return null;
               const value = answers[question.id];
               const partLabel = getQuestionPartLabel(question.type);
               return (
@@ -710,8 +742,8 @@ export function ExamRunner({ attemptId, mode, examTitle, examDescription, subjec
             <p className="mt-4 text-xs font-semibold text-slate-500">Bài đọc và câu hỏi có thể cuộn độc lập.</p>
             <div className="mt-5 flex flex-wrap gap-2">
               {questions.map((question, questionIndex) => (
-                <button key={question.id} type="button"
-                  className={clsx("min-h-9 min-w-9 rounded-lg border px-2 text-xs font-bold",
+                <button key={question.id} type="button" disabled={!isQuestionUnlocked(questionIndex)}
+                  className={clsx("min-h-9 min-w-9 rounded-lg border px-2 text-xs font-bold disabled:opacity-30",
                     index === questionIndex ? "border-orange-500 bg-orange-500 text-white" : answers[question.id] ? "border-blue-200 bg-blue-50 text-blue-800" : "border-slate-200 bg-white text-slate-600")}
                   onClick={() => {
                     setIndex(questionIndex);
@@ -749,12 +781,13 @@ export function ExamRunner({ attemptId, mode, examTitle, examDescription, subjec
                       <button
                         key={question.id}
                         type="button"
+                        disabled={!isQuestionUnlocked(globalIndex)}
                         onClick={() => {
                           setIndex(globalIndex);
                           document.getElementById(`question-${question.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
                         }}
                         className={clsx(
-                          "relative h-10 rounded-xl border text-sm font-black transition",
+                          "relative h-10 rounded-xl border text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-30",
                           active && "border-2 border-slate-900 bg-white text-slate-900",
                           !active && answered && "border-orange-500 bg-orange-500 text-white",
                           !active && !answered && "border-slate-300 bg-white text-slate-600",
