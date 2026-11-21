@@ -8,6 +8,7 @@ import { Prisma } from "@prisma/client";
 import { parseAdminInput } from "@/lib/admin-input";
 import { storeItemWriteData } from "@/lib/store-item-write";
 import { validateOfficialNationalExam } from "@/lib/official-exam-publication";
+import { getStoredAssessmentVariantId, validateOfficialSpecialExam } from "@/lib/official-special-exam-publication";
 import { transitionManualPayment } from "@/lib/payment-transition";
 import { handleRouteError, HttpError, jsonOk, readJson, requireAdmin } from "@/lib/api";
 
@@ -71,7 +72,24 @@ async function updateResource(resource: string, id: string, body: Record<string,
           : await tx.subject.findUnique({ where: { id: nextSubjectId }, select: { slug: true } });
         if (!nextSubject) throw new HttpError(404, "Không tìm thấy môn học.");
         let structure: unknown | undefined;
-        if (current.ownerId === null && nextPublished && nextLevel === "THPTQG") {
+        if (current.ownerId === null && nextPublished && nextSpecialTrack) {
+          try {
+            const nextVariantInput = body.examStructure === undefined ? current.examStructure : body.examStructure;
+            const variantId = getStoredAssessmentVariantId(nextVariantInput);
+            if (!variantId) throw new Error("Hãy chọn tổ hợp/mã bài thi ĐGNL trước khi xuất bản.");
+            const special = validateOfficialSpecialExam({
+              track: String(nextSpecialTrack), variantId,
+              durationMinutes: typeof body.durationMinutes === "number" ? body.durationMinutes : current.durationMinutes,
+              questions: current.questions,
+            });
+            const previous = current.examStructure && typeof current.examStructure === "object" && !Array.isArray(current.examStructure)
+              ? current.examStructure as Record<string, unknown> : {};
+            structure = { ...previous, variantId, scoreMode: special.scoreMode, maxPoints: special.maxPoints, questionCount: current.questions.length };
+          } catch (error) {
+            throw new HttpError(400, error instanceof Error ? error.message : "Cấu trúc ĐGNL không hợp lệ.");
+          }
+        }
+        if (current.ownerId === null && nextPublished && nextLevel === "THPTQG" && !nextSpecialTrack) {
           try {
             structure = validateOfficialNationalExam({
               educationLevel: nextLevel,
@@ -82,6 +100,9 @@ async function updateResource(resource: string, id: string, body: Record<string,
           } catch (error) {
             throw new HttpError(400, error instanceof Error ? error.message : "Cấu trúc đề THPTQG không hợp lệ.");
           }
+        }
+        if (structure === undefined && current.specialExamTrack && body.specialExamTrack === null) {
+          structure = Prisma.DbNull;
         }
         // Preserve metadata on ordinary admin exams. Only official
         // THPTQG transitions should replace/clear the official structure.
@@ -105,8 +126,8 @@ async function updateResource(resource: string, id: string, body: Record<string,
       const existing = await prisma.question.findUnique({ where: { id }, select: { examId: true } });
       if (!existing) throw new HttpError(404, "Không tìm thấy câu hỏi.");
       const examIds = Array.from(new Set([existing.examId, typeof body.examId === "string" ? body.examId : existing.examId]));
-      const exams = await prisma.exam.findMany({ where: { id: { in: examIds } }, select: { ownerId: true, educationLevel: true, isPublished: true } });
-      if (exams.some((exam) => exam.ownerId === null && exam.educationLevel === "THPTQG" && exam.isPublished)) {
+      const exams = await prisma.exam.findMany({ where: { id: { in: examIds } }, select: { ownerId: true, educationLevel: true, specialExamTrack: true, isPublished: true } });
+      if (exams.some((exam) => exam.ownerId === null && (exam.educationLevel === "THPTQG" || exam.specialExamTrack) && exam.isPublished)) {
         throw new HttpError(409, "Hãy chuyển đề THPTQG về bản nháp trước khi sửa hoặc chuyển câu hỏi.");
       }
       const { answerOptions, ...question } = body;
@@ -213,9 +234,9 @@ async function deleteResource(resource: string, id: string, confirmDeleteWithRes
     }
     case "questions": {
       const question = await prisma.question.findUnique({
-        where: { id }, select: { exam: { select: { ownerId: true, educationLevel: true, isPublished: true } } },
+        where: { id }, select: { exam: { select: { ownerId: true, educationLevel: true, specialExamTrack: true, isPublished: true } } },
       });
-      if (question?.exam.ownerId === null && question.exam.educationLevel === "THPTQG" && question.exam.isPublished) {
+      if (question?.exam.ownerId === null && (question.exam.educationLevel === "THPTQG" || question.exam.specialExamTrack) && question.exam.isPublished) {
         throw new HttpError(409, "Hãy chuyển đề THPTQG về bản nháp trước khi xóa câu hỏi.");
       }
       return prisma.question.delete({ where: { id } });
