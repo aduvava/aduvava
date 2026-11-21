@@ -1,5 +1,6 @@
 import { rowsToObjects } from "@/lib/spreadsheet-import";
 import { isSafeRichImageUrl } from "@/lib/rich-image-security";
+import { latexErrors, withExplicitLatex, hasCorruptedPdfMath } from "@/lib/math-latex";
 import type { AssessmentQuestionType } from "@/lib/special-exam-rules";
 
 export type ImportedAssessmentQuestion = {
@@ -107,20 +108,31 @@ export function parseAssessmentRows(
     }
 
     const promptText = readField(row, ["question", "prompt", "câu hỏi", "nội dung câu hỏi", "đề bài"]);
-    if (!promptText) throw new Error("Dòng " + rowNumber + " (câu " + position + ") thiếu nội dung câu hỏi.");
+    const latex = readField(row, ["math_latex", "formula_latex", "latex", "công thức latex", "latex công thức"]);
+    if (!promptText && !latex) throw new Error("Dòng " + rowNumber + " (câu " + position + ") thiếu nội dung câu hỏi.");
     const images = [...(embedded.get(rowNumber) ?? [])];
     const linkedImage = readField(row, ["image", "ảnh", "hình ảnh", "image url"]);
     if (linkedImage) {
       if (isSafeRichImageUrl(linkedImage)) images.push(linkedImage);
       else warnings.push("Câu " + position + ": đường dẫn ảnh không an toàn hoặc không hợp lệ; đã bỏ qua liên kết ảnh ngoài.");
     }
-    const prompt = promptText + images.map((url) => "\n![Hình minh họa](" + url + ")").join("");
+    const withFormula = withExplicitLatex(promptText, latex);
+    if (hasCorruptedPdfMath(promptText) && images.length === 0) {
+      warnings.push("Câu " + position + " có ký tự toán học lỗi từ PDF và không có ảnh gốc; cần sửa công thức bằng LaTeX trước khi xuất bản.");
+    }
+    for (const issue of latexErrors(withFormula)) {
+      warnings.push("Câu " + position + ": công thức LaTeX lỗi: " + issue);
+    }
+    const prompt = withFormula + images.map((url) => "\n![Hình minh họa](" + url + ")").join("");
     const groupId = readField(row, ["group_id", "group id", "mã bài đọc"]).toUpperCase();
     if (groupId && !passages.has(groupId) && !readField(row, ["passage", "ngữ liệu", "bài đọc"])) {
       throw new Error("Câu " + position + ": group_id " + groupId + " không tồn tại trong BAI_DOC.");
     }
     const passage = (groupId && passages.get(groupId)) || readField(row, ["passage", "ngữ liệu", "bài đọc"]);
     const explanation = readField(row, ["explanation", "giải thích", "lời giải"]);
+    for (const issue of latexErrors(explanation)) {
+      warnings.push("Câu " + position + ": lời giải có LaTeX lỗi: " + issue);
+    }
     const result: ImportedAssessmentQuestion = {
       type, blockKey: block.key, prompt,
       ...(passage ? { passage } : {}),
@@ -129,6 +141,9 @@ export function parseAssessmentRows(
     if (type === "SINGLE_CHOICE") {
       result.options = options;
       result.correct = correctLetter(answer, options);
+      for (const [choiceIndex, option] of options.entries()) {
+        for (const issue of latexErrors(option)) warnings.push("Câu " + position + ", lựa chọn " + "ABCD"[choiceIndex] + ": " + issue);
+      }
       if (options.some((choice) => !choice)) {
         warnings.push("Câu " + position + " (dòng " + rowNumber + ") thiếu " +
           options.map((choice, i) => !choice ? "ABCD"[i] : "").filter(Boolean).join(", ") + "; giữ nguyên để sửa trong Educhi.");
