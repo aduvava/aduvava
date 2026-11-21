@@ -44,12 +44,12 @@ export function normalizeText(value: unknown) {
  */
 function parseNumericAnswer(raw: unknown): number | null {
   if (typeof raw !== "string" && typeof raw !== "number") return null;
-  const input = String(raw).trim().replace(/\\s+/g, "").replace(",", ".");
-  if (/^[+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)$/.test(input)) {
+  const input = String(raw).trim().replace(/\s+/g, "").replace(",", ".");
+  if (/^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/.test(input)) {
     const value = Number(input);
     return Number.isFinite(value) ? value : null;
   }
-  if (/^[+-]?\\d+\\/\\d+$/.test(input)) {
+  if (/^[+-]?\d+\/\d+$/.test(input)) {
     const [num, denom] = input.split("/").map(Number);
     const value = num / denom;
     return Number.isFinite(value) ? value : null;
