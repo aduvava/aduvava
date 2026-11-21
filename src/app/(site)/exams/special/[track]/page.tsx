@@ -3,30 +3,42 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, BookOpenCheck, Clock3, GraduationCap } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getSpecialExamTrack, specialExamTracks } from "@/lib/special-exam-tracks";
+import { assessmentQuestionCount, getAssessmentRule, getAssessmentVariant } from "@/lib/special-exam-rules";
 
 export const dynamic = "force-dynamic";
 
 export default async function SpecialExamTrackPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ track: string }>;
+  searchParams?: Promise<{ variant?: string }>;
 }) {
   const { track: slug } = await params;
+  const requestedVariant = (await searchParams)?.variant;
   const selected = getSpecialExamTrack(slug);
   if (!selected || selected.slug !== slug) notFound();
+  const assessment = getAssessmentRule(selected.id);
+  const activeVariant = getAssessmentVariant(selected.id, requestedVariant);
 
   // Never show private user uploads, unpublished exams or answer-key content.
   const exams = await prisma.exam.findMany({
     where: { specialExamTrack: selected.id, ownerId: null, isPublished: true },
     select: {
       id: true, title: true, description: true, year: true,
-      durationMinutes: true, accessLevel: true,
+      durationMinutes: true, accessLevel: true, examStructure: true,
       subject: { select: { name: true } },
       _count: { select: { questions: true } },
     },
     orderBy: [{ year: "desc" }, { createdAt: "desc" }],
     take: 100,
   });
+  const filtered = requestedVariant && activeVariant ? exams.filter((exam) => {
+    const structure = exam.examStructure && typeof exam.examStructure === "object" && !Array.isArray(exam.examStructure)
+      ? exam.examStructure as Record<string, unknown> : null;
+    // Keep legacy papers visible without incorrectly claiming they follow a variant.
+    return !structure?.variantId || structure.variantId === activeVariant.id;
+  }) : exams;
 
   return (
     <main className="min-h-[calc(100vh-76px)] bg-[#fffdf5] px-4 py-8 text-slate-900 sm:px-6 sm:py-12">
@@ -58,15 +70,60 @@ export default async function SpecialExamTrackPage({
           </nav>
         </section>
 
+        {assessment && activeVariant ? (
+          <section className="mt-6 rounded-[2rem] border border-blue-100 bg-white p-5 shadow-sm sm:p-8">
+            <h2 className="text-xl font-black text-slate-900">Cấu trúc chuẩn {selected.label}</h2>
+            <p className="mt-2 text-sm font-semibold text-slate-600">
+              {assessmentQuestionCount(activeVariant)} câu · {assessment.durationMinutes} phút ·
+              {assessment.scoreMode === "RAW"
+                ? " thang " + assessment.maxPoints + " điểm, mỗi câu chấm theo đáp án"
+                : assessment.scoreMode === "IRT"
+                  ? " Kết quả Educhi là số câu đúng; điểm " + assessment.maxPoints + " chính thức phải chuẩn hóa IRT"
+                  : " 75 điểm trắc nghiệm tự động + 25 điểm tự luận chờ chấm"}
+            </p>
+            {assessment.variants.length > 1 ? (
+              <div className="mt-4 flex flex-wrap gap-2" aria-label="Chọn tổ hợp bài thi">
+                {assessment.variants.map((variant) => (
+                  <Link key={variant.id}
+                    href={`/exams/special/${selected.slug}?variant=${encodeURIComponent(variant.id)}`}
+                    className={`rounded-full border px-3 py-2 text-xs font-bold ${variant.id === activeVariant.id ? "border-blue-500 bg-blue-500 text-white" : "border-slate-200 bg-slate-50 text-slate-700"}`}>
+                    {variant.label}
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+            <div className="mt-5 grid gap-3 md:grid-cols-3">
+              {activeVariant.parts.map((part, index) => (
+                <div key={part.key} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-xs font-black uppercase tracking-wide text-orange-600">Phần {index + 1}</p>
+                  <h3 className="mt-1 font-black text-slate-900">{part.label}</h3>
+                  {part.durationMinutes ? <p className="mt-1 text-sm text-slate-600">{part.durationMinutes} phút</p> : null}
+                  <ul className="mt-3 space-y-1 text-sm text-slate-700">
+                    {part.blocks.map((block) => (
+                      <li key={block.key}>{block.label}: <strong>{block.count} câu</strong>
+                        {assessment.scoreMode !== "IRT" ? " · " + block.pointsPerQuestion + "đ/câu" : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+            <p className="mt-4 text-xs leading-5 text-slate-500">
+              Đây là cấu trúc để luyện tập, không phải hệ thống cấp điểm tuyển sinh chính thức.
+              Đề cũ chưa gắn tổ hợp có thể cần được quản trị viên phân loại lại.
+            </p>
+          </section>
+        ) : null}
+
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-xl font-black sm:text-2xl">Danh sách đề {selected.label}</h2>
           <span className="rounded-full border border-orange-100 bg-white px-3 py-1.5 text-xs font-bold text-slate-600">
-            {exams.length} đề đã xuất bản
+            {filtered.length} đề đã xuất bản
           </span>
         </div>
-        {exams.length ? (
+        {filtered.length ? (
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {exams.map((exam) => (
+            {filtered.map((exam) => (
               <article key={exam.id} className="flex h-full flex-col rounded-[1.5rem] border border-orange-100 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
                 <div className="flex flex-wrap items-center gap-2 text-xs font-extrabold">
                   <span className="rounded-full bg-orange-50 px-3 py-1 text-orange-600">{exam.year}</span>
