@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { RichContent } from "@/components/rich-content";
+import { latexErrors } from "@/lib/math-latex";
 
 type Kind = "SINGLE_CHOICE" | "TRUE_FALSE_SET" | "SHORT_ANSWER" | "ESSAY";
 type Option = { label: string; content: string; isCorrect: boolean };
@@ -99,6 +101,9 @@ export function QuestionManager({ initialExamId = "" }: { initialExamId?: string
     event.preventDefault();
     if (!examId || locked) return setMessage("Hãy chọn đề hợp lệ. Đề THPTQG chính thức phải chuyển về bản nháp trước khi chỉnh.");
     if (!draft.prompt.trim() || !Number.isInteger(draft.position) || draft.position < 0 || !Number.isFinite(draft.points) || draft.points < 0) return setMessage("Kiểm tra nội dung, thứ tự và số điểm.");
+    const mathProblems = [...latexErrors(draft.prompt), ...latexErrors(draft.passage),
+      ...latexErrors(draft.explanation), ...draft.answerOptions.flatMap((option) => latexErrors(option.content))];
+    if (mathProblems.length) return setMessage("LaTeX không hợp lệ: " + mathProblems[0]);
     const choice = draft.type === "SINGLE_CHOICE" || draft.type === "TRUE_FALSE_SET";
     if (choice && ((selected?.specialExamTrack ? draft.answerOptions.length !== 4 : draft.answerOptions.length < 2) ||
        draft.answerOptions.some((o) => !o.content.trim()) ||
@@ -166,6 +171,13 @@ export function QuestionManager({ initialExamId = "" }: { initialExamId?: string
               </label>
               <label className={label}>Nội dung câu hỏi
                 <textarea className={input} rows={5} maxLength={50000} required value={draft.prompt} onChange={(e) => setDraft((d) => ({ ...d, prompt: e.target.value }))} />
+                  <span className="text-xs font-medium text-slate-500">Công thức nội dòng: <code>$x^2+1$</code>. Công thức riêng dòng: <code>$\\frac{T(x)}{x}$</code>.</span>
+                  {draft.prompt.trim() ? (
+                    <div className="mt-2 max-h-64 overflow-y-auto rounded-xl border border-blue-100 bg-blue-50/40 p-3">
+                      <p className="mb-2 text-xs font-bold text-blue-800">Xem trước công thức và nội dung</p>
+                      <RichContent value={draft.prompt} className="text-sm font-medium leading-6 text-slate-800" />
+                    </div>
+                  ) : null}
               </label>
               <label className={label}>Đoạn văn / dữ kiện (tùy chọn)
                 <textarea className={input} rows={2} value={draft.passage} onChange={(e) => setDraft((d) => ({ ...d, passage: e.target.value }))} />
