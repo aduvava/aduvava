@@ -32,7 +32,7 @@ function getAssessmentSpec(track, variantId) {
   };
 }
 
-function parseAdminExamQuestions(raw, { educationLevel, subjectSlug, durationMinutes, specialExamTrack, specialExamVariant }, normalizeSingle, parseSimple) {
+function parseAdminExamQuestions(raw, { educationLevel, subjectSlug, durationMinutes, specialExamTrack = null, specialExamVariant = null }, normalizeSingle, parseSimple) {
   const assessment = getAssessmentSpec(specialExamTrack, specialExamVariant);
   const rule = assessment ? null : getOfficialSpec(educationLevel, subjectSlug);
   if (assessment && durationMinutes !== assessment.durationMinutes) {

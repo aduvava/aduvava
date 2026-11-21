@@ -38,6 +38,25 @@ export function normalizeText(value: unknown) {
     .replace(/\s+/g, " ");
 }
 
+/**
+ * Accept mathematically equivalent numeric entries (e.g. -3/4 and -0,75)
+ * in QDA/HSA only. Do not loosen free-text answers on unrelated exams.
+ */
+function parseNumericAnswer(raw: unknown): number | null {
+  if (typeof raw !== "string" && typeof raw !== "number") return null;
+  const input = String(raw).trim().replace(/\s+/g, "").replace(",", ".");
+  if (/^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/.test(input)) {
+    const value = Number(input);
+    return Number.isFinite(value) ? value : null;
+  }
+  if (/^[+-]?\d+\/\d+$/.test(input)) {
+    const [num, denom] = input.split("/").map(Number);
+    const value = num / denom;
+    return Number.isFinite(value) ? value : null;
+  }
+  return null;
+}
+
 export type ScoringPolicy = { specialExamTrack?: string | null };
 export function scoreQuestion(question: ScoringQuestion, value: unknown, policy: ScoringPolicy = {}): QuestionScore {
   if (question.type === "SINGLE_CHOICE") {
@@ -61,7 +80,13 @@ export function scoreQuestion(question: ScoringQuestion, value: unknown, policy:
   }
 
   if (question.type === "SHORT_ANSWER") {
-    const isCorrect = normalizeText(value) === normalizeText(question.correctText);
+    const expectedText = normalizeText(question.correctText);
+    const actualText = normalizeText(value);
+    const plainMatch = expectedText.length > 0 && actualText.length > 0 && actualText === expectedText;
+    const numeric = policy.specialExamTrack === "QDA" || policy.specialExamTrack === "HSA";
+    const candidate = numeric ? parseNumericAnswer(value) : null;
+    const expected = numeric ? parseNumericAnswer(question.correctText) : null;
+    const isCorrect = plainMatch || (candidate !== null && expected !== null && Math.abs(candidate - expected) < 1e-9);
     return { questionId: question.id, isCorrect, score: isCorrect ? question.points : 0, maxScore: question.points };
   }
 

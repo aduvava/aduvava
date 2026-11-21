@@ -79,10 +79,10 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
     const answer = answers.get(question.id);
     return !hasAnswer(question.type, answer?.value, question.answerOptions.length);
   }).length;
-  const assessmentRule = getAssessmentRule(attempt.exam.specialExamTrack);
   const structure = asRecord(attempt.exam.examStructure);
   const storedVariant = typeof structure?.variantId === "string" ? structure.variantId : null;
   const assessmentVariant = storedVariant ? getAssessmentVariant(attempt.exam.specialExamTrack, storedVariant) : null;
+  const assessmentRule = assessmentVariant ? getAssessmentRule(attempt.exam.specialExamTrack) : null;
   const pendingEssays = attempt.exam.questions.some((question) =>
     question.type === "ESSAY" && !manualGradeByQuestion.has(question.id));
   const objectiveMax = attempt.exam.questions

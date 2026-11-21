@@ -166,6 +166,7 @@ export function ExamManager() {
     if (!draft.title.trim()) return setMessage("Vui lòng nhập tên đề thi.");
     if (draft.specialExamTrack && draft.educationLevel !== null) return setMessage("Hãy chọn cấp học: Không phân loại cho kỳ thi riêng.");
     if (draft.specialExamTrack && !draft.specialExamVariant) return setMessage("Hãy chọn tổ hợp/mã bài thi ĐGNL.");
+    if (draft.specialExamTrack && draft.contentMode !== "EXAM") return setMessage("Đề ĐGNL đầy đủ phải thuộc mục Theo kỳ thi.");
     if (draft.specialExamTrack && !editing && draft.isPublished) return setMessage("Đề ĐGNL mới phải tạo nháp và kiểm tra cấu trúc trước khi xuất bản.");
     if (draft.educationLevel && !draft.grade) return setMessage("Hãy chọn lớp cho đề thi.");
     if (!Number.isInteger(draft.year) || draft.year < 2000 || draft.year > 2200 ||
@@ -179,10 +180,10 @@ export function ExamManager() {
     const suffix = Date.now().toString(36);
     const data = {
       title: draft.title.trim(), description: draft.description.trim(),
-      family: subject.family, type: typeForContentMode(draft.contentMode, draft.type), contentMode: draft.contentMode, accessLevel: draft.accessLevel,
+      family: draft.specialExamTrack ? "DGNL" : subject.family, type: typeForContentMode(draft.contentMode, draft.type), contentMode: draft.contentMode, accessLevel: draft.accessLevel,
       year: draft.year, durationMinutes: draft.durationMinutes,
       educationLevel: draft.educationLevel, grade: draft.grade, specialExamTrack: draft.specialExamTrack,
-      examStructure: draft.specialExamTrack ? { variantId: draft.specialExamVariant } : null, targetScore: score,
+      ...(draft.specialExamTrack ? { examStructure: { variantId: draft.specialExamVariant } } : {}), targetScore: score,
       subjectId: draft.subjectId, isPublished: draft.isPublished,
       code: editing ? draft.code.trim() : "ADMIN-" + suffix.toUpperCase(),
       slug: editing ? draft.slug.trim() : (slugify(draft.title) || "de-thi") + "-" + suffix,
@@ -325,6 +326,8 @@ export function ExamManager() {
                 setDraft((current) => ({
                   ...current, specialExamTrack: next,
                   specialExamVariant: next ? getAssessmentRule(next)?.variants[0]?.id ?? "" : "",
+                  contentMode: next ? "EXAM" : current.contentMode,
+                  type: next ? "MOCK" : current.type,
                   durationMinutes: next ? getAssessmentRule(next)?.durationMinutes ?? current.durationMinutes : current.durationMinutes,
                   educationLevel: next ? null : current.educationLevel,
                   grade: next ? null : current.grade,

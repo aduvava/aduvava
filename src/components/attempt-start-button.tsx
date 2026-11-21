@@ -48,7 +48,7 @@ export function AttemptStartButton({ examId, disabled, label = "Bắt đầu tí
         <label className="mb-4 flex items-center justify-center gap-3 text-sm font-bold text-slate-700">
           Thời gian luyện đề
           <select value={minutes} onChange={(event) => setMinutes(Number(event.target.value))} className="rounded-xl border border-orange-200 bg-white px-3 py-2">
-            {[15, 30, 45, 60, 90, 120, 180].map((value) => <option key={value} value={value}>{value} phút</option>)}
+            {[15, 30, 45, 60, 90, 120, 150, 180, 195, 240].map((value) => <option key={value} value={value}>{value} phút</option>)}
           </select>
         </label>
       ) : null}
