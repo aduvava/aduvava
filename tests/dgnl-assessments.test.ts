@@ -32,7 +32,7 @@ const asRecords = (variant: (typeof templates)["HSA"]["variants"][number]) =>
       if (type === "ESSAY") return { type, blockKey: block.key, prompt: "Viết bài nghị luận." };
       if (type === "SHORT_ANSWER") return { type, blockKey: block.key, prompt: "Nhập số phù hợp", correctText: "42" };
       return { type, blockKey: block.key, prompt: "Chọn phương án đúng", options: ["A", "B", "C", "D"], correct: "A" };
-    }))));
+    })));
 
 test("five assessment exams enforce the correct total, weights and all variants", () => {
   for (const [track, spec] of Object.entries(templates)) {
