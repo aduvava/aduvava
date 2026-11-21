@@ -157,6 +157,19 @@ function parseAdminExamQuestions(raw, { educationLevel, subjectSlug, durationMin
   });
 
   if (assessment) {
+    let partStart = 0;
+    for (const part of assessment.parts) {
+      const partCount = part.blocks.reduce((sum, block) => sum + block.count, 0);
+      if (part.requiredShortAnswers !== undefined) {
+        const actual = questions.slice(partStart, partStart + partCount)
+          .filter((question) => question.type === "SHORT_ANSWER").length;
+        if (actual !== part.requiredShortAnswers) {
+          throw new Error(part.label + " phải có đúng " + part.requiredShortAnswers +
+            " câu điền đáp án (hiện có " + actual + ").");
+        }
+      }
+      partStart += partCount;
+    }
     for (const block of assessment.blocks) {
       if (block.requiredShortAnswers === undefined) continue;
       const actual = questions.slice(block.start - 1, block.end).filter((question) => question.type === "SHORT_ANSWER").length;
