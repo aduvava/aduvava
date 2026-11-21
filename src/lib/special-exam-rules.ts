@@ -8,6 +8,7 @@ export type AssessmentBlock = {
   questionType: AssessmentQuestionType;
   allowedTypes?: AssessmentQuestionType[];
   pointsPerQuestion: number;
+  requiredShortAnswers?: number;
 };
 export type AssessmentPart = {
   key: string;
