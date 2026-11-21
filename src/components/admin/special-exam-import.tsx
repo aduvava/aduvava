@@ -9,7 +9,7 @@ import { parseAssessmentRows, type ImportedAssessmentQuestion } from "@/lib/spec
 
 type Track = "HSA" | "TSA" | "V_ACT" | "QDA" | "DGNL_BCA";
 type ImportQuestion = ImportedAssessmentQuestion;
-type Subject = { id: string; name: string };
+type Subject = { id: string; name: string; family: "THPTQG" | "DGNL" };
 
 const classes = "min-h-11 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900";
 const fieldName = (name: string) => name.toLocaleLowerCase("vi").normalize("NFD")
@@ -66,9 +66,12 @@ export function SpecialExamImport() {
       return response.json();
     }).then((result) => {
       if (!active) return;
-      const data: Subject[] = (result.items ?? []).map((item: Subject) => ({ id: item.id, name: item.name }));
+      const data: Subject[] = (result.items ?? [])
+        .filter((item: Subject) => item.family === "DGNL")
+        .map((item: Subject) => ({ id: item.id, name: item.name, family: item.family }));
       setSubjects(data);
-      setSubjectId((old) => old || data[0]?.id || "");
+      setSubjectId((old) => data.some((item) => item.id === old) ? old : data[0]?.id || "");
+      if (!data.length) setMessage("Chưa có môn thuộc nhóm ĐGNL. Hãy tạo môn DGNL trong quản trị trước khi nhập đề.");
     }).catch(() => { if (active) setMessage("Không tải được danh sách môn học. Vui lòng đăng nhập Admin."); });
     return () => { active = false; };
   }, []);
