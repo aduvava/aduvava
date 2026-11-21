@@ -286,7 +286,6 @@ export function ExamManager() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-xl font-black text-slate-950">{editing ? "Chỉnh sửa đề thi" : "Tạo đề thi mới"}</h2>
-            <p className="mt-1 text-sm text-slate-500">Chỉnh thông tin trực tiếp, không cần nhập JSON hoặc ID.</p>
           </div>
           {editing ? <button type="button" onClick={reset} className="flex items-center gap-1 text-xs font-black text-orange-600"><X className="h-4 w-4" /> Hủy sửa</button> : null}
         </div>
@@ -312,7 +311,6 @@ export function ExamManager() {
                 <option value="">{draft.specialExamTrack ? "Không áp dụng" : "Chọn lớp"}</option>
                 {gradesForExamLevel(draft.educationLevel).map((grade) => <option key={grade} value={grade}>{grade}</option>)}
               </select>
-              <span className="text-xs font-medium text-slate-500">Có thể đổi lớp khi chỉnh sửa đề; câu hỏi và kết quả vẫn được giữ nguyên.</span>
             </label>
             <label className={label}>Môn học
               <select className={field} required value={draft.subjectId} onChange={(e) => setValue("subjectId", e.target.value)}>
@@ -336,7 +334,6 @@ export function ExamManager() {
                 <option value="">Không thuộc kỳ thi riêng</option>
                 {specialExamTracks.map((track) => <option key={track.id} value={track.id}>{track.label}</option>)}
               </select>
-              <span className="text-xs font-medium text-slate-500">Đề HSA, TSA, V-ACT, QDA, ĐGNL BCA hiển thị trong mục Ôn thi THPTQG → Kỳ thi riêng. Chọn kỳ thi sẽ tự đặt cấp học thành Không phân loại.</span>
             </label>
             {draft.specialExamTrack ? (
               <label className={label}>Tổ hợp/mã bài thi ĐGNL
@@ -357,7 +354,6 @@ export function ExamManager() {
               }}>
                 {EXAM_CONTENT_MODES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
               </select>
-              <span className="text-xs font-medium text-slate-500">Chuyên đề và kỳ thi được hiển thị ở hai mục khác nhau bên trang học sinh.</span>
             </label>
             <label className={label}>Quyền truy cập
               <select className={field} value={draft.accessLevel} onChange={(e) => setValue("accessLevel", e.target.value as Access)}>
@@ -390,7 +386,7 @@ export function ExamManager() {
                 <UploadCloud className="h-5 w-5" /> Tải file câu hỏi (không bắt buộc)
               </label>
               <input id="admin-exam-upload" type="file" accept=".txt,.csv,.tsv,.xlsx" className="mt-3 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-orange-500 file:px-3 file:py-2 file:font-bold file:text-white" onChange={(event) => { void uploadQuestions(event.target.files?.[0]); event.target.value = ""; }} />
-              <p className="mt-2 text-xs text-slate-500">Nhận TXT, CSV, TSV, Excel (XLSX), tối đa 5 MB. File thường: question, A, B, C, D, correct, explanation. File có bài đọc: tạo 2 sheet BAI_DOC (group_id, type, title, instruction, passage) và CAU_HOI (no, group_id, question, A, B, C, D, correct, explanation). Các câu có cùng group_id chỉ hiển thị chung một ngữ liệu. Vẫn hỗ trợ file đề cũ.</p>
+              <p className="mt-2 text-xs text-slate-500">TXT, CSV, TSV, XLSX · tối đa 5 MB</p>
               <button type="button" onClick={() => void downloadReadingTemplate()} className="mt-2 inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-white px-3 py-2 text-xs font-bold text-blue-700">
                 <UploadCloud className="h-4 w-4" /> Tải mẫu Excel bài đọc
               </button>
@@ -407,7 +403,7 @@ export function ExamManager() {
           ) : null}
           <label className="flex items-start gap-3 rounded-xl bg-slate-50 p-3 text-sm font-semibold text-slate-700">
             <input type="checkbox" className="mt-1" checked={draft.isPublished} onChange={(e) => setValue("isPublished", e.target.checked)} />
-            <span>Xuất bản cho học viên <span className="block text-xs font-normal text-slate-500">Tắt để ẩn đề. Đề THPTQG và ĐGNL phải đủ số câu, đúng tổ hợp và trọng số trước khi xuất bản.</span></span>
+            <span>Xuất bản cho học viên <span className="block text-xs font-normal text-slate-500">Bỏ chọn để ẩn đề.</span></span>
           </label>
           <button type="submit" disabled={busy || parsingFile} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-black text-white hover:bg-orange-600 disabled:opacity-50">
             <Plus className="h-4 w-4" /> {busy ? "Đang xử lý..." : editing ? "Lưu thay đổi" : "Tạo đề thi"}
