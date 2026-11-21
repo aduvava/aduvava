@@ -7,7 +7,7 @@ import { readLimitedJson } from "@/lib/limited-json";
 const startSchema = z.object({
   examId: z.string().min(1).max(128),
   mode: z.enum(["PRACTICE", "MOCK"]).default("MOCK"),
-  timeLimitMinutes: z.number().int().min(5).max(180).optional(),
+  timeLimitMinutes: z.number().int().min(5).max(300).optional(),
 }).strict();
 
 export async function POST(request: Request) {
