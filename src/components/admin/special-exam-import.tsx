@@ -132,6 +132,40 @@ export function SpecialExamImport() {
           const imageResult = await extractXlsxEmbeddedImages(file, selectedSheet.sheet);
           embedded = imageResult.byRow;
           notes = [...imageResult.warnings];
+
+          // Older HSA workbooks store all 150 text questions in CAU_HOI but
+          // anchor the 50 original formula-rich scans in TOAN_01_50.
+          // Recover by the source question number, NEVER by guessed row offsets.
+          if (track === "HSA") {
+            const mathSheet = sheets.find((sheet) => fieldName(sheet.sheet).startsWith("toan")
+              && sheet.sheet !== selectedSheet.sheet);
+            if (mathSheet) {
+              const mathImages = await extractXlsxEmbeddedImages(file, mathSheet.sheet);
+              notes.push(...mathImages.warnings);
+              const mathNo = mathSheet.data[0]?.findIndex((cell) =>
+                ["no", "stt", "socau", "causo"].includes(fieldName(String(cell ?? "")))) ?? -1;
+              const targetNo = rows[0]?.findIndex((cell) =>
+                ["no", "stt", "socau", "causo"].includes(fieldName(String(cell ?? "")))) ?? -1;
+              if (mathNo >= 0 && targetNo >= 0) {
+                const imageByNumber = new Map<string, string[]>();
+                for (const [originalRow, images] of mathImages.byRow) {
+                  const n = String(mathSheet.data[originalRow - 1]?.[mathNo] ?? "").trim();
+                  if (n && images.length) imageByNumber.set(n, images);
+                }
+                let recovered = 0;
+                for (let i = 1; i < rows.length; i++) {
+                  const n = String(rows[i]?.[targetNo] ?? "").trim();
+                  const originals = imageByNumber.get(n);
+                  if (!embedded.has(i + 1) && originals?.length) {
+                    embedded.set(i + 1, originals);
+                    recovered += originals.length;
+                  }
+                }
+                if (recovered) notes.push("Đã tự ghép " + recovered +
+                  " ảnh đề gốc từ sheet " + mathSheet.sheet + " theo số câu, không cần sửa Excel.");
+              }
+            }
+          }
         } else {
           rows = parseDelimited(await file.text(), file.name.toLowerCase().endsWith(".tsv") ? "\t" : ",");
         }
