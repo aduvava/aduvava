@@ -177,6 +177,9 @@ model User {
   notifications      Notification[]
   ownedExams         Exam[]              @relation("OwnedExams")
   examAccessGrants   ExamAccessGrant[]
+  ownedStudyGroups   StudyGroup[] @relation("OwnedStudyGroups")
+  studyGroupMemberships StudyGroupMember[]
+  studyGroupShares   StudyGroupExam[]
   supportConversations SupportConversation[]
   complianceRequests LeadMessage[]
   referredBy         User?            @relation("UserReferrals", fields: [referredByUserId], references: [id], onDelete: SetNull)
@@ -339,6 +342,7 @@ model Exam {
   questions    Question[]
   attempts     Attempt[]
   accessGrants ExamAccessGrant[]
+  studyGroupShares StudyGroupExam[]
 
   @@index([family, year, accessLevel])
   @@index([educationLevel, subjectId, isPublished])
@@ -347,6 +351,49 @@ model Exam {
   @@index([specialExamTrack, isPublished, ownerId])
   @@index([ownerId, createdAt])
   @@index([shareMode, shareToken])
+}
+
+// Private study groups are separate from public catalog visibility and VIP entitlement.
+model StudyGroup {
+  id        String   @id @default(cuid())
+  name      String   @db.VarChar(80)
+  joinCode  String   @unique @db.VarChar(12)
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner   User               @relation("OwnedStudyGroups", fields: [ownerId], references: [id], onDelete: Cascade)
+  members StudyGroupMember[]
+  exams   StudyGroupExam[]
+
+  @@index([ownerId, createdAt])
+}
+
+model StudyGroupMember {
+  id        String   @id @default(cuid())
+  groupId   String
+  userId    String
+  joinedAt  DateTime @default(now())
+
+  group StudyGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId, groupId])
+}
+
+model StudyGroupExam {
+  groupId    String
+  examId     String
+  sharedById String
+  createdAt  DateTime @default(now())
+
+  group    StudyGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  exam     Exam       @relation(fields: [examId], references: [id], onDelete: Cascade)
+  sharedBy User       @relation(fields: [sharedById], references: [id], onDelete: Cascade)
+
+  @@id([groupId, examId])
+  @@index([examId, groupId])
 }
 
 model ExamAccessGrant {
