@@ -1,3 +1,4 @@
+import React from "react";
 import katex from "katex";
 import { clsx } from "clsx";
 import { isSafeRichImageUrl } from "@/lib/rich-image-security";
