@@ -327,7 +327,7 @@ export function Storefront({
             <p className="mt-2 text-sm font-semibold text-slate-500">{activeCategory.description}</p>
           </div>
 
-          <div className="mt-6 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-6 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
             {filteredItems.map((item) => {
               const visual = visualStyles[item.imageKey] ?? visualStyles.orange;
               const uploadedImage = storeItemImageFile(item.metadata);
@@ -344,11 +344,21 @@ export function Storefront({
               const count = inventory[item.id] ?? 0;
 
               return (
-                <article key={item.id} className="w-full overflow-hidden rounded-[1.75rem] border border-orange-100 bg-white p-5 shadow-[0_10px_24px_rgba(72,48,26,.06)]">
+                <article key={item.id} className="flex min-w-0 w-full flex-col overflow-hidden rounded-[1.75rem] border border-orange-100 bg-white p-5 shadow-[0_10px_24px_rgba(72,48,26,.06)]">
                   <div className={clsx("relative grid aspect-[4/3] place-items-center overflow-hidden rounded-[1.25rem] bg-gradient-to-br", visual.gradient)}>
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(255,255,255,.55),transparent_28%)]" />
                     {uploadedImage ? (
-                      <img src={uploadedImage} alt={item.name} className="absolute inset-0 h-full w-full object-contain p-3" />
+                      <img
+                        src={uploadedImage}
+                        alt={item.name}
+                        loading="lazy"
+                        decoding="async"
+                        className={clsx(
+                          "absolute inset-0 h-full w-full",
+                          // Home-image items contain lettering and square artwork: fill the frame without cropping it.
+                          item.category === "AVATAR" ? "object-fill" : "object-cover",
+                        )}
+                      />
                     ) : (
                       <VisualIcon className={clsx("relative h-16 w-16 drop-shadow-xl", visual.text)} strokeWidth={1.4} />
                     )}
@@ -366,7 +376,7 @@ export function Storefront({
                       Tải tài liệu: {String(availableFile!.originalName)}
                     </a>
                   ) : null}
-                  <div className="mt-5 flex items-center justify-between gap-4">
+                  <div className="mt-auto flex items-center justify-between gap-4 pt-5">
                     <PriceAmount amount={item.price} currency={item.currency} />
                     {owned && isEquippable ? (
                       <button
