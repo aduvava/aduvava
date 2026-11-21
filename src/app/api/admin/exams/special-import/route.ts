@@ -15,7 +15,8 @@ const questionSchema = z.object({
   prompt: rich(2500),
   passage: optionalRich(50000),
   explanation: optionalRich(2000),
-  options: z.array(rich(1200)).max(4).optional(),
+  // Blank choices are retained only in UNPUBLISHED drafts, never considered valid for publishing.
+  options: z.array(z.string().trim().max(450000).refine((value) => !value || fitsExamRichField(value, 1200), "Phương án quá dài hoặc ảnh không hợp lệ")).max(4).optional(),
   correct: z.enum(["A", "B", "C", "D"]).optional(),
   correctIndex: z.number().int().min(0).max(3).optional(),
   correctText: optionalRich(500),
@@ -53,8 +54,10 @@ export async function POST(request: Request) {
     }
     const blocks = flattenAssessmentBlocks(variant);
     const requiredCount = blocks.reduce((sum, block) => sum + block.count, 0);
+    const importWarnings: string[] = [];
     if (payload.questions.length !== requiredCount) {
-      throw new HttpError(400, "Đề " + metadata.track + " cần đúng " + requiredCount + " câu, file có " + payload.questions.length + ".");
+      importWarnings.push("Đề " + metadata.track + " cần đúng " + requiredCount +
+        " câu, file chỉ có " + payload.questions.length + " câu.");
     }
     const prepared: Imported[] = payload.questions.map((input, index) => {
       const position = index + 1;
@@ -70,15 +73,20 @@ export async function POST(request: Request) {
       let answerOptions: Imported["answerOptions"] = [];
       let correctText: string | null = null;
       if (type === "SINGLE_CHOICE") {
-        if (!input.options || input.options.length !== 4) throw new HttpError(400, "Câu " + position + " cần đủ 4 đáp án.");
+        const options = input.options ?? [];
         const correctIndex = input.correctIndex ?? (input.correct ? input.correct.charCodeAt(0) - 65 : -1);
-        if (correctIndex < 0 || correctIndex > 3) throw new HttpError(400, "Câu " + position + " thiếu đáp án đúng A–D.");
-        answerOptions = input.options.map((content, choice) => ({
-          label: String.fromCharCode(65 + choice), content, isCorrect: correctIndex === choice,
-        }));
+        if (options.length !== 4 || options.some((content) => !content.trim())) {
+          importWarnings.push("Câu " + position + " thiếu phương án trắc nghiệm A–D.");
+        }
+        if (correctIndex < 0 || correctIndex > 3 || !options[correctIndex]?.trim()) {
+          importWarnings.push("Câu " + position + " cần kiểm tra lại đáp án đúng.");
+        }
+        answerOptions = options.flatMap((content, choice) => content.trim()
+          ? [{ label: String.fromCharCode(65 + choice), content, isCorrect: correctIndex === choice }]
+          : []);
       } else if (type === "SHORT_ANSWER") {
         correctText = input.correctText?.trim() ?? "";
-        if (!correctText) throw new HttpError(400, "Câu " + position + " thiếu đáp án điền số.");
+        if (!correctText) importWarnings.push("Câu " + position + " chưa có đáp án điền số.");
       } else if (type === "TRUE_FALSE_SET") {
         if (input.statements?.length !== 4) throw new HttpError(400, "Câu " + position + " cần 4 mệnh đề Đúng/Sai.");
         answerOptions = input.statements.map((statement, choice) => ({
@@ -91,10 +99,16 @@ export async function POST(request: Request) {
         explanation: input.explanation || null, correctText, answerOptions,
       };
     });
-    validateOfficialSpecialExam({
-      track: metadata.track, variantId: metadata.variantId,
-      durationMinutes: rule.durationMinutes, questions: prepared,
-    });
+    // The importer may retain incomplete source material as a DRAFT. Publication,
+    // handled separately, always validates the entire official exam strictly.
+    try {
+      validateOfficialSpecialExam({
+        track: metadata.track, variantId: metadata.variantId,
+        durationMinutes: rule.durationMinutes, questions: prepared,
+      });
+    } catch (error) {
+      importWarnings.push(error instanceof Error ? error.message : "Cấu trúc kỳ thi cần được kiểm tra.");
+    }
     const subject = await prisma.subject.findUnique({ where: { id: metadata.subjectId }, select: { id: true } });
     if (!subject) throw new HttpError(404, "Không tìm thấy môn học được chọn.");
 
@@ -118,6 +132,7 @@ export async function POST(request: Request) {
             variantId: variant.id, variantLabel: variant.label,
             scoreMode: rule.scoreMode, questionCount: requiredCount,
             source: "native-special-import", structureVersion: "2026",
+            importNeedsReview: importWarnings.length > 0,
           },
         }, select: { id: true, slug: true },
       });
@@ -137,7 +152,8 @@ export async function POST(request: Request) {
       }
       return created;
     }, { maxWait: 10000, timeout: 120000 });
-    return jsonOk({ exam, questionCount: prepared.length, track: metadata.track, variant: variant.label, isPublished: false }, 201);
+    return jsonOk({ exam, questionCount: prepared.length, track: metadata.track,
+      variant: variant.label, isPublished: false, warnings: importWarnings }, 201);
   } catch (error) {
     return handleRouteError(error);
   }
