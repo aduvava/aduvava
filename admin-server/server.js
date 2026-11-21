@@ -8,6 +8,7 @@ const { createCsv } = require("./csv-export");
 const { parseAdminExamQuestions } = require("./exam-question-import");
 const { convertOfficeFile } = require("./office-file-import");
 const nationalExamTemplates = require("../src/data/national-exam-templates.json");
+const specialExamTemplates = require("../src/data/special-exam-templates.json");
 const { transitionManualPayment } = require("../src/lib/payment-transition.js");
 const { trustedPostOrigin, cookieSecuritySuffix } = require("./request-security");
 const { rateLimitOperation, TooManyRequestsError } = require("../src/lib/security-throttle.js");
@@ -1303,6 +1304,7 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
   }, null, 2);
   const templateJson = JSON.stringify({ txt: textTemplate, csv: csvTemplate, json: jsonTemplate }).replace(/</g, "\\u003c");
   const nationalRulesJson = JSON.stringify(nationalExamTemplates).replace(/</g, "\\u003c");
+  const specialRulesJson = JSON.stringify(specialExamTemplates).replace(/</g, "\\u003c");
 
   return `<section id="tao-de-theo-mon" class="card">
     <div class="topbar" style="margin-bottom:16px">
@@ -1320,6 +1322,19 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
         </label>
         <label>Lớp / nhóm thi
           <select name="grade" id="examGrade" required></select>
+        </label>
+        <label>Kỳ thi ĐGNL (nếu tạo đề ĐGNL)
+          <select name="specialExamTrack" id="specialExamTrack">
+            <option value="">Đề theo lớp/môn thông thường</option>
+            <option value="HSA">HSA – ĐHQG Hà Nội</option>
+            <option value="TSA">TSA – Bách khoa Hà Nội</option>
+            <option value="V_ACT">V-ACT – ĐHQG TP.HCM</option>
+            <option value="QDA">QDA – Bộ Quốc phòng</option>
+            <option value="DGNL_BCA">ĐGNL BCA – Bộ Công an</option>
+          </select>
+        </label>
+        <label id="specialVariantLabel" style="display:none">Tổ hợp/mã bài thi
+          <select name="specialExamVariant" id="specialExamVariant"></select>
         </label>
         <label>Môn học
           <select name="subjectId" id="examSubject" required>${subjectOptions}</select>
@@ -1368,6 +1383,7 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
         <div class="template-actions">
           <button type="button" data-template="txt">Mẫu TXT</button>
           <button type="button" data-template="national">Mẫu THPTQG JSON theo môn</button>
+          <button type="button" data-template="assessment">Mẫu JSON ĐGNL đúng cấu trúc</button>
           <button type="button" data-template="csv">Mẫu CSV</button>
           <button type="button" data-template="json">Mẫu JSON</button>
           <button type="button" id="clearImport">Xóa import</button>
@@ -1395,6 +1411,10 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
         const flows = ${flowJson};
         const templates = ${templateJson};
         const nationalRules = ${nationalRulesJson};
+        const specialRules = ${specialRulesJson};
+        const specialTrack = document.getElementById("specialExamTrack");
+        const specialVariant = document.getElementById("specialExamVariant");
+        const specialVariantLabel = document.getElementById("specialVariantLabel");
         const level = document.getElementById("examEducationLevel");
         const grade = document.getElementById("examGrade");
         const subject = document.getElementById("examSubject");
@@ -1545,6 +1565,8 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
           body.set("subjectId", subject.value);
           body.set("educationLevel", level.value);
           body.set("durationMinutes", durationInput.value);
+          body.set("specialExamTrack", specialTrack.value);
+          body.set("specialExamVariant", specialVariant.value);
           try {
             const response = await fetch("/exams/preview", {
               method: "POST",
@@ -1578,11 +1600,23 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
           textarea.focus();
         }
         function currentNationalRule() {
-          if (level.value !== "THPTQG") return null;
+          if (specialTrack.value || level.value !== "THPTQG") return null;
           const slug = subject.selectedOptions[0]?.dataset.slug || "";
           return nationalRules[slug] || null;
         }
         function syncNationalRule() {
+          const special = specialRules[specialTrack.value];
+          if (special) {
+            durationInput.value = String(special.durationMinutes);
+            durationInput.readOnly = true;
+            const selected = special.variants.find((item) => item.id === specialVariant.value) || special.variants[0];
+            if (selected) {
+              const counts = selected.parts.map((item) => item.label + ": " + item.blocks.reduce((sum, block) => sum + block.count, 0)).join(" · ");
+              nationalExamHint.textContent = "ĐGNL " + special.label + ": " + counts + " · " + special.durationMinutes
+                + " phút. " + (special.scoreMode === "IRT" ? "Chỉ hiển thị số câu đúng; không giả lập điểm IRT chính thức." : special.scoreMode === "ESSAY_PENDING" ? "Tự luận chấm riêng (25đ), trắc nghiệm tự chấm 75đ." : "Chấm điểm theo số câu đúng.") + " Đề đầy đủ cần JSON đúng cấu trúc.";
+            }
+            return;
+          }
           const rule = currentNationalRule();
           durationInput.readOnly = level.value === "THPTQG";
           if (level.value !== "THPTQG") {
@@ -1597,6 +1631,50 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
               rule.parts.filter((part) => part.count).map((part) => part.label + ": " + part.count).join(" · ") +
               ". Môn có Đúng/Sai hoặc Trả lời ngắn cần nhập JSON theo mẫu.";
           }
+        }
+        function assessmentJsonTemplate() {
+          const rule = specialRules[specialTrack.value];
+          const variant = rule?.variants.find((item) => item.id === specialVariant.value);
+          if (!variant) return "";
+          const questions = [];
+          for (const part of variant.parts) {
+            for (const block of part.blocks) {
+              for (let i = 0; i < block.count; i++) {
+                const number = questions.length + 1;
+                const prompt = "Câu " + number + ": " + part.label + " – " + block.label;
+                if (block.questionType === "ESSAY") {
+                  questions.push({ blockKey: block.key, type: "ESSAY", prompt: "Viết bài nghị luận xã hội: [nhập yêu cầu cụ thể]." });
+                } else if (block.questionType === "SHORT_ANSWER") {
+                  questions.push({ blockKey: block.key, type: "SHORT_ANSWER", prompt, correctText: "[đáp án]" });
+                } else {
+                  questions.push({ blockKey: block.key, type: "SINGLE_CHOICE", prompt,
+                    options: ["Phương án A", "Phương án B", "Phương án C", "Phương án D"], correct: "A" });
+                }
+              }
+            }
+          }
+          return JSON.stringify({ specialExamTrack: specialTrack.value, variant: variant.id, questions }, null, 2);
+        }
+        function syncSpecialVariant() {
+          const special = specialRules[specialTrack.value];
+          if (special && level.value !== "THPTQG") { level.value = "THPTQG"; syncFlow(); }
+          specialVariantLabel.style.display = special ? "block" : "none";
+          specialVariant.replaceChildren();
+          if (special) {
+            for (const item of special.variants) {
+              const option = document.createElement("option");
+              option.value = item.id;
+              option.textContent = item.label;
+              specialVariant.appendChild(option);
+            }
+            contentModeInput.value = "exams";
+            examTypeInput.value = "MOCK";
+            document.querySelectorAll("[data-content-mode]").forEach((tab) =>
+              tab.classList.toggle("active", tab.dataset.contentMode === "exams"));
+            contentModeNote.textContent = "Đề ĐGNL đầy đủ: chấm theo đặc tả riêng từng kỳ thi.";
+          }
+          syncNationalRule();
+          schedulePreview();
         }
         function nationalJsonTemplate() {
           const rule = currentNationalRule();
@@ -1653,17 +1731,19 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
           button.addEventListener("click", () => {
             document.querySelectorAll("[data-content-mode]").forEach((item) => item.classList.remove("active"));
             button.classList.add("active");
-            contentModeInput.value = button.dataset.contentMode || "topics";
-            examTypeInput.value = button.dataset.examType || "PRACTICE";
+            contentModeInput.value = specialTrack.value ? "exams" : button.dataset.contentMode || "topics";
+            examTypeInput.value = specialTrack.value ? "MOCK" : button.dataset.examType || "PRACTICE";
             contentModeNote.textContent = modeNotes[contentModeInput.value] || modeNotes.topics;
           });
         });
-        level.addEventListener("change", () => { syncFlow(); schedulePreview(); });
+        specialTrack.addEventListener("change", syncSpecialVariant);
+        specialVariant.addEventListener("change", () => { syncNationalRule(); schedulePreview(); });
+        level.addEventListener("change", () => { if (specialTrack.value) level.value = "THPTQG"; syncFlow(); schedulePreview(); });
         subject.addEventListener("change", () => { syncNationalRule(); schedulePreview(); });
         durationInput.addEventListener("change", schedulePreview);
         document.querySelectorAll("[data-template]").forEach((button) => {
           button.addEventListener("click", () => {
-            bulk.value = button.dataset.template === "national" ? nationalJsonTemplate() : templates[button.dataset.template] || "";
+            bulk.value = button.dataset.template === "national" ? nationalJsonTemplate() : button.dataset.template === "assessment" ? assessmentJsonTemplate() : templates[button.dataset.template] || "";
             bulk.focus();
             schedulePreview();
           });
@@ -1727,6 +1807,7 @@ Giải thích: Lực đàn hồi tuân theo định luật Hooke.`;
         });
         bulk.addEventListener("input", schedulePreview);
         syncFlow();
+        syncSpecialVariant();
         schedulePreview();
       })();
     </script>
@@ -2619,6 +2700,8 @@ async function createExam(req, res) {
   const durationMinutes = Math.max(1, Math.floor(Number(form.get("durationMinutes") || 30)));
   const year = Math.max(2020, Math.floor(Number(form.get("year") || new Date().getFullYear())));
   const targetScore = Number(form.get("targetScore") || 8);
+  const specialExamTrack = String(form.get("specialExamTrack") || "");
+  const specialExamVariant = String(form.get("specialExamVariant") || "");
 
   if (!title || !subjectId || !["THCS", "THPT", "EXAM_10", "THPTQG"].includes(educationLevel)) {
     redirect(res, `/exams?notice=${encodeURIComponent("Thiếu cấp học, môn học hoặc tiêu đề đề thi")}`);
@@ -2630,6 +2713,10 @@ async function createExam(req, res) {
   }
   if (!["PRACTICE", "MOCK", "PREDICTION"].includes(type) || !["FREE", "PRO"].includes(accessLevel)) {
     redirect(res, `/exams?notice=${encodeURIComponent("Loại đề hoặc quyền truy cập không hợp lệ")}`);
+    return;
+  }
+  if (specialExamTrack && (!specialExamTemplates[specialExamTrack] || educationLevel !== "THPTQG" || contentMode !== "exams")) {
+    redirect(res, "/exams?notice=" + encodeURIComponent("Đề ĐGNL cần chọn đúng kỳ thi, cấp Ôn thi THPTQG và loại Theo kỳ thi."));
     return;
   }
   if (!["topics", "exams"].includes(contentMode)) {
@@ -2648,7 +2735,7 @@ async function createExam(req, res) {
   try {
     parsed = parseAdminExamQuestions(
       importSource,
-      { educationLevel, subjectSlug: subject.slug, durationMinutes },
+      { educationLevel, subjectSlug: subject.slug, durationMinutes, specialExamTrack, specialExamVariant },
       normalizeQuestionInput,
       parseQuestionsFromImport,
     );
@@ -2672,7 +2759,8 @@ async function createExam(req, res) {
         slug,
         title,
         description: description || `Đề ${subject.name} được tạo từ Educhi Admin theo luồng ${grade || educationLevel}.`,
-        family: subject.family,
+        family: specialExamTrack ? "DGNL" : subject.family,
+        specialExamTrack: specialExamTrack || null,
         type: contentMode === "exams" ? "MOCK" : "PRACTICE",
         contentMode: contentMode === "exams" ? "EXAM" : "TOPIC",
         accessLevel,
@@ -2774,10 +2862,12 @@ async function previewExamImport(req, res) {
     const subjectId = String(form.get("subjectId") || "");
     const educationLevel = String(form.get("educationLevel") || "THCS");
     const durationMinutes = Number(form.get("durationMinutes") || 30);
+    const specialExamTrack = String(form.get("specialExamTrack") || "");
+    const specialExamVariant = String(form.get("specialExamVariant") || "");
     const subject = await prisma.subject.findUnique({ where: { id: subjectId }, select: { slug: true } });
     if (!subject) throw new Error("Hãy chọn môn học hợp lệ.");
     const parsed = parseAdminExamQuestions(importSource, {
-      educationLevel, subjectSlug: subject.slug, durationMinutes,
+      educationLevel, subjectSlug: subject.slug, durationMinutes, specialExamTrack, specialExamVariant,
     }, normalizeQuestionInput, parseQuestionsFromImport);
     sendJson(res, { ok: true, questions: parsed.preview });
   } catch (error) {
