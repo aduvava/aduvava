@@ -56,16 +56,21 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
   });
 
   const essayFeedbacks = await prisma.aiFeedback.findMany({
-    where: { userId: user.id, type: "essay-feedback" },
+    where: { userId: user.id, type: { in: ["essay-feedback", "manual-essay-grade"] } },
     orderBy: { createdAt: "desc" },
     take: 100,
   });
   const aiFeedbackByQuestion = new Map<string, Record<string, unknown>>();
+  const manualGradeByQuestion = new Map<string, Record<string, unknown>>();
   for (const feedback of essayFeedbacks) {
     const input = asRecord(feedback.input);
     const output = asRecord(feedback.output);
-    if (input?.attemptId === attempt.id && typeof input.questionId === "string" && output && !aiFeedbackByQuestion.has(input.questionId)) {
-      aiFeedbackByQuestion.set(input.questionId, output);
+    if (input?.attemptId === attempt.id && typeof input.questionId === "string" && output) {
+      if (feedback.type === "manual-essay-grade" && !manualGradeByQuestion.has(input.questionId)) {
+        manualGradeByQuestion.set(input.questionId, output);
+      } else if (feedback.type === "essay-feedback" && !aiFeedbackByQuestion.has(input.questionId)) {
+        aiFeedbackByQuestion.set(input.questionId, output);
+      }
     }
   }
 
@@ -78,6 +83,8 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
   const structure = asRecord(attempt.exam.examStructure);
   const storedVariant = typeof structure?.variantId === "string" ? structure.variantId : null;
   const assessmentVariant = storedVariant ? getAssessmentVariant(attempt.exam.specialExamTrack, storedVariant) : null;
+  const pendingEssays = attempt.exam.questions.some((question) =>
+    question.type === "ESSAY" && !manualGradeByQuestion.has(question.id));
   const objectiveMax = attempt.exam.questions
     .filter((question) => question.type !== "ESSAY")
     .reduce((sum, question) => sum + question.points, 0);
@@ -118,7 +125,7 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
                 {assessmentRule?.scoreMode === "IRT"
                   ? "Điểm thô luyện tập / " + attempt.maxScore + " câu"
                   : assessmentRule?.scoreMode === "ESSAY_PENDING"
-                    ? "Điểm trắc nghiệm / " + objectiveMax.toFixed(0) + " · chưa chấm tự luận"
+                    ? pendingEssays ? "Điểm trắc nghiệm / " + objectiveMax.toFixed(0) + " · chờ chấm tự luận" : "Tổng điểm đã chấm / " + attempt.maxScore
                     : assessmentRule ? "Điểm / " + attempt.maxScore : "Tổng điểm (hệ số 10)"}
               </p>
             </div>
@@ -144,7 +151,7 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
           {assessmentRule?.scoreMode === "ESSAY_PENDING" ? (
             <div className="mt-7 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm font-semibold leading-7 text-blue-900">
               Bài ĐGNL BCA gồm 75 điểm trắc nghiệm được chấm tự động và 25 điểm tự luận.
-              Điểm tự luận chưa được chấm nên chưa có tổng điểm cuối cùng trên thang 100.
+              {pendingEssays ? "Điểm tự luận đang chờ Admin chấm, chưa có tổng điểm cuối cùng trên thang 100." : "Admin đã chấm tự luận; tổng điểm trên thang 100 đã được cập nhật."}
             </div>
           ) : null}
           {attempt.exam.specialExamTrack && !assessmentVariant ? (
@@ -206,7 +213,7 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
                 const earned = groupAnswers.reduce((sum, answer) => sum + (answer?.score ?? 0), 0);
                 const maximum = questions.reduce((sum, question) => sum + question.points, 0);
                 const percent = maximum ? Math.round((earned / maximum) * 100) : 0;
-                const awaitingEssay = questions.every((question) => question.type === "ESSAY");
+                const awaitingEssay = questions.every((question) => question.type === "ESSAY" && !manualGradeByQuestion.has(question.id));
                 return (
                   <div key={label}>
                     <div className="flex items-center justify-between gap-3">
