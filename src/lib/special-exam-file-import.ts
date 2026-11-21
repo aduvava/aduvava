@@ -130,6 +130,9 @@ export function parseAssessmentRows(
     }
     const passage = (groupId && passages.get(groupId)) || readField(row, ["passage", "ngữ liệu", "bài đọc"]);
     const explanation = readField(row, ["explanation", "giải thích", "lời giải"]);
+    if (hasCorruptedPdfMath(explanation)) {
+      warnings.push("Câu " + position + ": lời giải trích từ PDF có ký tự toán học bị lỗi; cần đối chiếu nguồn và viết lại bằng LaTeX.");
+    }
     for (const issue of latexErrors(explanation)) {
       warnings.push("Câu " + position + ": lời giải có LaTeX lỗi: " + issue);
     }
