@@ -80,7 +80,9 @@ export function scoreQuestion(question: ScoringQuestion, value: unknown, policy:
   }
 
   if (question.type === "SHORT_ANSWER") {
-    const plainMatch = normalizeText(value) === normalizeText(question.correctText);
+    const expectedText = normalizeText(question.correctText);
+    const actualText = normalizeText(value);
+    const plainMatch = expectedText.length > 0 && actualText.length > 0 && actualText === expectedText;
     const numeric = policy.specialExamTrack === "QDA" || policy.specialExamTrack === "HSA";
     const candidate = numeric ? parseNumericAnswer(value) : null;
     const expected = numeric ? parseNumericAnswer(question.correctText) : null;
