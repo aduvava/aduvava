@@ -24,6 +24,21 @@ export function validateOfficialSpecialExam(input: {
   }
   const sorted = [...input.questions].sort((a, b) => a.position - b.position);
   const blocks = flattenAssessmentBlocks(variant);
+  // Some exams (HSA) mix A–D and numerical answers throughout a whole part.
+  // Keep question positions intact; validate the total by part, not a fixed suffix.
+  let partStart = 0;
+  for (const part of variant.parts) {
+    const partCount = part.blocks.reduce((sum, block) => sum + block.count, 0);
+    if (part.requiredShortAnswers !== undefined) {
+      const actual = sorted.slice(partStart, partStart + partCount)
+        .filter((question) => question.type === "SHORT_ANSWER").length;
+      if (actual !== part.requiredShortAnswers) {
+        throw new Error(part.label + ": cần đúng " + part.requiredShortAnswers +
+          " câu điền đáp án (hiện có " + actual + ").");
+      }
+    }
+    partStart += partCount;
+  }
   for (const block of blocks) {
     const current = sorted.slice(block.start - 1, block.end);
     const requiredShort = block.requiredShortAnswers ?? null;
