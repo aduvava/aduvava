@@ -243,7 +243,11 @@ export function ExamRunner({ attemptId, mode, examTitle, examDescription, subjec
       {data.correctOptions.length ? <p className="mt-2 font-bold">{data.correctOptions.map((option) => option.label).join(", ")}</p> : null}
       {data.correctText ? <FormattedContent value={data.correctText} className="mt-2" /> : null}
       <p className="mt-3 font-black text-blue-700">Giải thích</p>
-      {data.explanation ? <FormattedContent value={data.explanation} className="mt-1 leading-6" /> : <p className="mt-1 text-slate-500">Câu này chưa có lời giải chi tiết.</p>}
+      {data.explanation ? (
+        hasCorruptedPdfMath(data.explanation)
+          ? <p className="mt-1 font-semibold text-amber-800">Lời giải này có công thức bị lỗi khi trích PDF và cần được hiệu đính bằng LaTeX.</p>
+          : <FormattedContent value={data.explanation} className="mt-1 leading-6" />
+      ) : <p className="mt-1 text-slate-500">Câu này chưa có lời giải chi tiết.</p>}
     </div>;
   }
 
