@@ -6,6 +6,7 @@ import { readLimitedJson } from "@/lib/limited-json";
 import { fitsExamRichField } from "@/lib/rich-image-security";
 import { flattenAssessmentBlocks, getAssessmentRule, getAssessmentVariant } from "@/lib/special-exam-rules";
 import { validateOfficialSpecialExam } from "@/lib/official-special-exam-publication";
+import { getSpecialExamTrack } from "@/lib/special-exam-tracks";
 
 const rich = (max: number) => z.string().trim().min(1).refine((text) => fitsExamRichField(text, max), "Nội dung quá dài hoặc hình không hợp lệ");
 const optionalRich = (max: number) => z.string().trim().refine((text) => fitsExamRichField(text, max), "Nội dung quá dài hoặc hình không hợp lệ").optional();
@@ -26,7 +27,7 @@ const requestSchema = z.object({
   metadata: z.object({
     title: z.string().trim().min(5).max(250),
     description: z.string().trim().max(20000).default(""),
-    subjectId: z.string().min(1).max(128),
+    subjectId: z.string().min(1).max(128).optional(),
     track: z.enum(["HSA", "TSA", "V_ACT", "QDA", "DGNL_BCA"]),
     variantId: z.string().min(1).max(35),
     year: z.number().int().min(2020).max(2200),
@@ -109,15 +110,35 @@ export async function POST(request: Request) {
     } catch (error) {
       importWarnings.push(error instanceof Error ? error.message : "Cấu trúc kỳ thi cần được kiểm tra.");
     }
-    const subject = await prisma.subject.findUnique({ where: { id: metadata.subjectId }, select: { id: true, family: true } });
-    if (!subject) throw new HttpError(404, "Không tìm thấy môn học được chọn.");
-    if (subject.family !== "DGNL") throw new HttpError(400, "Đề ĐGNL phải được lưu vào môn thuộc nhóm ĐGNL.");
 
     const suffix = randomUUID().slice(0, 12).toLowerCase();
     const slugBase = metadata.title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[đĐ]/g, "d")
       .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
     const code = "DGNL-" + metadata.track + "-" + suffix.toUpperCase();
     const exam = await prisma.$transaction(async (tx) => {
+      // Auto-create the track's management subject only when an Admin actually saves a draft.
+      // An explicit subject selection is always honored and must belong to DGNL.
+      const trackInfo = getSpecialExamTrack(metadata.track);
+      if (!trackInfo) throw new HttpError(400, "Kỳ thi ĐGNL không hợp lệ.");
+      const defaultSlug = "dgnl-" + trackInfo.slug;
+      const subject = metadata.subjectId
+        ? await tx.subject.findUnique({
+            where: { id: metadata.subjectId }, select: { id: true, family: true },
+          })
+        : await tx.subject.upsert({
+            where: { slug: defaultSlug },
+            update: {},
+            create: {
+              slug: defaultSlug, name: trackInfo.label + " – " + trackInfo.description,
+              description: "Môn quản lý các đề " + trackInfo.label + " thuộc nhóm ĐGNL.",
+              family: "DGNL", icon: "book-open", color: "#f97316",
+            },
+            select: { id: true, family: true },
+          });
+      if (!subject) throw new HttpError(404, "Không tìm thấy môn học được chọn.");
+      if (subject.family !== "DGNL") {
+        throw new HttpError(400, "Đề ĐGNL phải được lưu vào môn thuộc nhóm ĐGNL.");
+      }
       const created = await tx.exam.create({
         data: {
           code, slug: (slugBase || "de-dgnl") + "-" + suffix,

@@ -56,7 +56,7 @@ export function SpecialExamImport() {
   const selected = getAssessmentVariant(track, variantId);
   const blocks = useMemo(() => selected ? flattenAssessmentBlocks(selected) : [], [selected]);
   const expectedCount = selected ? assessmentQuestionCount(selected) : 0;
-  const ready = questions.length > 0 && Boolean(subjectId) && Boolean(title.trim()) && !busy
+  const ready = questions.length > 0 && Boolean(title.trim()) && !busy
     && (!warnings.length || warningsConfirmed);
 
   useEffect(() => {
@@ -70,8 +70,7 @@ export function SpecialExamImport() {
         .filter((item: Subject) => item.family === "DGNL")
         .map((item: Subject) => ({ id: item.id, name: item.name, family: item.family }));
       setSubjects(data);
-      setSubjectId((old) => data.some((item) => item.id === old) ? old : data[0]?.id || "");
-      if (!data.length) setMessage("Chưa có môn thuộc nhóm ĐGNL. Hãy tạo môn DGNL trong quản trị trước khi nhập đề.");
+      setSubjectId((old) => data.some((item) => item.id === old) ? old : "");
     }).catch(() => { if (active) setMessage("Không tải được danh sách môn học. Vui lòng đăng nhập Admin."); });
     return () => { active = false; };
   }, []);
@@ -79,6 +78,7 @@ export function SpecialExamImport() {
   function switchTrack(next: Track) {
     setTrack(next);
     setVariantId(getAssessmentRule(next)?.variants[0]?.id ?? "");
+    setSubjectId("");
     clearQuestions();
   }
   function switchVariant(next: string) {
@@ -224,7 +224,7 @@ export function SpecialExamImport() {
       const response = await fetch("/api/admin/exams/special-import", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ metadata: {
-          title: title.trim(), description: description.trim(), subjectId, track, variantId,
+          title: title.trim(), description: description.trim(), ...(subjectId ? { subjectId } : {}), track, variantId,
           year, accessLevel,
         }, questions }),
       });
@@ -320,9 +320,12 @@ export function SpecialExamImport() {
           </label>
           <label className="grid gap-2 text-sm font-bold">Môn học quản lý
             <select className={classes} value={subjectId} onChange={(event) => setSubjectId(event.target.value)}>
-              <option value="">Chọn môn học</option>
+              <option value="">Tự động: {rule?.label ?? track}</option>
               {subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
             </select>
+            <span className="text-xs font-medium leading-5 text-slate-600">
+              Để tự động, Educhi sẽ dùng môn quản lý ĐGNL tương ứng; nếu chưa có, hệ thống tạo khi lưu đề nháp.
+            </span>
           </label>
           <label className="grid gap-2 text-sm font-bold">Năm
             <input className={classes} type="number" min="2020" max="2200" value={year} onChange={(event) => setYear(Number(event.target.value))} />
