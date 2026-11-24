@@ -363,6 +363,9 @@ async function run() {
     const invited = await postJson(`/api/exams/${privateExam.id}/sharing`,
       { shareMode: "RESTRICTED", accessEmails: [studentEmail] }, adminAuth.jar, "PATCH");
     await assertStatus(invited, 200, "owner explicitly re-invites a student");
+    await prisma.user.update({ where: { id: studentId }, data: { emailVerified: null } });
+    await assertStatus(await request(`/api/exams/${privateExam.id}`, {}, studentAuth.jar), 403, "unverified email must not unlock an invitation");
+    await prisma.user.update({ where: { id: studentId }, data: { emailVerified: new Date() } });
     await assertStatus(await request(`/api/exams/${privateExam.id}`, {}, studentAuth.jar),
       200, "re-invited student regains exam access");
 
