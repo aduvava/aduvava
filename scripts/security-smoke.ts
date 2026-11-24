@@ -395,6 +395,8 @@ async function run() {
     assert.equal(await prisma.walletTransaction.count({
       where: { reference: `attempt-exp-${privateAttemptId}` },
     }), 1, "one attempt must produce exactly one EXP transaction");
+    const privateReward = await prisma.walletTransaction.findFirstOrThrow({ where: { reference: `attempt-exp-${privateAttemptId}` } });
+    assert.equal(privateReward.amount, 0, "personal exams must never award ranked EXP");
     const finalizedAttempt = await prisma.attempt.findUniqueOrThrow({ where: { id: privateAttemptId } });
     assert.equal(finalizedAttempt.status, "SUBMITTED");
     assert.ok(finalizedAttempt.durationSeconds <= 30 * 60,
