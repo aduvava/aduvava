@@ -42,13 +42,13 @@ export async function canAccessExam(userId: string, exam: { accessLevel: "FREE" 
   if (sharedExam.shareMode === "PUBLIC") return true;
   if (!sharedExam.id) return false;
 
-  const user = await db.user.findUnique({ where: { id: userId }, select: { email: true } });
+  const user = await db.user.findUnique({ where: { id: userId }, select: { email: true, emailVerified: true } });
   const grant = await db.examAccessGrant.findFirst({
     where: {
       examId: sharedExam.id,
       OR: [
         { userId },
-        ...(user?.email ? [{ email: user.email }] : []),
+        ...(user?.email && user.emailVerified ? [{ userId: null, email: user.email.toLowerCase() }] : []),
       ],
     },
   });
