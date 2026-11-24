@@ -55,9 +55,11 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      // Google provides verified emails. This lets existing email/password users
-      // sign in with their verified Google identity without a manual link step.
-      allowDangerousEmailAccountLinking: true,
+      // Registration does not verify email ownership. A matching email is not
+      // proof that an existing password account belongs to the Google user.
+      // Keep existing linked Google accounts working, but require an existing
+      // authenticated account session for any new link to that account.
+      allowDangerousEmailAccountLinking: false,
     })
   );
 }
