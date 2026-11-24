@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireUser, requireAdmin, HttpError, handleRouteError } from "@/lib/api";
+import { readLimitedJson } from "@/lib/limited-json";
+import { consumeSecurityThrottle } from "@/lib/security-throttle";
 import { displayCommunityMember, initialsOfDisplayName } from "@/lib/compliance-requests";
 
 export const runtime = "nodejs";
@@ -49,13 +51,13 @@ export async function POST(request: Request) {
   try {
     checkOrigin(request);
     const user = await requireUser();
-    const body = await request.json().catch(() => ({}));
+    const body = await readLimitedJson(request, 4 * 1024) as Record<string, unknown>;
+    if (!body || typeof body !== "object" || Array.isArray(body)) throw new HttpError(400, "Dữ liệu không hợp lệ.");
     const message = typeof body.message === "string" ? body.message.trim() : "";
     if (!message || message.length > 500) throw new HttpError(400, "Tin nhắn phải có từ 1 đến 500 ký tự.");
-    const recent = await prisma.communityMessage.findFirst({
-      where: { userId: user.id }, orderBy: { createdAt: "desc" }, select: { createdAt: true },
-    });
-    if (recent && Date.now() - recent.createdAt.getTime() < 3000) throw new HttpError(429, "Vui lòng đợi 3 giây trước khi gửi tiếp.");
+    // Atomic per-account throttle across all server instances.
+    await consumeSecurityThrottle(prisma, "community-send", user.id, { limit: 1, windowSeconds: 3 });
+    await consumeSecurityThrottle(prisma, "community-daily", user.id, { limit: 300, windowSeconds: 86400 });
     const replyToId = typeof body.replyToId === "string" ? body.replyToId : null;
     const reply = replyToId ? await prisma.communityMessage.findUnique({ where: { id: replyToId }, select: { id: true } }) : null;
     await prisma.communityMessage.create({ data: { userId: user.id, content: message, replyToId: reply?.id || null } });
@@ -68,7 +70,8 @@ export async function DELETE(request: Request) {
     checkOrigin(request);
     await requireAdmin();
 
-    const body = await request.json().catch(() => ({}));
+    const body = await readLimitedJson(request, 4 * 1024) as Record<string, unknown>;
+    if (!body || typeof body !== "object" || Array.isArray(body)) throw new HttpError(400, "Dữ liệu không hợp lệ.");
     if (typeof body.id !== "string") throw new HttpError(400, "Thiếu mã tin nhắn.");
     await prisma.communityMessage.delete({ where: { id: body.id } });
     return NextResponse.json({ messages: await history() });
