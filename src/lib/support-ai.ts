@@ -117,7 +117,9 @@ export async function reserveSupportAiBudget() {
 }
 
 export async function settleSupportAiBudget(reservation: { month: string; held: number }, chargeMicroUsd: number) {
-  const amount = Math.max(0, Math.min(reservation.held, Math.ceil(chargeMicroUsd)));
+  // Record the entire estimated charge, even if it exceeds the reservation.
+  // Future reservations then stop instead of hiding the overrun.
+  const amount = Number.isFinite(chargeMicroUsd) ? Math.max(0, Math.ceil(chargeMicroUsd)) : reservation.held;
   await prisma.$executeRaw`
     UPDATE "SupportAiBudget"
     SET "heldMicroUsd" = GREATEST(0, "heldMicroUsd" - ${reservation.held}),
