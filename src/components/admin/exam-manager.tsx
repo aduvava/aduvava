@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { Pencil, Plus, RefreshCw, Search, Trash2, UploadCloud, X, BookOpenCheck } from "lucide-react";
+import { Pencil, Plus, RefreshCw, Search, Trash2, UploadCloud, X, BookOpenCheck, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { importAdminExamFile, type ImportedExamQuestion } from "@/lib/admin-exam-file-import";
 import { buildReadingExcelTemplate } from "@/lib/reading-template";
@@ -263,6 +263,27 @@ export function ExamManager() {
     } finally { setBusy(false); }
   }
 
+  async function togglePublication(exam: Exam) {
+    const isPublished = !exam.isPublished;
+    setBusy(true);
+    setMessage(isPublished ? "Đang kiểm tra và đăng đề..." : "Đang ẩn đề...");
+    try {
+      const response = await fetch("/api/admin/exams/" + encodeURIComponent(exam.id), {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPublished }),
+      });
+      if (!response.ok) throw new Error(await apiMessage(response));
+      setItems((current) => current.map((item) => item.id === exam.id ? { ...item, isPublished } : item));
+      if (editing?.id === exam.id) {
+        setEditing((current) => current?.id === exam.id ? { ...current, isPublished } : current);
+        setDraft((current) => ({ ...current, isPublished }));
+      }
+      setMessage((isPublished ? "Đã đăng đề: " : "Đã ẩn đề: ") + exam.title);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Không đổi được trạng thái đề.");
+    } finally { setBusy(false); }
+  }
+
   async function remove(exam: Exam) {
     const attempts = exam._count.attempts;
     const answer = window.prompt(
@@ -499,6 +520,14 @@ export function ExamManager() {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  {exam.specialExamTrack || exam.family === "DGNL" ? (
+                    <button type="button" disabled={busy} onClick={() => void togglePublication(exam)}
+                      aria-label={(exam.isPublished ? "Ẩn đề " : "Đăng đề ") + exam.title}
+                      className={"inline-flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-black disabled:opacity-50 " + (exam.isPublished ? "bg-amber-50 text-amber-800 hover:bg-amber-100" : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200")}>
+                      {exam.isPublished ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {exam.isPublished ? "Ẩn đề" : "Đăng đề"}
+                    </button>
+                  ) : null}
                   <Link href={"/admin/questions?examId=" + encodeURIComponent(exam.id)}
                     className="inline-flex items-center gap-1 rounded-xl bg-orange-50 px-3 py-2 text-xs font-black text-orange-700 hover:bg-orange-100">
                     <BookOpenCheck className="h-4 w-4" /> Xem / sửa câu hỏi
