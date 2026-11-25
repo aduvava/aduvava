@@ -50,7 +50,7 @@ export function SpecialExamImport() {
   const [warningsConfirmed, setWarningsConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const [created, setCreated] = useState<{ id: string; slug: string } | null>(null);
+  const [created, setCreated] = useState<{ id: string; slug: string; isPublished: boolean } | null>(null);
   const rule = getAssessmentRule(track);
   const variants = rule?.variants ?? [];
   const selected = getAssessmentVariant(track, variantId);
@@ -230,7 +230,7 @@ export function SpecialExamImport() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Không lưu được đề.");
-      setCreated(result.exam);
+      setCreated({ ...result.exam, isPublished: result.isPublished === true });
       setMessage("Đã lưu " + result.questionCount + " câu vào đề nháp. " +
         ((result.warnings?.length ?? 0) ? "Có " + result.warnings.length + " vấn đề phải sửa trên Educhi trước khi xuất bản." : "Đã đạt kiểm tra cấu trúc."));
     } catch (error) {
@@ -238,6 +238,25 @@ export function SpecialExamImport() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function toggleCreatedPublication() {
+    if (!created || busy) return;
+    const isPublished = !created.isPublished;
+    setBusy(true);
+    setMessage(isPublished ? "Đang kiểm tra và đăng đề..." : "Đang ẩn đề...");
+    try {
+      const response = await fetch("/api/admin/exams/" + encodeURIComponent(created.id), {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPublished }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Không đổi được trạng thái đề.");
+      setCreated((current) => current?.id === created.id ? { ...current, isPublished } : current);
+      setMessage(isPublished ? "Đã đăng đề cho học viên." : "Đã ẩn đề khỏi học viên.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Không đổi được trạng thái đề.");
+    } finally { setBusy(false); }
   }
 
   return (
@@ -344,10 +363,21 @@ export function SpecialExamImport() {
           {busy ? "Đang xử lý..." : "Kiểm tra cấu trúc và tạo đề nháp"}
         </button>
         {message ? <p role="status" className="mt-4 rounded-xl bg-blue-50 p-4 text-sm font-bold text-blue-900">{message}</p> : null}
-        {created ? <Link href={"/admin/questions?examId=" + encodeURIComponent(created.id)}
-          className="mt-4 inline-flex rounded-xl bg-slate-900 px-4 py-3 text-sm font-black text-white">
-          Xem / sửa câu hỏi rồi xuất bản trong Quản lý đề
-        </Link> : null}
+        {created ? (
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <span className={"rounded-full px-3 py-1 text-xs font-bold " + (created.isPublished ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800")}>
+              {created.isPublished ? "Đang hiển thị" : "Đã ẩn"}
+            </span>
+            <button type="button" disabled={busy} onClick={() => void toggleCreatedPublication()}
+              className={"min-h-11 rounded-xl px-4 py-3 text-sm font-black text-white disabled:opacity-40 " + (created.isPublished ? "bg-amber-700 hover:bg-amber-800" : "bg-emerald-700 hover:bg-emerald-800")}>
+              {created.isPublished ? "Ẩn đề" : "Đăng đề"}
+            </button>
+            <Link href={"/admin/questions?examId=" + encodeURIComponent(created.id)}
+              className="inline-flex rounded-xl bg-slate-900 px-4 py-3 text-sm font-black text-white">
+              Xem / sửa câu hỏi
+            </Link>
+          </div>
+        ) : null}
       </section>
     </div>
   );
