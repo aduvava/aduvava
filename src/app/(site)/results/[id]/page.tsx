@@ -175,6 +175,7 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
                   {asNumber(expSystem.correctCount).toLocaleString("vi-VN")}/{asNumber(expSystem.totalQuestions).toLocaleString("vi-VN")} câu đúng · Độ khó {difficultyText} x{asNumber(expSystem.difficultyMultiplier, 1)}
                 </div>
               </div>
+              {expSystem.rankedEligible !== false ? (
               <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="rounded-2xl bg-white p-4">
                   <p className="text-xs font-black uppercase text-slate-400">Điểm cơ bản</p>
@@ -204,6 +205,8 @@ export default async function ResultPage({ params }: { params: Promise<{ id: str
                   ) : null}
                 </div>
               </div>
+              ) : null}
+
             </div>
           ) : null}
 

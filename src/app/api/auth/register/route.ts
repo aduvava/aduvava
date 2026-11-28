@@ -5,11 +5,12 @@ import { verifiedInviterFromToken, findEligibleInviter } from "@/lib/referrals";
 import { registerSchema } from "@/lib/registration";
 import { prisma } from "@/lib/db";
 import { rateLimitOperation } from "@/lib/security-throttle";
-import { handleRouteError, HttpError, jsonOk, readJson } from "@/lib/api";
+import { readLimitedJson } from "@/lib/limited-json";
+import { handleRouteError, HttpError, jsonOk } from "@/lib/api";
 
 export async function POST(request: Request) {
   try {
-    const payload = registerSchema.parse(await readJson<unknown>(request));
+    const payload = registerSchema.parse(await readLimitedJson(request, 16 * 1024));
     await rateLimitOperation(prisma, "register", payload.email, request.headers);
     const existing = await prisma.user.findUnique({ where: { email: payload.email } });
     if (existing) throw new HttpError(409, "Email already exists");

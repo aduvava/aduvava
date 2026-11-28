@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { readLimitedJson } from "@/lib/limited-json";
 import { HttpError, handleRouteError, requireUser } from "@/lib/api";
 import { consumeSecurityThrottle, TooManyRequestsError } from "@/lib/security-throttle";
 import {
@@ -104,10 +105,7 @@ export async function POST(request: Request) {
   try {
     checkOrigin(request);
     const user = await requireUser();
-    if (Number(request.headers.get("content-length")) > 4096) throw new HttpError(413, "Tin nhắn quá dài.");
-    const raw = await request.text();
-    if (raw.length > 4096) throw new HttpError(413, "Tin nhắn quá dài.");
-    const body = payloadSchema.parse(JSON.parse(raw));
+    const body = payloadSchema.parse(await readLimitedJson(request, 4096));
 
     if (body.action === "new") {
       await consumeSecurityThrottle(prisma, "support-new", user.id, { limit: 15, windowSeconds: 86400 });

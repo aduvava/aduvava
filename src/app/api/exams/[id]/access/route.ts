@@ -40,20 +40,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         throw new HttpError(403, "Mật khẩu không đúng.");
       }
 
-      const email = user.email?.toLowerCase() ?? null;
-      const existing = await tx.examAccessGrant.findFirst({
-        where: {
-          examId: exam.id,
-          OR: [
-            { userId: user.id },
-            ...(email ? [{ email }] : []),
-          ],
-        },
+      // Password knowledge grants access to this account only. Never claim
+      // or overwrite someone else's email invitation with an unverified email.
+      const existing = await tx.examAccessGrant.findUnique({
+        where: { examId_userId: { examId: exam.id, userId: user.id } },
       });
-      if (existing) {
-        await tx.examAccessGrant.update({ where: { id: existing.id }, data: { userId: user.id, email } });
-      } else {
-        await tx.examAccessGrant.create({ data: { examId: exam.id, userId: user.id, email } });
+      if (!existing) {
+        await tx.examAccessGrant.create({ data: { examId: exam.id, userId: user.id } });
       }
     }, { timeout: 15000 });
 

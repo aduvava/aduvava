@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk, requireUser } from "@/lib/api";
-import { calculateExamExp, getVietnamDayRange } from "@/lib/exp-system";
+import { calculateExamExp, getVietnamDayRange, isRankedExam } from "@/lib/exp-system";
 import { scoreExam, type ScoringQuestion } from "@/lib/scoring";
 import { canAccessExam } from "@/lib/access";
 
@@ -178,6 +178,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       }),
     ]);
     const expBreakdown = calculateExamExp({
+      rankedEligible: isRankedExam(attempt.exam),
       questionScores: result.questionScores,
       score: result.score,
       maxScore: result.maxScore,
@@ -192,7 +193,9 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     });
     const expReward = expBreakdown.expReward;
     const expNote =
-      expReward > 0
+      !expBreakdown.rankedEligible
+        ? `Hoàn thành ${attempt.exam.title}: đề cá nhân không cộng EXP xếp hạng`
+        : expReward > 0
         ? `Hoàn thành ${attempt.exam.title}: +${expReward} EXP`
         : previousAttemptCount >= 2
           ? `Hoàn thành ${attempt.exam.title}: không cộng EXP vì đã làm đề này từ lần 3`

@@ -15,7 +15,12 @@ export const EXP_CONFIG = {
 
 type ExamStructure = Prisma.JsonValue | null | undefined;
 
+export function isRankedExam(exam: { ownerId: string | null; code: string; isPublished: boolean }): boolean {
+  return exam.isPublished && exam.ownerId === null && !exam.code.startsWith("USER-");
+}
+
 type ExamExpInput = {
+  rankedEligible?: boolean;
   questionScores: QuestionScore[];
   score: number;
   maxScore: number;
@@ -30,6 +35,7 @@ type ExamExpInput = {
 };
 
 export type ExamExpBreakdown = {
+  rankedEligible: boolean;
   expReward: number;
   correctCount: number;
   totalQuestions: number;
@@ -111,9 +117,11 @@ export function calculateExamExp(input: ExamExpInput): ExamExpBreakdown {
   const repeatRate = getRepeatRate(input.previousAttemptCount);
   const afterRepeatLimit = Math.round(beforeRepeatLimit * repeatRate);
   const dailyRemainingBefore = Math.max(0, EXP_CONFIG.dailyCap - input.todayEarnedExp);
-  const expReward = Math.min(afterRepeatLimit, dailyRemainingBefore);
+  const rankedEligible = input.rankedEligible !== false;
+  const expReward = rankedEligible ? Math.min(afterRepeatLimit, dailyRemainingBefore) : 0;
 
   return {
+    rankedEligible,
     expReward,
     correctCount,
     totalQuestions,
@@ -132,6 +140,6 @@ export function calculateExamExp(input: ExamExpInput): ExamExpBreakdown {
     dailyCap: EXP_CONFIG.dailyCap,
     todayEarnedBefore: input.todayEarnedExp,
     dailyRemainingBefore,
-    dailyCapReduction: Math.max(0, afterRepeatLimit - expReward),
+    dailyCapReduction: rankedEligible ? Math.max(0, afterRepeatLimit - expReward) : 0,
   };
 }

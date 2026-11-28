@@ -8,7 +8,7 @@ import GoogleProvider from "next-auth/providers/google";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { rateLimitOperation, TooManyRequestsError } from "@/lib/security-throttle";
-import { isVerifiedGoogleIdentity } from "@/lib/google-account-link";
+import { googleIdentityMatchesExistingAccount, isVerifiedGoogleIdentity } from "@/lib/google-account-link";
 import { resolveActiveRole } from "@/lib/roles";
 
 const loginSchema = z.object({
@@ -75,8 +75,15 @@ export const authOptions: NextAuthOptions = {
       // emails stay separate unless the user is deliberately linking accounts.
       return account?.provider !== "google" || isVerifiedGoogleIdentity(profile);
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, account, profile }) {
       if (user) {
+        // Only a fresh, verified Google identity may verify the stored email.
+        if (account?.provider === "google" && user.email && googleIdentityMatchesExistingAccount(profile, user.email)) {
+          await prisma.user.updateMany({
+            where: { id: user.id, email: user.email, emailVerified: null },
+            data: { emailVerified: new Date() },
+          });
+        }
         token.id = user.id;
         const role = (user as { role?: string }).role;
         token.role = role === "ADMIN" ? "ADMIN" : role === "TEACHER" ? "TEACHER" : "STUDENT";

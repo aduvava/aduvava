@@ -147,7 +147,12 @@ async function updateResource(resource: string, id: string, body: Record<string,
     case "blogs":
       return prisma.blogPost.update({ where: { id }, data: body as never });
     case "users":
-      return prisma.user.update({ where: { id }, data: body as never, select: { id: true, email: true, name: true, role: true } });
+      return prisma.$transaction(async (tx) => {
+        const rows = await tx.$queryRaw<{ email: string }[]>`SELECT "email" FROM "User" WHERE "id" = ${id} FOR UPDATE`;
+        if (!rows.length) throw new HttpError(404, "User not found");
+        const changedEmail = typeof body.email === "string" && body.email !== rows[0].email;
+        return tx.user.update({ where: { id }, data: { ...body, ...(changedEmail ? { emailVerified: null } : {}) } as never, select: { id: true, email: true, name: true, role: true } });
+      });
     case "subscriptions":
       return prisma.subscription.update({ where: { id }, data: body as never });
     case "payments":
